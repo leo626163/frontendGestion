@@ -3,7 +3,8 @@ import * as SecureStore from 'expo-secure-store';
 import Constants from 'expo-constants';
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet,
-  Platform, ActivityIndicator, Alert, KeyboardAvoidingView, Modal, PanResponder, Dimensions
+  Platform, ActivityIndicator, Alert, KeyboardAvoidingView, Modal, 
+  PanResponder, Dimensions, findNodeHandle
 } from 'react-native';
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -11,7 +12,6 @@ import axios from 'axios';
 import { Ionicons } from '@expo/vector-icons';
 import dayjs from 'dayjs';
 import Svg, { Circle, Line, Text as SvgText } from 'react-native-svg';
-
 const API_BASE_URL =  'https://backendgestion-production-e2aa.up.railway.app';
 const { width } = Dimensions.get('window');
 const isMobile = width < 768;
@@ -1366,90 +1366,36 @@ useEffect(() => {
     setObjetivosPDI(newObjetivos);
   };
 
-  const scrollToObjetivos = () => {
-    setSeccionObjetivosVisible(true);
-    setTimeout(() => {
-      if (objetivosSectionRef.current && scrollViewRef.current) {
-        setIsScrollingToObjetivos(true);
-        objetivosSectionRef.current.measureLayout(
-          scrollViewRef.current.getInnerViewNode(),
-          (x, y) => {
-            scrollViewRef.current?.scrollTo({ y: y - 60, animated: true });
-            setTimeout(() => setIsScrollingToObjetivos(false), 1000);
-          },
-          (error) => { console.warn("Error:", error); setIsScrollingToObjetivos(false); }
-        );
-      }
-    }, 0);
-  };
+  const scrollToSection = (sectionRef, setVisible, setScrolling, offset = 60) => {
+  setVisible(true);
+  setTimeout(() => {
+    if (!sectionRef.current || !scrollViewRef.current) return;
+    setScrolling(true);
 
-  const scrollToResultados = () => {
-    setSeccionResultadosVisible(true);
-    setTimeout(() => {
-      if (resultadosSectionRef.current && scrollViewRef.current) {
-        setIsScrollingToResultados(true);
-        resultadosSectionRef.current.measureLayout(
-          scrollViewRef.current.getInnerViewNode(),
-          (x, y) => {
-            scrollViewRef.current?.scrollTo({ y: y - 60, animated: true });
-            setTimeout(() => setIsScrollingToResultados(false), 1000);
-          },
-          (error) => { console.warn("Error:", error); setIsScrollingToResultados(false); }
-        );
-      }
-    }, 0);
-  };
+    const scrollNode = findNodeHandle(scrollViewRef.current);
+    if (!scrollNode) {
+      setScrolling(false);
+      return;
+    }
 
-  const scrollToComite = () => {
-    setSeccionComiteVisible(true);
-    setTimeout(() => {
-      if (comiteSectionRef.current && scrollViewRef.current) {
-        setIsScrollingToComite(true);
-        comiteSectionRef.current.measureLayout(
-          scrollViewRef.current.getInnerViewNode(),
-          (x, y) => {
-            scrollViewRef.current?.scrollTo({ y: y - 60, animated: true });
-            setTimeout(() => setIsScrollingToComite(false), 1000);
-          },
-          (error) => { console.warn("Error:", error); setIsScrollingToComite(false); }
-        );
+    sectionRef.current.measureLayout(
+      scrollNode,
+      (x, y) => {
+        scrollViewRef.current?.scrollTo({ y: y - offset, animated: true });
+        setTimeout(() => setScrolling(false), 1000);
+      },
+      (error) => {
+        console.warn('Error al medir sección:', error);
+        setScrolling(false);
       }
-    }, 0);
-  };
-
-  const scrollToRecursos = () => {
-    setSeccionRecursosVisible(true);
-    setTimeout(() => {
-      if (recursosSectionRef.current && scrollViewRef.current) {
-        setIsScrollingToRecursos(true);
-        recursosSectionRef.current.measureLayout(
-          scrollViewRef.current.getInnerViewNode(),
-          (x, y) => {
-            scrollViewRef.current?.scrollTo({ y: y - 60, animated: true });
-            setTimeout(() => setIsScrollingToRecursos(false), 1000);
-          },
-          (error) => { console.warn("Error:", error); setIsScrollingToRecursos(false); }
-        );
-      }
-    }, 0);
-  };
-
-  const scrollToPresupuesto = () => {
-    setSeccionPresupuestoVisible(true);
-    setTimeout(() => {
-      if (presupuestoSectionRef.current && scrollViewRef.current) {
-        setIsScrollingToPresupuesto(true);
-        presupuestoSectionRef.current.measureLayout(
-          scrollViewRef.current.getInnerViewNode(),
-          (x, y) => {
-            scrollViewRef.current?.scrollTo({ y: y - 60, animated: true });
-            setTimeout(() => setIsScrollingToPresupuesto(false), 1000);
-          },
-          (error) => { console.warn("Error:", error); setIsScrollingToPresupuesto(false); }
-        );
-      }
-    }, 0);
-  };
+    );
+  }, 150); 
+};
+const scrollToObjetivos = () => scrollToSection(objetivosSectionRef, setSeccionObjetivosVisible, setIsScrollingToObjetivos);
+const scrollToResultados = () => scrollToSection(resultadosSectionRef, setSeccionResultadosVisible, setIsScrollingToResultados);
+const scrollToComite = () => scrollToSection(comiteSectionRef, setSeccionComiteVisible, setIsScrollingToComite);
+const scrollToRecursos = () => scrollToSection(recursosSectionRef, setSeccionRecursosVisible, setIsScrollingToRecursos);
+const scrollToPresupuesto = () => scrollToSection(presupuestoSectionRef, setSeccionPresupuestoVisible, setIsScrollingToPresupuesto);
 
   const validateForm = () => {
     const newErrors = {};
