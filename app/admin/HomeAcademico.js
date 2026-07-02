@@ -629,13 +629,6 @@ const fetchCommitteeEvents = useCallback(async () => {
         description: 'Total pendientes'
       },
       { 
-        title: 'Eventos Cancelados', 
-        value: data.estadoCounts?.cancelado?.toString() || '0', 
-        icon: 'close-circle', 
-        color: COLORS.accent,
-        description: 'Total cancelados'
-      },
-      { 
         title: 'Eventos Vencidos', 
         value: data.estadoCounts?.vencido?.toString() || '0', 
         icon: 'calendar-outline', 
@@ -838,16 +831,7 @@ useEffect(() => {
     badgeColor: COLORS.black
   },
   
-  {
-    id: '5',
-    title: 'Eventos Cancelados',
-    iconName: 'document-text-outline',
-    route: '/admin/EventosCancelados',
-    color: COLORS.secondary,
-    description: 'Gestión de eventos cancelados',
-    badge: 'Nuevo',
-    badgeColor: COLORS.accent,
-  },
+ 
   {
     id: '6',
     title: 'Eventos Rechazados',
