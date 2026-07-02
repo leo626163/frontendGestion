@@ -2549,6 +2549,7 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: width > 768 ? 'row' : 'column',
     paddingHorizontal: 20,
+    minHeight: 0,
   },
   calendarColumn: {
     marginTop: 10,
@@ -2567,6 +2568,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 3.84,
     elevation: 5,
+    minHeight: 0,
   },
   scrollContentContainer: { paddingBottom: 60 },
   calendarSection: { marginBottom: 20 },
@@ -2693,7 +2695,7 @@ const styles = StyleSheet.create({
   confirmModalButtonConfirm: { backgroundColor: '#e95a0c' },
   confirmModalButtonTextCancel: { fontSize: 16, fontWeight: '600', color: '#4a5568' },
   confirmModalButtonTextConfirm: { fontSize: 16, fontWeight: '600', color: '#ffffff' },
-  keyboardAvoidingContainer: { flex: 1, backgroundColor: '#F4F7F9' },
+  keyboardAvoidingContainer: { flex: 1, backgroundColor: '#F4F7F9', minHeight: 0 },
   formSection: {
     backgroundColor: '#FFFFFF', borderRadius: 12, padding: 20, marginBottom: 20,
     shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 3.84, elevation: 5,
