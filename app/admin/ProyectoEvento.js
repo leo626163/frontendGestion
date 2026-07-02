@@ -13,7 +13,7 @@ import dayjs from 'dayjs';
 import Svg, { Circle, Line, Text as SvgText } from 'react-native-svg';
 
 //const API_BASE_URL =  'https://evento.cidtec-uc.com';
-const API_BASE_URL = 'https://backendgestion-production.up.railway.app';
+const API_BASE_URL = 'https://backendgestion-production-e2aa.up.railway.app';
 //const API_BASE_URL =  'https://unifrontend.onrender.com';
 
 const { width } = Dimensions.get('window');

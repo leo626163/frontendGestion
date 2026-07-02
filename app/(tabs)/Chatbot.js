@@ -7,7 +7,8 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const BACKEND_URL = 'https://unibackend1-production.up.railway.app';
+//const BACKEND_URL = 'https://unibackend1-production.up.railway.app';
+const BACKEND_URL = 'https://backendgestion-production-e2aa.up.railway.app';
 
 const ROL_CONFIG = {
   admin:     { color: '#FF6B35', label: 'Admin',     icono: 'A' },

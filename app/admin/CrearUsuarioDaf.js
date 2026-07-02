@@ -21,7 +21,7 @@ import DropDownPicker from 'react-native-dropdown-picker';
 import axios from 'axios';
 
 const { width } = Dimensions.get('window');
-const API_BASE_URL =  'https://backendgestion-production.up.railway.app';
+const API_BASE_URL =  'https://backendgestion-production-e2aa.up.railway.app';
 const CrearUsuarioDaf = () => {
   const router = useRouter();
 

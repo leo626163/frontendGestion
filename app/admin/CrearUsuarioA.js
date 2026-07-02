@@ -24,7 +24,7 @@ const { width } = Dimensions.get('window');
 const isWeb = Platform.OS === 'web';
 //const API_BASE_URL =  'https://evento.cidtec-uc.com';
 //API_BASE_URL =  'https://unifrontend-production.up.railway.app';
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://backendgestion-production.up.railway.app';
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://backendgestion-production-e2aa.up.railway.app';
 //const API_BASE_URL =  'https://unifrontend.onrender.com';
 const CARRERA_A_FACULTAD = {
   '1':'1',  

@@ -18,7 +18,7 @@ const COLORS = {
 };
 
 //const API_BASE_URL =  'https://evento.cidtec-uc.com';
-const API_BASE_URL = 'https://backendgestion-production.up.railway.app';
+const API_BASE_URL = 'https://backendgestion-production-e2aa.up.railway.app';
 //const API_BASE_URL =  'https://unifrontend.onrender.com';
 const TOKEN_KEY    = 'studentAuthToken';
 const USER_DATA_KEY = 'studentUserData';

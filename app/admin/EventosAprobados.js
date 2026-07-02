@@ -21,7 +21,7 @@ import * as SecureStore from 'expo-secure-store';
 
 const { width } = Dimensions.get('window');
 
-const API_BASE_URL = 'https://backendgestion-production.up.railway.app';
+const API_BASE_URL = 'https://backendgestion-production-e2aa.up.railway.app';
 const TOKEN_KEY = 'adminAuthToken';
 
 const COLORS = {
