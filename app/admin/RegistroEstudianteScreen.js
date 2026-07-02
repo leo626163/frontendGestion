@@ -22,7 +22,7 @@ import DropDownPicker from 'react-native-dropdown-picker';
 const { width } = Dimensions.get('window');
 
 //const API_BASE_URL =  'https://evento.cidtec-uc.com';
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://frontendgestion-production-d088.up.railway.app/Welcome';
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://frontendgestion-production-d088.up.railway.app';
 //const API_BASE_URL =  'https://unifrontend.onrender.com';
 
 

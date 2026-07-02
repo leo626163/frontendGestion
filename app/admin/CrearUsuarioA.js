@@ -23,7 +23,7 @@ import DropDownPicker from 'react-native-dropdown-picker';
 const { width } = Dimensions.get('window');
 const isWeb = Platform.OS === 'web';
 //const API_BASE_URL =  'https://evento.cidtec-uc.com';
-//API_BASE_URL =  'https://unifrontend-production.up.railway.app';
+//API_BASE_URL =  'https://frontendgestion-production-d088.up.railway.app';
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://backendgestion-production-e2aa.up.railway.app';
 //const API_BASE_URL =  'https://unifrontend.onrender.com';
 const CARRERA_A_FACULTAD = {

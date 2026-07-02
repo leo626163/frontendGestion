@@ -19,7 +19,7 @@ import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
 
 //const API_BASE_URL = 'https://evento.cidtec-uc.com';
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://frontendgestion-production-d088.up.railway.app/Welcome';
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://frontendgestion-production-d088.up.railway.app';
 //const API_BASE_URL =  'https://unifrontend.onrender.com';
 const TOKEN_KEY = 'adminAuthToken';
 
