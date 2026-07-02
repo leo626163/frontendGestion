@@ -1366,12 +1366,28 @@ useEffect(() => {
     setObjetivosPDI(newObjetivos);
   };
 
-  const scrollToSection = (sectionRef, setVisible, setScrolling, offset = 60) => {
+const scrollToSection = (sectionRef, setVisible, setScrolling, offset = 60) => {
   setVisible(true);
   setTimeout(() => {
-    if (!sectionRef.current || !scrollViewRef.current) return;
+    if (!sectionRef.current) return;
     setScrolling(true);
 
+    if (Platform.OS === 'web') {
+      const node = findNodeHandle(sectionRef.current);
+      if (node && typeof node.scrollIntoView === 'function') {
+        node.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } else if (node && typeof node.getBoundingClientRect === 'function') {
+        const top = node.getBoundingClientRect().top + window.scrollY - offset;
+        window.scrollTo({ top, behavior: 'smooth' });
+      }
+      setTimeout(() => setScrolling(false), 1000);
+      return;
+    }
+
+    if (!scrollViewRef.current) {
+      setScrolling(false);
+      return;
+    }
     const scrollNode = findNodeHandle(scrollViewRef.current);
     if (!scrollNode) {
       setScrolling(false);
@@ -1389,7 +1405,7 @@ useEffect(() => {
         setScrolling(false);
       }
     );
-  }, 150); 
+  }, 150);
 };
 const scrollToObjetivos = () => scrollToSection(objetivosSectionRef, setSeccionObjetivosVisible, setIsScrollingToObjetivos);
 const scrollToResultados = () => scrollToSection(resultadosSectionRef, setSeccionResultadosVisible, setIsScrollingToResultados);
