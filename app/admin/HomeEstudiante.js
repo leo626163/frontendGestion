@@ -108,7 +108,6 @@ const mapEvento = (e) => {
   };
 };
 
-// ─── Event Card ────────────────────────────────────────────────────────────────
 const EventCard = ({ event, onPress }) => (
   <TouchableOpacity style={styles.eventCard} onPress={onPress} activeOpacity={0.85}>
     {/* Header row */}
@@ -164,7 +163,6 @@ const EventCard = ({ event, onPress }) => (
   </TouchableOpacity>
 );
 
-// ─── Action Card ───────────────────────────────────────────────────────────────
 const ActionCard = ({ title, description, icon, color, onPress }) => (
   <TouchableOpacity style={[styles.actionCard, { borderColor: color + '20' }]} onPress={onPress} activeOpacity={0.85}>
     <View style={[styles.actionIcon, { backgroundColor: color + '12' }]}>
@@ -246,24 +244,28 @@ const HomeEstudianteScreen = () => {
     // ✅ PASO 2: Filtrar solo eventos futuros o de hoy
     const hoy = new Date();
     hoy.setHours(0, 0, 0, 0);
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
 
     const eventosFuturos = fase2.filter(e => {
-      const fechaStr = e.date || e.fechaevento || e.fecha_inicio || e.submittedDate;
-      if (!fechaStr || fechaStr === '–') return true; // Si no tiene fecha, mostrarlo
+      const fechaStr = e.date || e.fechaevento || e.fecha_inicio;
+      
+      if (!fechaStr || fechaStr === '–') return true;
       
       const fechaEvento = new Date(fechaStr);
-      if (isNaN(fechaEvento.getTime())) return true; // Si la fecha es inválida, mostrarlo
+      
+      if (isNaN(fechaEvento.getTime())) return true;
       
       fechaEvento.setHours(0, 0, 0, 0);
+      
       return fechaEvento >= hoy;
     });
 
     console.log(`📅 Eventos: ${raw.length} total → ${fase2.length} fase 2 → ${eventosFuturos.length} futuros`);
 
-    // ✅ PASO 3: ¡USAR eventosFuturos en lugar de fase2!
+
     const mapped = eventosFuturos.map(mapEvento);
 
-    // ✅ PASO 4: Calcular estadísticas sobre los eventos filtrados
     const proximos = mapped.filter(e => 
       e.status === 'Próximo' || e.status === 'Confirmado'
     ).length;
