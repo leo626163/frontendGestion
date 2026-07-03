@@ -227,7 +227,7 @@ const HomeEstudianteScreen = () => {
       return;
     }
 
-    const res = await axios.get(`${API_BASE_URL}/eventos/aprobados-por-facultad`, {
+    const res = await axios.get(`${API_BASE_URL}/eventos/aprobados-por-facultad-y-fecha`, {
       headers: { Authorization: `Bearer ${token}` },
       params: { facultad_id: facultadId },
       timeout: 10000,
