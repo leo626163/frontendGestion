@@ -217,16 +217,18 @@ const HomeEstudianteScreen = () => {
       let facultadId = user.facultad_id;
       let facultadNombre = user.facultad_nombre || user.facultad?.nombre;
 
-      if (!facultadId||!facultadNombre) {
+      if (!facultadId || !facultadNombre) {  // 👈 Agrega espacio para mejor legibilidad
         try {
           const meRes = await axios.get(`${API_BASE_URL}/auth/facultad-info`, {
             headers: { Authorization: `Bearer ${token}` }, timeout: 5000,
           });
           facultadId = meRes.data?.user?.facultad_id || meRes.data?.facultad_id;
-           const facultadNombre = meRes.data?.user?.facultad_nombre || meRes.data?.facultad?.nombre;
+          
+          // ✅ CORRECCIÓN: No uses 'const', solo asigna a la variable existente
+          facultadNombre = meRes.data?.user?.facultad_nombre || meRes.data?.facultad?.nombre;
 
           if (facultadId) {
-             const updated = { ...user, facultad_id: facultadId, facultad_nombre: facultadNombre };
+            const updated = { ...user, facultad_id: facultadId, facultad_nombre: facultadNombre };
             await saveUserData(updated);
             setUserData(updated);
           }
@@ -235,7 +237,7 @@ const HomeEstudianteScreen = () => {
         }
       }
 
-      if (!facultadId) {
+      if (!facultadId || !facultadNombre) {
         setError('Tu perfil no tiene facultad asignada. Contacta al administrador.');
         setLoading(false);
         return;
