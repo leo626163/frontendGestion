@@ -206,16 +206,16 @@ const HomeEstudianteScreen = () => {
   };
 
   const fetchEvents = useCallback(async (user) => {
-    if (!user) return;
-    setLoading(true);
-    setError(null);
+  if (!user) return;
+  setLoading(true);
+  setError(null);
 
-    try {
-      const token = await getToken();
-      if (!token) throw new Error('Token no disponible');
+  try {
+    const token = await getToken();
+    if (!token) throw new Error('Token no disponible');
 
-      let facultadId = user.facultad_id;
-      let facultadNombre = user.facultad_nombre || user.facultad?.nombre;
+    let facultadId = user.facultad_id;
+    let facultadNombre = user.facultad_nombre || user.facultad?.nombre;
 
     if (!facultadId) {
       console.log('⚠️ Usando facultad_id = 1 temporalmente');
@@ -228,52 +228,61 @@ const HomeEstudianteScreen = () => {
       setLoading(false);
       return;
     }
-      const res = await axios.get(`${API_BASE_URL}/eventos/aprobados-por-facultad`, {
-        headers: { Authorization: `Bearer ${token}` },
-        params: { facultad_id: facultadId },
-        timeout: 10000,
-      });
 
-      const raw = Array.isArray(res.data) ? res.data : [];
+    const res = await axios.get(`${API_BASE_URL}/eventos/aprobados-por-facultad`, {
+      headers: { Authorization: `Bearer ${token}` },
+      params: { facultad_id: facultadId },
+      timeout: 10000,
+    });
 
-      const fase2 = raw.filter(e =>
-        e.idfase === 2 || e.idfase === '2' ||
-        e.fase?.nrofase === 2 || e.fase?.nrofase === '2'
-      );
-       const hoy = new Date();
-    hoy.setHours(0, 0, 0, 0); // Inicio del día actual
+    const raw = Array.isArray(res.data) ? res.data : [];
+
+    // ✅ PASO 1: Filtrar fase 2
+    const fase2 = raw.filter(e =>
+      e.idfase === 2 || e.idfase === '2' ||
+      e.fase?.nrofase === 2 || e.fase?.nrofase === '2'
+    );
+
+    // ✅ PASO 2: Filtrar solo eventos futuros o de hoy
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
 
     const eventosFuturos = fase2.filter(e => {
-      // Intentar obtener la fecha del evento
       const fechaStr = e.date || e.fechaevento || e.fecha_inicio || e.submittedDate;
-      
-      if (!fechaStr) return true; // Si no tiene fecha, mostrarlo
+      if (!fechaStr || fechaStr === '–') return true; // Si no tiene fecha, mostrarlo
       
       const fechaEvento = new Date(fechaStr);
-      fechaEvento.setHours(0, 0, 0, 0);
+      if (isNaN(fechaEvento.getTime())) return true; // Si la fecha es inválida, mostrarlo
       
-      // Solo incluir eventos de hoy o en el futuro
+      fechaEvento.setHours(0, 0, 0, 0);
       return fechaEvento >= hoy;
     });
 
-      const mapped = fase2.map(mapEvento);
+    console.log(`📅 Eventos: ${raw.length} total → ${fase2.length} fase 2 → ${eventosFuturos.length} futuros`);
 
-      const now = new Date();
-      const proximos    = mapped.filter(e => e.status === 'Próximo' || e.status === 'Confirmado').length;
-      const completados = mapped.filter(e => e.status === 'Completado').length;
+    // ✅ PASO 3: ¡USAR eventosFuturos en lugar de fase2!
+    const mapped = eventosFuturos.map(mapEvento);
 
-      setEvents(mapped);
-      setStats({ total: mapped.length, proximos, completados });
+    // ✅ PASO 4: Calcular estadísticas sobre los eventos filtrados
+    const proximos = mapped.filter(e => 
+      e.status === 'Próximo' || e.status === 'Confirmado'
+    ).length;
+    const completados = mapped.filter(e => 
+      e.status === 'Completado'
+    ).length;
 
-    } catch (err) {
-      console.error('Error cargando eventos:', err);
-      if (err.response?.status === 400) setError('Tu perfil no tiene facultad asignada. Contacta al administrador.');
-      else if (err.response?.status === 404) setError('Endpoint de eventos no encontrado.');
-      else setError('No se pudieron cargar los eventos. Verifica tu conexión.');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+    setEvents(mapped);
+    setStats({ total: mapped.length, proximos, completados });
+
+  } catch (err) {
+    console.error('Error cargando eventos:', err);
+    if (err.response?.status === 400) setError('Tu perfil no tiene facultad asignada. Contacta al administrador.');
+    else if (err.response?.status === 404) setError('Endpoint de eventos no encontrado.');
+    else setError('No se pudieron cargar los eventos. Verifica tu conexión.');
+  } finally {
+    setLoading(false);
+  }
+}, []);
 
   useEffect(() => {
     if (userData) fetchEvents(userData);
