@@ -219,15 +219,16 @@ const HomeEstudianteScreen = () => {
 
       let facultadId = user.facultad_id;
 
-      // Refresh facultad_id if missing
       if (!facultadId) {
         try {
           const meRes = await axios.get(`${API_BASE_URL}/auth/me`, {
             headers: { Authorization: `Bearer ${token}` }, timeout: 5000,
           });
           facultadId = meRes.data?.user?.facultad_id || meRes.data?.facultad_id;
+           const facultadNombre = meRes.data?.user?.facultad_nombre || meRes.data?.facultad?.nombre;
+
           if (facultadId) {
-            const updated = { ...user, facultad_id: facultadId };
+             const updated = { ...user, facultad_id: facultadId, facultad_nombre: facultadNombre };
             await saveUserData(updated);
             setUserData(updated);
           }
@@ -250,7 +251,6 @@ const HomeEstudianteScreen = () => {
 
       const raw = Array.isArray(res.data) ? res.data : [];
 
-      // ✅ Filter fase 2 & map to display format
       const fase2 = raw.filter(e =>
         e.idfase === 2 || e.idfase === '2' ||
         e.fase?.nrofase === 2 || e.fase?.nrofase === '2'
@@ -275,7 +275,6 @@ const HomeEstudianteScreen = () => {
     }
   }, []);
 
-  // ── Trigger fetch when userData is ready ─────────────────────────────────
   useEffect(() => {
     if (userData) fetchEvents(userData);
   }, [userData]);
@@ -299,20 +298,26 @@ const HomeEstudianteScreen = () => {
       <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 100 }}>
 
-        {/* ── HEADER ── */}
         <View style={styles.header}>
           <View style={styles.headerTop}>
             <View style={{ flex: 1 }}>
               <Text style={styles.headerGreeting}>{greeting},</Text>
               <Text style={styles.headerName}>{nombreUsuario}</Text>
             </View>
+            {(userData?.facultad_nombre || userData?.facultad?.nombre) && (
+              <View style={styles.facultadBadge}>
+                <Ionicons name="school-outline" size={12} color={COLORS.white} />
+                <Text style={styles.facultadBadgeText}>
+                  {userData?.facultad_nombre || userData?.facultad?.nombre}
+                </Text>
+              </View>
+            )}
             <TouchableOpacity style={styles.headerIconBtn} onPress={() => fetchEvents(userData)}>
               <Ionicons name="refresh-outline" size={22} color={COLORS.white} />
             </TouchableOpacity>
           </View>
           <Text style={styles.headerSubtitle}>Portal del Estudiante</Text>
 
-          {/* Stats row */}
           <View style={styles.statsRow}>
             {[
               { icon: 'calendar-outline',        value: stats.total,      label: 'Eventos' },
@@ -330,7 +335,6 @@ const HomeEstudianteScreen = () => {
           </View>
         </View>
 
-        {/* ── EVENTS ── */}
         <View style={styles.section}>
           <View style={styles.sectionHead}>
             <Text style={styles.sectionTitle}>Eventos de tu Facultad</Text>
@@ -373,7 +377,6 @@ const HomeEstudianteScreen = () => {
           )}
         </View>
 
-        {/* ── QUICK ACTIONS ── */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Acciones Rápidas</Text>
           <View style={{ gap: 10, marginTop: 10 }}>
@@ -384,7 +387,6 @@ const HomeEstudianteScreen = () => {
         </View>
       </ScrollView>
 
-      {/* ── FOOTER ── */}
       <View style={styles.footer}>
         <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
           <Ionicons name="log-out-outline" size={20} color={COLORS.white} />
@@ -395,7 +397,6 @@ const HomeEstudianteScreen = () => {
   );
 };
 
-// ─── Styles ────────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
   scroll: { flex: 1 },
@@ -428,7 +429,13 @@ const styles = StyleSheet.create({
   sectionHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 },
   sectionTitle: { fontSize: 20, fontWeight: '700', color: COLORS.textPrimary },
   seeAll: { fontSize: 13, color: COLORS.primary, fontWeight: '600' },
-
+ facultadBadge: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: 'rgba(255,255,255,0.2)', // Fondo semitransparente para que combine con el header naranja
+    paddingHorizontal: 8, paddingVertical: 4,
+    borderRadius: 6, marginTop: 6, alignSelf: 'flex-start',
+  },
+  facultadBadgeText: { fontSize: 11, color: COLORS.white, fontWeight: '600' },
   // Loading / empty / error
   loadingCard: { backgroundColor: COLORS.surface, borderRadius: 16, padding: 40, alignItems: 'center', borderWidth: 1, borderColor: COLORS.border },
   loadingText: { marginTop: 12, fontSize: 14, color: COLORS.textSecondary },
