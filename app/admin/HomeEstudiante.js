@@ -217,7 +217,7 @@ const HomeEstudianteScreen = () => {
       let facultadId = user.facultad_id;
       let facultadNombre = user.facultad_nombre || user.facultad?.nombre;
 
-      if (!facultadId || !facultadNombre) {  // 👈 Agrega espacio para mejor legibilidad
+      /*if (!facultadId || !facultadNombre) {  // 👈 Agrega espacio para mejor legibilidad
         try {
           const meRes = await axios.get(`${API_BASE_URL}/auth/facultad-info`, {
             headers: { Authorization: `Bearer ${token}` }, timeout: 5000,
@@ -242,7 +242,18 @@ const HomeEstudianteScreen = () => {
         setLoading(false);
         return;
       }
+*/
+    if (!facultadId) {
+      console.log('⚠️ Usando facultad_id = 1 temporalmente');
+      facultadId = 1;
+      facultadNombre = 'Facultad de Ingenieria';
+    }
 
+    if (!facultadId) {
+      setError('Tu perfil no tiene facultad asignada. Contacta al administrador.');
+      setLoading(false);
+      return;
+    }
       const res = await axios.get(`${API_BASE_URL}/eventos/aprobados-por-facultad`, {
         headers: { Authorization: `Bearer ${token}` },
         params: { facultad_id: facultadId },
