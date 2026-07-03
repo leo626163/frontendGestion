@@ -42,7 +42,7 @@ let determinedApiBaseUrl;
   determinedApiBaseUrl = 'http://localhost:3001/api';
 }*/
 //const API_BASE_URL =  'https://evento.cidtec-uc.com';
-const API_BASE_URL =  'https://unifrontend.onrender.com';
+const API_BASE_URL =  'https://backendgestion-production-e2aa.up.railway.app';
 const TOKEN_KEY = 'studentAuthToken';
 
 const getTokenAsync = async () => {
