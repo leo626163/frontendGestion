@@ -244,8 +244,7 @@ const HomeEstudianteScreen = () => {
     // ✅ PASO 2: Filtrar solo eventos futuros o de hoy
     const hoy = new Date();
     hoy.setHours(0, 0, 0, 0);
-    const hoy = new Date();
-    hoy.setHours(0, 0, 0, 0);
+   
 
     const eventosFuturos = fase2.filter(e => {
       const fechaStr = e.date || e.fechaevento || e.fecha_inicio;
