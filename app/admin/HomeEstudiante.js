@@ -178,7 +178,6 @@ const ActionCard = ({ title, description, icon, color, onPress }) => (
   </TouchableOpacity>
 );
 
-// ─── Main Screen ───────────────────────────────────────────────────────────────
 const HomeEstudianteScreen = () => {
   const router = useRouter();
 
@@ -188,7 +187,6 @@ const HomeEstudianteScreen = () => {
   const [error, setError]         = useState(null);
   const [stats, setStats]         = useState({ total: 0, proximos: 0, completados: 0 });
 
-  // ── Session load ─────────────────────────────────────────────────────────
   useEffect(() => {
     const init = async () => {
       const token = await getToken();
@@ -207,7 +205,6 @@ const HomeEstudianteScreen = () => {
     Alert.alert('Sesión no válida', msg, [{ text: 'OK', onPress: () => { clearSession(); router.replace('/login'); } }]);
   };
 
-  // ── Fetch events ─────────────────────────────────────────────────────────
   const fetchEvents = useCallback(async (user) => {
     if (!user) return;
     setLoading(true);
@@ -218,10 +215,11 @@ const HomeEstudianteScreen = () => {
       if (!token) throw new Error('Token no disponible');
 
       let facultadId = user.facultad_id;
+      let facultadNombre = user.facultad_nombre || user.facultad?.nombre;
 
-      if (!facultadId) {
+      if (!facultadId||!facultadNombre) {
         try {
-          const meRes = await axios.get(`${API_BASE_URL}/auth/me`, {
+          const meRes = await axios.get(`${API_BASE_URL}/auth/facultad-info`, {
             headers: { Authorization: `Bearer ${token}` }, timeout: 5000,
           });
           facultadId = meRes.data?.user?.facultad_id || meRes.data?.facultad_id;
