@@ -396,11 +396,11 @@ const openRejectModal = (event) => {
       if (action === 'aprobar') {
         if (Platform.OS === 'web') {
           if (window.confirm(`${config.success}\n\n¿Ir a eventos aprobados?`)) {
-            router.replace('../admin/EventosAprobados.js');
+            router.replace('../admin/EventosAprobados');
           }
         } else {
           Alert.alert(config.success, '', [
-            { text: 'Ver aprobados', onPress: () => router.replace('../admin/EventosAprobados.js') }
+            { text: 'Ver aprobados', onPress: () => router.replace('../admin/EventosAprobados') }
           ]);
         }
       } else if (Platform.OS === 'web') {
