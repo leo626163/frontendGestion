@@ -216,8 +216,8 @@ const HomeEstudianteScreen = () => {
 
       let facultadId = user.facultad_id;
       let facultadNombre = user.facultad_nombre || user.facultad?.nombre;
-
-      /*if (!facultadId || !facultadNombre) {  // 👈 Agrega espacio para mejor legibilidad
+//faccc
+      if (!facultadId || !facultadNombre) {  
         try {
           const meRes = await axios.get(`${API_BASE_URL}/auth/facultad-info`, {
             headers: { Authorization: `Bearer ${token}` }, timeout: 5000,
@@ -242,7 +242,8 @@ const HomeEstudianteScreen = () => {
         setLoading(false);
         return;
       }
-*/
+
+//faccc
     if (!facultadId) {
       console.log('⚠️ Usando facultad_id = 1 temporalmente');
       facultadId = 1;
@@ -266,6 +267,21 @@ const HomeEstudianteScreen = () => {
         e.idfase === 2 || e.idfase === '2' ||
         e.fase?.nrofase === 2 || e.fase?.nrofase === '2'
       );
+       const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0); // Inicio del día actual
+
+    const eventosFuturos = fase2.filter(e => {
+      // Intentar obtener la fecha del evento
+      const fechaStr = e.date || e.fechaevento || e.fecha_inicio || e.submittedDate;
+      
+      if (!fechaStr) return true; // Si no tiene fecha, mostrarlo
+      
+      const fechaEvento = new Date(fechaStr);
+      fechaEvento.setHours(0, 0, 0, 0);
+      
+      // Solo incluir eventos de hoy o en el futuro
+      return fechaEvento >= hoy;
+    });
 
       const mapped = fase2.map(mapEvento);
 
