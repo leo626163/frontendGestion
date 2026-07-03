@@ -244,20 +244,33 @@ const HomeEstudianteScreen = () => {
     // ✅ PASO 2: Filtrar solo eventos futuros o de hoy
     const hoy = new Date();
     hoy.setHours(0, 0, 0, 0);
-   
+   console.log('🔍 FECHA ACTUAL:', hoy.toISOString());
 
     const eventosFuturos = fase2.filter(e => {
       const fechaStr = e.date || e.fechaevento || e.fecha_inicio;
-      
-      if (!fechaStr || fechaStr === '–') return true;
+       console.log(`\n📅 Evento: "${e.nombreevento || e.title}"`);
+      console.log('   Fecha raw:', fechaStr);
+
+      if (!fechaStr || fechaStr === '–'){
+        console.log('   → ✅ SIN FECHA - Se muestra');
+         return true;
+      }
       
       const fechaEvento = new Date(fechaStr);
+      console.log('   Fecha parseada:', fechaEvento.toISOString());
+      console.log('   Es válida:', !isNaN(fechaEvento.getTime()));
       
-      if (isNaN(fechaEvento.getTime())) return true;
       
+      if (isNaN(fechaEvento.getTime())) {
+        console.log('   → ✅ FECHA INVÁLIDA - Se muestra');
+        return true;
+      }
       fechaEvento.setHours(0, 0, 0, 0);
+      const esFuturo = fechaEvento >= hoy;
       
-      return fechaEvento >= hoy;
+      console.log('   Fecha evento (normalizada):', fechaEvento.toISOString());
+      console.log('   ¿Es futuro?', esFuturo ? '✅ SÍ' : '❌ NO');
+      return esFuturo;
     });
 
     console.log(`📅 Eventos: ${raw.length} total → ${fase2.length} fase 2 → ${eventosFuturos.length} futuros`);
