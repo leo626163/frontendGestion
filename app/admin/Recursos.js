@@ -53,7 +53,7 @@ const TIPO_COLORS = {
   vajilla: '#F59E0B',
 };
 
-export default function Recurso() {
+const Recurso() {
   const router = useRouter();
 
   const [nombre_recurso, setNombreRecurso] = useState('');
@@ -663,3 +663,4 @@ const styles = StyleSheet.create({
     color: COLORS.textPrimary,
   },
 });
+export default Recurso;
