@@ -81,7 +81,7 @@ const RecursoCard = ({ item, onEdit }) => {
 };
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
-const InventarioDAF() {
+const InventarioDAF = () => {
   const router = useRouter();
 
   const [loading, setLoading]     = useState(true);
