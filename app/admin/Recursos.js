@@ -663,4 +663,3 @@ const styles = StyleSheet.create({
     color: COLORS.textPrimary,
   },
 });
-export default Recurso;
