@@ -34,10 +34,11 @@ const COLORS = {
 const API_BASE_URL = 'https://backendgestion-production-e2aa.up.railway.app';
 //const API_BASE_URL =  'https://unifrontend.onrender.com';
 
-
+const TOKEN_KEY    = 'recursosAuthToken';
+const USER_DATA_KEY = 'recursosUserData';
 const getTokenAsync = async () => {
-  if (Platform.OS === 'web') return localStorage.getItem('adminAuthToken');
-  return await SecureStore.getItemAsync('adminAuthToken');
+  if (Platform.OS === 'web') return localStorage.getItem('recursosAuthToken');
+  return await SecureStore.getItemAsync('recursosAuthToken');
 };
 
 const TIPO_LABELS = {
@@ -52,10 +53,9 @@ const TIPO_COLORS = {
   vajilla: '#F59E0B',
 };
 
-export default function CrearRecurso() {
+export default function Recurso() {
   const router = useRouter();
 
-  // ── Estado del formulario (crear / editar) ──────────────────────────────
   const [nombre_recurso, setNombreRecurso] = useState('');
   const [recurso_tipo, setRecursoTipo] = useState('tecnologico');
   const [descripcion, setDescripcion] = useState('');
@@ -63,11 +63,9 @@ export default function CrearRecurso() {
   const [cantidad, setCantidad] = useState('1');
   const [loading, setLoading] = useState(false);
 
-  // ── Estado de la lista ──────────────────────────────────────────────────
   const [recursos, setRecursos] = useState([]);
   const [listLoading, setListLoading] = useState(true);
 
-  // ── Modo edición ────────────────────────────────────────────────────────
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [recursoEditando, setRecursoEditando] = useState(null);
   const [editNombre, setEditNombre] = useState('');
@@ -77,7 +75,6 @@ export default function CrearRecurso() {
   const [editCantidad, setEditCantidad] = useState('1');
   const [editLoading, setEditLoading] = useState(false);
 
-  // ── Cargar lista ────────────────────────────────────────────────────────
   const cargarRecursos = useCallback(async () => {
     setListLoading(true);
     try {
@@ -155,7 +152,6 @@ export default function CrearRecurso() {
     setEditModalVisible(true);
   };
 
-  // ── Guardar edición ─────────────────────────────────────────────────────
   const guardarEdicion = async () => {
     if (!editNombre.trim()) {
       Alert.alert('Error', 'El nombre es obligatorio.');
@@ -648,3 +644,4 @@ const styles = StyleSheet.create({
     color: COLORS.textPrimary,
   },
 });
+export default Recurso;
