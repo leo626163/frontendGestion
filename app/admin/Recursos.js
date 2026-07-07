@@ -75,23 +75,42 @@ export default function Recurso() {
   const [editCantidad, setEditCantidad] = useState('1');
   const [editLoading, setEditLoading] = useState(false);
 
-  const cargarRecursos = useCallback(async () => {
-    setListLoading(true);
-    try {
-      const token = await getTokenAsync();
-      if (!token) return;
-      const response = await axios.get(`${API_BASE_URL}/recursos`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      let raw = response.data;
-      if (!Array.isArray(raw)) raw = raw.data || raw.recursos || [];
-      setRecursos(raw);
-    } catch (error) {
-      console.error('❌ Error cargando recursos:', error.response?.status);
-    } finally {
-      setListLoading(false);
+ const cargarRecursos = useCallback(async () => {
+  setListLoading(true);
+  try {
+    const token = await getTokenAsync();
+    if (!token) {
+      console.warn('⚠️ No se encontró token');
+      setRecursos([]);
+      return;
     }
-  }, []);
+    
+    const response = await axios.get(`${API_BASE_URL}/recursos`, {
+      headers: { 
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      timeout: 10000
+    });
+    
+    let raw = response.data;
+    if (!Array.isArray(raw)) {
+      raw = raw.data || raw.recursos || raw.items || [];
+    }
+    setRecursos(raw);
+  } catch (error) {
+    console.error('❌ Error cargando recursos:', error);
+    if (error.response?.status === 404) {
+      console.warn('⚠️ El endpoint /recursos no existe. Verifica la URL del backend.');
+    } else if (error.response?.status === 401) {
+      console.warn('⚠️ Token inválido o expirado');
+      // Opcionalmente redirigir al login
+    }
+    setRecursos([]);
+  } finally {
+    setListLoading(false);
+  }
+}, []);
 
   useFocusEffect(cargarRecursos);
 
