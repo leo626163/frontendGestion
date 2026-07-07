@@ -53,7 +53,7 @@ const TIPO_COLORS = {
   vajilla: '#F59E0B',
 };
 
-const Recurso() {
+const Recurso = () => {
   const router = useRouter();
 
   const [nombre_recurso, setNombreRecurso] = useState('');
