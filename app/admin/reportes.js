@@ -668,7 +668,7 @@ try {
                     {rankingFacultades.map((f, i) => {
                       const maxVal = rankingFacultades[0]?.value || 1;
                       const pct = Math.round((f.value / maxVal) * 100);
-                      const RANK_COLORS = ['#3B82F6', '#6366F1', '#8B5CF6', '#A855F7', '#D946EF', '#EC4899'];
+                      const RANK_COLORS = ['#28B8CE', '#FFCC00', '#E84E0F', '#D3D800', '#E6007E'];
                       const rankColor = RANK_COLORS[i % RANK_COLORS.length];
                       
                       return (
