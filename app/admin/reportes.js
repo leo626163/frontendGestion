@@ -661,46 +661,40 @@ try {
             </View>
 
             <View style={styles.section}>
-            <SectionHeader icon="school-outline" title="Ranking de Facultades" subtitle="Eventos creados" />
-  <View style={styles.card}>
-    {rankingFacultades.length > 0 ? (
-      <>
-      <HorizontalBarChart data={rankingFacultades} width={chartW - 32} />
-        <View style={{ marginTop: 16 }}>
-          {rankingFacultades.map((f, i) => {
-            const maxVal = rankingFacultades[0]?.value || 1;
-            const pct = Math.round((f.value / maxVal) * 100);
-            // 🎨 NUEVOS COLORES para el ranking
-            const RANK_COLORS = ['#3B82F6', '#6366F1', '#8B5CF6', '#A855F7', '#D946EF', '#EC4899'];
-            const rankColor = RANK_COLORS[i % RANK_COLORS.length];
-            return (
-              <View key={i} style={styles.rankRowNew}>
-                {/* Badge con color dinámico */}
-                <View style={[styles.rankBadgeNew, { backgroundColor: rankColor }]}>
-                  <Text style={styles.rankNumNew}>{i + 1}</Text>
-                </View>
-                {/* Label SIN numberOfLines para que se vea completo */}
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.rankLabelNew}>{f.label}</Text>
-                  {/* Barra de progreso con el color del ranking */}
-                  <View style={styles.rankBarBg}>
-                    <View style={[styles.rankBarFill, { width: `${pct}%`, backgroundColor: rankColor }]} />
+              <SectionHeader icon="school-outline" title="Ranking de Facultades" subtitle="Eventos creados" />
+              <View style={styles.card}>
+                {rankingFacultades.length > 0 ? (
+                  <View style={{ marginTop: 8 }}>
+                    {rankingFacultades.map((f, i) => {
+                      const maxVal = rankingFacultades[0]?.value || 1;
+                      const pct = Math.round((f.value / maxVal) * 100);
+                      const RANK_COLORS = ['#3B82F6', '#6366F1', '#8B5CF6', '#A855F7', '#D946EF', '#EC4899'];
+                      const rankColor = RANK_COLORS[i % RANK_COLORS.length];
+                      
+                      return (
+                        <View key={i} style={styles.rankRowNew}>
+                          <View style={[styles.rankBadgeNew, { backgroundColor: rankColor }]}>
+                            <Text style={styles.rankNumNew}>{i + 1}</Text>
+                          </View>
+                          <View style={{ flex: 1 }}>
+                            <Text style={styles.rankLabelNew}>{f.label}</Text>
+                            <View style={styles.rankBarBg}>
+                              <View style={[styles.rankBarFill, { width: `${pct}%`, backgroundColor: rankColor }]} />
+                            </View>
+                          </View>
+                          <Text style={[styles.rankValueNew, { color: rankColor }]}>{f.value}</Text>
+                        </View>
+                      );
+                    })}
                   </View>
-                </View>
-                <Text style={[styles.rankValueNew, { color: rankColor }]}>{f.value}</Text>
+                ) : (
+                  <View style={styles.emptyChart}>
+                    <Ionicons name="school-outline" size={40} color={COLORS.textTertiary} />
+                    <Text style={styles.emptyText}>Sin datos de facultades</Text>
+                  </View>
+                )}
               </View>
-                    );
-                  })}
-                </View>
-              </>
-            ) : (
-              <View style={styles.emptyChart}>
-                <Ionicons name="school-outline" size={40} color={COLORS.textTertiary} />
-                <Text style={styles.emptyText}>Sin datos de facultades</Text>
-              </View>
-            )}
-          </View>
-          </View>
+            </View>
             {/* ── HISTÓRICO MENSUAL ── */}
             {reportesMensuales.length > 0 && (
               <View style={styles.section}>
