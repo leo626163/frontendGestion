@@ -178,7 +178,7 @@ const CrearUsuarioEstudiante = () => {
         
         if (response.data && Array.isArray(response.data)) {
           const facultadesFormateadas = response.data.map(facultad => ({
-            label: facultad.nombre || 'Sin nombre',
+            label: facultad.nombre_facultad || 'Sin nombre',
             value: facultad.facultad_id?.toString() || ''
           })).filter(f => f.value && f.label);
           setOpcionesFacultad(facultadesFormateadas);
