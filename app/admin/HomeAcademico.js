@@ -536,15 +536,23 @@ const fetchNotifications = useCallback(async () => {
       timeout: 8000,
     });
 
-    // Mapear respuesta a formato esperado
+    console.log('📬 Respuesta del servidor:', response.data);
+    console.log('📊 Cantidad de notificaciones:', response.data?.length);
+
+    // Mapear respuesta - el backend devuelve 'idnotificacion'
     const mapped = (response.data || []).map(n => ({
       ...n,
+      id: n.idnotificacion, // ← Usar idnotificacion del backend
       read: n.estado === 'leido' || n.read === true
     }));
     
     setNotifications(mapped);
   } catch (error) {
-    console.error('Error al cargar notificaciones:', error);
+    console.error('❌ Error al cargar notificaciones:', error);
+    if (error.response) {
+      console.error('Status:', error.response.status);
+      console.error('Data:', error.response.data);
+    }
   }
 }, []);
 
@@ -576,20 +584,14 @@ const markAllAsRead = useCallback(async () => {
     const token = await getTokenAsync();
     if (!token) return;
 
-    const unreadNotifications = notifications.filter(n => !n.read);
-    
-    if (unreadNotifications.length === 0) return;
-
-    await Promise.all(
-      unreadNotifications.map(n => 
-        axios.patch(
-          `${API_BASE_URL}/notificaciones/${n.idnotification || n.id}/read`,
-          {},
-          { headers: { 'Authorization': `Bearer ${token}` } }
-        )
-      )
+    // Usar el nuevo endpoint batch
+    await axios.patch(
+      `${API_BASE_URL}/notificaciones/mark-all-read`,
+      {},
+      { headers: { 'Authorization': `Bearer ${token}` } }
     );
 
+    // Actualizar estado local
     setNotifications(prev => 
       prev.map(n => ({ ...n, read: true, estado: 'leido' }))
     );
@@ -597,8 +599,9 @@ const markAllAsRead = useCallback(async () => {
     console.log('✅ Todas las notificaciones marcadas como leídas');
   } catch (error) {
     console.error('Error al marcar todas como leídas:', error);
+    Alert.alert('Error', 'No se pudieron marcar todas las notificaciones como leídas');
   }
-}, [notifications]);
+}, []);
 
 const navigateByNotification = useCallback((notification) => {
   const tipo = notification.tipo;
