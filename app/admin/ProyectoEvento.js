@@ -1560,9 +1560,7 @@ const ProyectoEvento = () => {
               <Text style={styles.requiredNote}>
               Los campos marcados con <Text style={styles.requiredAsterisk}>*</Text> son obligatorios
             </Text>
-              <Text style={styles.requiredNote}>
-                Los campos marcados con <Text style={styles.requiredAsterisk}>*</Text> son obligatorios
-              </Text>
+             
             <View style={[styles.inputGroup, errors.nombreevento && styles.inputError]}>
               <Ionicons name="text-outline" size={20} style={styles.inputIcon} />
               <TextInput
@@ -1877,7 +1875,7 @@ const ProyectoEvento = () => {
             <View style={[styles.formSection, isScrollingToRecursos && styles.formSectionHighlighted]} ref={recursosSectionRef}>
               <Text style={styles.sectionTitle}>V. RECURSOS NECESARIOS</Text>
               <View style={styles.subsection}>
-                <Text style={styles.subsectionTitle}>Recursos Disponibles</Text>
+                <Text style={styles.subsectionTitle}>Recursos Disponibles<Text style={styles.requiredAsterisk}>*</Text></Text>
                 <Text style={styles.subsectionDescription}>Selecciona los recursos existentes que necesitarás para tu evento:</Text>
                 {recursosDisponibles.length > 0 ? (
                   <View style={styles.recursosDisponiblesGrid}>
@@ -1916,7 +1914,7 @@ const ProyectoEvento = () => {
 
           {seccionPresupuestoVisible && (
             <View style={[styles.formSection, isScrollingToPresupuesto && styles.formSectionHighlighted]} ref={presupuestoSectionRef}>
-              <Text style={styles.sectionTitle}>VI. PRESUPUESTO</Text>
+              <Text style={styles.sectionTitle}>VI. PRESUPUESTO<Text style={styles.requiredAsterisk}>*</Text></Text>
               <TablaPresupuesto titulo="EGRESOS" items={egresos} setItems={setEgresos} totalGeneral={totalEgresos} handlePresupuestoChange={handlePresupuestoChange} eliminarFilaPresupuesto={eliminarFilaPresupuesto} agregarFilaPresupuesto={agregarFilaPresupuesto} />
               <TablaPresupuesto titulo="INGRESOS" items={ingresos} setItems={setIngresos} totalGeneral={totalIngresos} handlePresupuestoChange={handlePresupuestoChange} eliminarFilaPresupuesto={eliminarFilaPresupuesto} agregarFilaPresupuesto={agregarFilaPresupuesto} />
               <View style={styles.balanceContainer}>
