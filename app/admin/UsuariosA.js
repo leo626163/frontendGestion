@@ -345,9 +345,9 @@ const renderUserItem = ({ item, index }) => {
         <TouchableOpacity
           onPress={() => 
             {
-              console.log('Intentando navegar a:', `/admin/EditUser/${item.id}`);
+              console.log('Intentando navegar a:', `/admin/editUser/${item.id}`);
              // router.push(`/admin/EditUser/${item.id}`);
-             router.push(`/admin/EditUser/${item.id}`)
+             router.push(`/admin/editUser/${item.id}`)
             }}
           style={[styles.actionButton, styles.editButton]}
           activeOpacity={0.7}
@@ -448,7 +448,7 @@ const renderUserItem = ({ item, index }) => {
                   style={[styles.modalActionButton, styles.modalEditButton]}
                   onPress={() => {
                     setShowUserModal(false);
-                    router.push(`/admin/EditUser/${selectedUser.id}`);
+                    router.push(`/admin/editUser/${selectedUser.id}`);
                   }}
                 ></TouchableOpacity>
 
