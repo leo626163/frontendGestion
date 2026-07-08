@@ -193,6 +193,7 @@ const EditUser = () => {
       await axios.put(`${API_BASE_URL}/users/${id}`, updateData, {
       headers: { 'Authorization': `Bearer ${token}` }
     });
+    console.log('Usuario actualizado correctamente');
 
       Alert.alert('Éxito', 'Usuario actualizado correctamente', [
         {
