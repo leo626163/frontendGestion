@@ -34,13 +34,21 @@ const COLORS = {
 const API_BASE_URL = 'https://backendgestion-production-e2aa.up.railway.app';
 //const API_BASE_URL =  'https://unifrontend.onrender.com';
 
-const TOKEN_KEY    = 'recursosAuthToken';
-const USER_DATA_KEY = 'recursosUserData';
 const getTokenAsync = async () => {
-  if (Platform.OS === 'web') return localStorage.getItem('recursosAuthToken');
-  return await SecureStore.getItemAsync('recursosAuthToken');
+  if (Platform.OS === 'web') {
+    try {
+      return localStorage.getItem('adminAuthToken');
+    } catch (e) {
+      return null;
+    }
+  } else {
+    try {
+      return await SecureStore.getItemAsync('adminAuthToken');
+    } catch (e) {
+      return null;
+    }
+  }
 };
-
 const TIPO_LABELS = {
   tecnologico: 'Tecnológico',
   mobiliario: 'Mobiliario',
@@ -53,7 +61,7 @@ const TIPO_COLORS = {
   vajilla: '#F59E0B',
 };
 
-export default function Recurso() {
+const Recurso = () => {
   const router = useRouter();
 
   const [nombre_recurso, setNombreRecurso] = useState('');

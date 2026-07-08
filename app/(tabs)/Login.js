@@ -15,134 +15,148 @@ import * as SecureStore from 'expo-secure-store';
 import { useRouter, Stack } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-/*if (Platform.OS === 'android') {
-  determinedApiBaseUrl = 'http://192.168.0.167:3001/api';
-  } else if (Platform.OS === 'ios') {
-    determinedApiBaseUrl = 'http://192.168.0.167:3001/api';
-    } else { 
-      determinedApiBaseUrl = 'http://localhost:3001/api';
-  }
-  */
- //const API_BASE_URL =  'https://unifrontend.onrender.com';
- 
- 
- const API_BASE_URL = 'https://backendgestion-production-e2aa.up.railway.app';
- let determinedApiBaseUrl= API_BASE_URL;
+const API_BASE_URL = 'https://backendgestion-production-e2aa.up.railway.app';
 
+const showAlert = (title, message) => {
+  console.warn(`🚨 ALERT: ${title} - ${message}`);
+  
+  if (Platform.OS === 'web') {
+    window.alert(`${title}\n\n${message}`);
+  } else {
+    Alert.alert(title, message);
+  }
+};
 
 const LoginScreen = () => {
   const router = useRouter();
   const [email, setEmail] = useState('');
-  const [contrasenia, setPassword] = useState(''); // 'contrasenia' es la variable de estado
+  const [contrasenia, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
- const handleLogin = async () => {
-  if (!email.trim() || !contrasenia.trim()) {
-    Alert.alert('Error', 'Por favor, ingresa tu correo y contraseña.');
-    return;
-  }
+  const handleLogin = async () => {
+    const trimmedEmail = email.trim();
+    const trimmedPassword = contrasenia.trim();
 
-  setLoading(true);
-  const trimmedEmail = email.trim();
-  const trimmedPassword = contrasenia.trim(); 
-  const apiUrl = `${API_BASE_URL}/auth/login`;
+    if (!trimmedEmail) {
+      showAlert('Error', 'Por favor, ingresa tu correo electrónico.');
+      return;
+    }
 
-  console.log("🔐 Intentando login con:", { email: trimmedEmail });
+    if (!trimmedPassword) {
+      showAlert('Error', 'Por favor, ingresa tu contraseña.');
+      return;
+    }
 
-  try {
-    const response = await axios.post(apiUrl, {
-      email: trimmedEmail,
-      password: trimmedPassword,
-    }, { timeout: 120000 });
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(trimmedEmail)) {
+      showAlert('Error', 'El formato del correo electrónico no es válido.');
+      return;
+    }
 
-    console.log("✅ Respuesta del servidor:", response.data);
+    setLoading(true);
+    const apiUrl = `${API_BASE_URL}/auth/login`;
+    console.log("🔐 Intentando login con:", { email: trimmedEmail });
 
-    if (response.status === 200 && response.data.token && response.data.user) {
-      const { token, user } = response.data;
-      
-      // 🔥 DEFINIR CLAVES SEGÚN EL ROL DEL USUARIO
-      let TOKEN_KEY, USER_DATA_KEY;
-      
-      switch (user.role) {
-        case 'admin':
-        case 'academico':
-        case 'daf':
-          TOKEN_KEY = 'adminAuthToken';
-          USER_DATA_KEY = 'adminUserData';
-          break;
-        case 'student':
-          TOKEN_KEY = 'studentAuthToken';    // ← ¡Esta es la clave que busca HomeEstudiante!
-          USER_DATA_KEY = 'studentUserData';  // ← ¡Esta es la clave que busca HomeEstudiante!
-          break;
-        case 'comunicacion':
-          TOKEN_KEY = 'comunicacionAuthToken';
-          USER_DATA_KEY = 'comunicacionUserData';
-          break;
-        case 'TI':
-          TOKEN_KEY = 'tiAuthToken';
-          USER_DATA_KEY = 'tiUserData';
-          break;
-        case 'recursos':
-          TOKEN_KEY = 'recursosAuthToken';
-          USER_DATA_KEY = 'recursosUserData';
-          break;
-        case 'Admisiones':
-          TOKEN_KEY = 'admisionesAuthToken';
-          USER_DATA_KEY = 'admisionesUserData';
-          break;
-        case 'Serv. Estudiatil':
-          TOKEN_KEY = 'serviciosEstudiantilesAuthToken';
-          USER_DATA_KEY = 'serviciosEstudiantilesUserData';
-          break;
-        default:
-          console.warn("⚠️ Rol no reconocido:", user.role);
-          TOKEN_KEY = 'authToken';
-          USER_DATA_KEY = 'userData';
+    try {
+      const response = await axios.post(apiUrl, {
+        email: trimmedEmail,
+        password: trimmedPassword,
+      }, { timeout: 120000 });
+
+      console.log("✅ Respuesta del servidor:", response.data);
+      console.log("📊 Status:", response.status);
+
+      if (!response.data) {
+        showAlert('Error', 'El servidor no devolvió datos.');
+        return;
       }
 
-      const allKeys = [
-        'adminAuthToken', 'adminUserData',
-        'studentAuthToken', 'studentUserData', 
-        'academicoAuthToken', 'academicoUserData',
-        'dafAuthToken', 'dafUserData',
-        'comunicacionAuthToken', 'comunicacionUserData',
-        'tiAuthToken', 'tiUserData',
-        'recursosAuthToken', 'recursosUserData',
-        'admisionesAuthToken', 'admisionesUserData',
-        'serviciosEstudiantilesAuthToken', 'serviciosEstudiantilesUserData'
-      ];
-      await AsyncStorage.setItem('usuario', JSON.stringify({
-          id:     user.id,
-          nombre: user.nombre,
-          role:   user.role   
-        }));
-        if (Platform.OS === 'web') {
-  localStorage.setItem('usuario', JSON.stringify({
-    id:     user.id,
-    nombre: user.nombre || user.username,
-    role:   user.role
-  }));
-}
-      console.log('🧹 Limpiando claves anteriores...');
-      if (Platform.OS === 'web') {
-        allKeys.forEach(key => localStorage.removeItem(key));
-      } else {
-        for (const key of allKeys) {
-          await SecureStore.deleteItemAsync(key);
+      if (response.status === 200 && response.data.token && response.data.user) {
+        const { token, user } = response.data;
+        
+        let TOKEN_KEY, USER_DATA_KEY;
+        
+        switch (user.role) {
+          case 'admin':
+          case 'academico':
+          case 'daf':
+            TOKEN_KEY = 'adminAuthToken';
+            USER_DATA_KEY = 'adminUserData';
+            break;
+          case 'student':
+            TOKEN_KEY = 'studentAuthToken';
+            USER_DATA_KEY = 'studentUserData';
+            break;
+          case 'comunicacion':
+            TOKEN_KEY = 'comunicacionAuthToken';
+            USER_DATA_KEY = 'comunicacionUserData';
+            break;
+          case 'TI':
+            TOKEN_KEY = 'tiAuthToken';
+            USER_DATA_KEY = 'tiUserData';
+            break;
+          case 'recursos':
+            TOKEN_KEY = 'recursosAuthToken';
+            USER_DATA_KEY = 'recursosUserData';
+            break;
+          case 'Admisiones':
+            TOKEN_KEY = 'admisionesAuthToken';
+            USER_DATA_KEY = 'admisionesUserData';
+            break;
+          case 'Serv. Estudiatil':
+            TOKEN_KEY = 'serviciosEstudiantilesAuthToken';
+            USER_DATA_KEY = 'serviciosEstudiantilesUserData';
+            break;
+          default:
+            console.warn("⚠️ Rol no reconocido:", user.role);
+            TOKEN_KEY = 'authToken';
+            USER_DATA_KEY = 'userData';
         }
-      }
 
-      console.log(`💾 Guardando datos con claves: ${TOKEN_KEY} / ${USER_DATA_KEY}`);
-      if (Platform.OS === 'web') {
-        localStorage.setItem(TOKEN_KEY, token);
-        localStorage.setItem(USER_DATA_KEY, JSON.stringify(user));
-      } else {
-        await SecureStore.setItemAsync(TOKEN_KEY, token);
-        await SecureStore.setItemAsync(USER_DATA_KEY, JSON.stringify(user));
-      }
+        const allKeys = [
+          'adminAuthToken', 'adminUserData',
+          'studentAuthToken', 'studentUserData', 
+          'academicoAuthToken', 'academicoUserData',
+          'dafAuthToken', 'dafUserData',
+          'comunicacionAuthToken', 'comunicacionUserData',
+          'tiAuthToken', 'tiUserData',
+          'recursosAuthToken', 'recursosUserData',
+          'admisionesAuthToken', 'admisionesUserData',
+          'serviciosEstudiantilesAuthToken', 'serviciosEstudiantilesUserData'
+        ];
 
-      // 🔥 VERIFICAR QUE SE GUARDÓ CORRECTAMENTE
-      const verifySave = async () => {
+        await AsyncStorage.setItem('usuario', JSON.stringify({
+          id: user.id,
+          nombre: user.nombre,
+          role: user.role   
+        }));
+
+        if (Platform.OS === 'web') {
+          localStorage.setItem('usuario', JSON.stringify({
+            id: user.id,
+            nombre: user.nombre || user.username,
+            role: user.role
+          }));
+        }
+
+        console.log('🧹 Limpiando claves anteriores...');
+        if (Platform.OS === 'web') {
+          allKeys.forEach(key => localStorage.removeItem(key));
+        } else {
+          for (const key of allKeys) {
+            await SecureStore.deleteItemAsync(key);
+          }
+        }
+
+        console.log(`💾 Guardando datos con claves: ${TOKEN_KEY} / ${USER_DATA_KEY}`);
+        if (Platform.OS === 'web') {
+          localStorage.setItem(TOKEN_KEY, token);
+          localStorage.setItem(USER_DATA_KEY, JSON.stringify(user));
+        } else {
+          await SecureStore.setItemAsync(TOKEN_KEY, token);
+          await SecureStore.setItemAsync(USER_DATA_KEY, JSON.stringify(user));
+        }
+
         const savedToken = Platform.OS === 'web' 
           ? localStorage.getItem(TOKEN_KEY)
           : await SecureStore.getItemAsync(TOKEN_KEY);
@@ -153,196 +167,171 @@ const LoginScreen = () => {
         console.log('✅ Verificación de guardado:', {
           role: user.role,
           tokenSaved: !!savedToken,
-          userSaved: !!savedUser,
-          userId: savedUser ? JSON.parse(savedUser).id : null,
-          facultad_id: savedUser ? JSON.parse(savedUser).facultad_id : null
+          userSaved: !!savedUser
         });
-      };
-      await verifySave();
-      
-      console.log('✨ Login exitoso. Usuario:', {
-        id: user.id,
-        username: user.username,
-        role: user.role,
-        facultad_id: user.facultad_id
+        
+        let targetRoute = '/';
+        let routeParams = {};
+        
+        switch (user.role) {
+          case 'admin':
+            targetRoute = '/admin/HomeAdministradorScreen';
+            routeParams = { nombre: user.nombre };
+            break;
+          case 'student':
+            targetRoute = '/admin/HomeEstudiante';
+            break;
+          case 'academico':
+            targetRoute = '/admin/HomeAcademico';
+            routeParams = { nombre: user.nombre };
+            break;
+          case 'daf':
+            targetRoute = '/admin/Daf'; 
+            break;
+          case 'comunicacion':
+            targetRoute = '/admin/HomeComunicacion'; 
+            break;
+          case 'TI':
+            targetRoute = '/admin/HomeTI'; 
+            break;
+          case 'recursos':
+            targetRoute = '/admin/HomeRecursosHumanos';
+            routeParams = { nombre: user.nombre, idUsuario: user.id };
+            break;
+          case 'Admisiones':
+            targetRoute = '/admin/HomeAdmisiones';
+            routeParams = { nombre: user.nombre, idUsuario: user.id };
+            break;
+          case 'Serv. Estudiatil': 
+            targetRoute = '/admin/HomeServiciosEstudiantiles'; 
+            routeParams = { nombre: user.nombre, idUsuario: user.id };
+            break;
+          default:
+            console.warn("⚠️ Rol no reconocido:", user.role);
+            showAlert('Acceso', 'Tu rol no tiene una interfaz asignada.');
+            targetRoute = '/';
+            break;
+        } 
+        
+        console.log('🔄 Redirigiendo a:', targetRoute);
+
+        setTimeout(() => {
+          try {
+            router.replace({ pathname: targetRoute, params: routeParams });
+          } catch (error) {
+            console.error('❌ Error en redirección:', error);
+            showAlert('Error', 'No se pudo redirigir. Intenta nuevamente.');
+          }
+        }, 200);
+        
+      } else {
+        const errorMsg = response.data?.message 
+          || response.data?.error 
+          || response.data?.msg
+          || 'Credenciales inválidas o respuesta inesperada del servidor.';
+        
+        console.error('❌ Login fallido - Respuesta:', response.data);
+        showAlert('Login Fallido', errorMsg);
+      }
+
+    } catch (err) {
+      console.error("❌ Error en handleLogin:", {
+        message: err.message,
+        response: err.response?.data,
+        status: err.response?.status,
+        hasRequest: !!err.request
       });
       
-      let targetRoute = '/';
-      let routeParams = {};
-      
-      switch (user.role) {
-        case 'admin':
-          targetRoute = '/admin/HomeAdministradorScreen';
-          routeParams = { nombre: user.nombre };
-          break;
-        case 'student':
-          targetRoute = '/admin/HomeEstudiante';  // ← Ajusta a tu ruta real de Expo Router
-          routeParams = {};
-          break;
-        case 'academico':
-          targetRoute = '/admin/HomeAcademico';   // ← Ajusta a tu ruta real
-          routeParams = {nombre: user.nombre};
-          break;
-        case 'daf':
-          targetRoute = '/admin/Daf'; 
-          break;
-        case 'comunicacion':
-          targetRoute = '/admin/HomeComunicacion'; 
-          break;
-        case 'TI':
-          targetRoute = '/admin/HomeTI'; 
-          break;
-        case 'recursos':
-          targetRoute = '/admin/HomeRecursosHumanos';
-          routeParams = { nombre: user.nombre, idUsuario: user.id };
-          break;
-        case 'Admisiones':
-          targetRoute = '/admin/HomeAdmisiones';
-          routeParams = { nombre: user.nombre, idUsuario: user.id };
-          break;
-        case 'Serv. Estudiatil': 
-          targetRoute = '/admin/HomeServiciosEstudiantiles'; 
-          routeParams = { nombre: user.nombre, idUsuario: user.id };
-          break;
-        default:
-          console.warn("⚠️ Rol no reconocido:", user.role);
-          Alert.alert('Acceso', 'Tu rol no tiene una interfaz asignada.');
-          targetRoute = '/';
-          break;
-      } 
-      console.log('🔄 Redirigiendo a:', targetRoute, 'con params:', routeParams);
+      if (err.response) {
+        const errorMsg = err.response.data?.message 
+          || err.response.data?.error 
+          || err.response.data?.msg
+          || 'Credenciales inválidas.';
+        
+        showAlert(
+          'Login Fallido', 
+          `${errorMsg} (Status: ${err.response.status})`
+        );
+      } else if (err.request) {
+        showAlert(
+          'Error de Red', 
+          'No se pudo conectar al servidor. Verifica tu conexión a internet.'
+        );
+      } else if (err.code === 'ECONNABORTED') {
+        showAlert(
+          'Tiempo Agotado', 
+          'La conexión tardó demasiado. Intenta nuevamente.'
+        );
+      } else {
+        showAlert('Error', `Ocurrió un error inesperado: ${err.message}`);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
 
-      setTimeout(() => {
-        try {
-          console.log('🚀 Ejecutando redirección...');
-          router.replace({ pathname: targetRoute, params: routeParams });
-        } catch (error) {
-          console.error('❌ Error en redirección:', error);
-          Alert.alert('Error', 'No se pudo redirigir. Intenta nuevamente.');
-        }
-      }, 200);
-      
-    } else {
-      Alert.alert('Login Fallido', response.data.message || 'Respuesta inesperada del servidor.');
-    }
-  } catch (err) {
-    console.error("❌ Error en handleLogin:", err.response?.data || err.message);
-    
-    if (err.response) {
-      Alert.alert('Login Fallido', `${err.response.data.message || err.response.data.error || 'Credenciales inválidas.'} (Status: ${err.response.status})`);
-    } else if (err.request) {
-      Alert.alert('Error de Red', 'No se pudo conectar al servidor. Verifica tu conexión.');
-    } else {
-      Alert.alert('Error', 'Ocurrió un error inesperado: ' + err.message);
-    }
-  } finally {
-    setLoading(false);
-  }
-};
-    const handleRegisterStudent = () => {
+  const handleRegisterStudent = () => {
     router.push('../admin/RegistroEstudianteScreen');
   };
 
-    return (
-  <ImageBackground
-    source={require('../../assets/images/FONDO NARANJA_Mesa de trabajo 1.jpeg')} 
-    style={styles.background}
-    resizeMode="cover"
-  >
-    <View style={styles.overlay} />
+  return (
+    <ImageBackground
+      source={require('../../assets/images/FONDO NARANJA_Mesa de trabajo 1.jpeg')} 
+      style={styles.background}
+      resizeMode="cover"
+    >
+      <View style={styles.overlay} />
 
-    <View style={styles.content}>
-      <Text style={styles.title}>Iniciar Sesión</Text>
+      <View style={styles.content}>
+        <Text style={styles.title}>Iniciar Sesión</Text>
 
-      <TextInput
-        style={styles.input}
-        placeholder="Correo Electrónico"
-        value={email}
-        onChangeText={setEmail}
-        autoCapitalize="none"
-        keyboardType="email-address"
-        placeholderTextColor="#aaa"
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Contraseña"
-        value={contrasenia}
-        onChangeText={setPassword}
-        secureTextEntry
-        autoCapitalize="0"
-        placeholderTextColor="#aaa"
-      />
+        <TextInput
+          style={styles.input}
+          placeholder="Correo Electrónico"
+          value={email}
+          onChangeText={setEmail}
+          autoCapitalize="none"
+          keyboardType="email-address"
+          placeholderTextColor="#aaa"
+        />
+        <TextInput
+          style={styles.input}
+          placeholder="Contraseña"
+          value={contrasenia}
+          onChangeText={setPassword}
+          secureTextEntry
+          autoCapitalize="none"
+          placeholderTextColor="#aaa"
+        />
 
-      <TouchableOpacity
-        onPress={handleLogin}
-        style={[styles.button, loading && styles.buttonDisabled]}
-        disabled={loading}
-      >
-        {loading ? (
-          <ActivityIndicator color="#fff" size="small" />
-        ) : (
-          <Text style={styles.buttonText}>Ingresar</Text>
-        )}
-      </TouchableOpacity>
-      <TouchableOpacity
-       onPress={handleRegisterStudent}
-        style={styles.registerLinkContainer}
-      >
-         <Text style={styles.registerLinkText}>
-            ¿No tienes cuenta? <Text style={styles.registerLinkHighlight}>Crear cuenta de estudiante</Text>
+        <TouchableOpacity
+          onPress={handleLogin}
+          style={[styles.button, loading && styles.buttonDisabled]}
+          disabled={loading}
+        >
+          {loading ? (
+            <ActivityIndicator color="#fff" size="small" />
+          ) : (
+            <Text style={styles.buttonText}>Ingresar</Text>
+          )}
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={handleRegisterStudent}
+          style={styles.registerLinkContainer}
+        >
+          <Text style={styles.registerLinkText}>
+            ¿No tienes cuenta?{' '}
+            <Text style={styles.registerLinkHighlight}>Crear cuenta de estudiante</Text>
           </Text>
-      </TouchableOpacity>
-    </View>
-  </ImageBackground>
-);
-    
+        </TouchableOpacity>
+      </View>
+    </ImageBackground>
+  );
 };
 
 const styles = StyleSheet.create({
-  screenContainer: {
-    flex: 1,
-    backgroundColor: '#f0f2f5',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  formContainer: {
-    width: '100%',
-    maxWidth: 400,
-    backgroundColor: 'white',
-    paddingHorizontal: 25,
-    paddingVertical: 35,
-    borderRadius: 15,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 8,
-    alignItems: 'center',
-  },
-
-  input: {
-    width: '100%',
-    height: 55,
-    backgroundColor: '#f9f9f9',
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-    borderRadius: 8,
-    marginBottom: 20,
-    paddingHorizontal: 15,
-    fontSize: 16,
-    color: '#333',
-  },
-  
-  buttonDisabled: {
-    backgroundColor: '#FFA07A', // Un naranja más claro para deshabilitado
-  },
-  buttonText: {
-    color: '#fff',
-    fontWeight: 'bold',
-    fontSize: 16,
-  },
-   background: {
+  background: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
@@ -374,6 +363,18 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 1, height: 1 },
     textShadowRadius: 3,
   },
+  input: {
+    width: '100%',
+    height: 55,
+    backgroundColor: '#f9f9f9',
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    borderRadius: 8,
+    marginBottom: 20,
+    paddingHorizontal: 15,
+    fontSize: 16,
+    color: '#333',
+  },
   button: {
     backgroundColor: '#e95a0c',
     width: '100%',
@@ -391,7 +392,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
   },
-    registerLinkContainer: {
+  registerLinkContainer: {
     marginTop: 25,
     paddingVertical: 10,
   },
@@ -402,7 +403,7 @@ const styles = StyleSheet.create({
     fontWeight: '400',
   },
   registerLinkHighlight: {
-    color: '#FFD700', // Dorado para destacar
+    color: '#FFD700',
     fontWeight: '600',
     textDecorationLine: 'underline',
   },

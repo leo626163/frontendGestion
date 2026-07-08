@@ -10,7 +10,7 @@ import { Ionicons } from '@expo/vector-icons';
 import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
 
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://frontendgestion-production-d088.up.railway.app';
+const API_BASE_URL = 'https://backendgestion-production-e2aa.up.railway.app';
 const TOKEN_KEY = 'adminAuthToken';
 const getToken = async () => {
   if (Platform.OS === 'web') { try { return localStorage.getItem(TOKEN_KEY); } catch { return null; } }
@@ -81,7 +81,7 @@ const RecursoCard = ({ item, onEdit }) => {
 };
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
-export default function InventarioDAF() {
+const InventarioDAF = () => {
   const router = useRouter();
 
   const [loading, setLoading]     = useState(true);
@@ -314,3 +314,4 @@ const st = StyleSheet.create({
   createFloatBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: C.primaryLight, borderRadius: 12, padding: 14, borderWidth: 0.5, borderColor: C.primary + '40', marginTop: 6 },
   createFloatText: { fontSize: 13, fontWeight: '600', color: C.primary },
 });
+export default InventarioDAF;
