@@ -452,7 +452,7 @@ const renderUserItem = ({ item, index }) => {
                   onPress={() => {
                     setShowUserModal(false);
                     router.push({
-                      pathname: '/admin/EditUser/[id]',
+                      pathname: '/admin/EditUser/',
                       params: { id: selectedUser.id }
                     });
                   }}
