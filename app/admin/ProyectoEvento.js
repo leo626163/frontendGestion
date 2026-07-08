@@ -1521,7 +1521,8 @@ const ProyectoEvento = () => {
       <View style={styles.timePickerSection}>
         <View style={styles.timePickerHeader}>
           <Ionicons name="alarm" size={24} color="#e95a0c" />
-          <Text style={styles.timePickerSectionTitle}>Hora de Inicio del Evento</Text>
+          <Text style={styles.timePickerSectionTitle}>Hora de Inicio del Evento <Text style={styles.requiredAsterisk}>*</Text>
+          </Text>
         </View>
         <TimePicker
           value={fechaHoraSeleccionada}
@@ -1556,7 +1557,12 @@ const ProyectoEvento = () => {
         >
           <View style={styles.formSection}>
             <Text style={styles.sectionTitle}>I. DATOS GENERALES</Text>
-            <Text style={styles.label}>Nombre del Evento</Text>
+              <Text style={styles.requiredNote}>
+              Los campos marcados con <Text style={styles.requiredAsterisk}>*</Text> son obligatorios
+            </Text>
+              <Text style={styles.requiredNote}>
+                Los campos marcados con <Text style={styles.requiredAsterisk}>*</Text> son obligatorios
+              </Text>
             <View style={[styles.inputGroup, errors.nombreevento && styles.inputError]}>
               <Ionicons name="text-outline" size={20} style={styles.inputIcon} />
               <TextInput
@@ -1567,7 +1573,9 @@ const ProyectoEvento = () => {
               />
             </View>
             {errors.nombreevento && <Text style={styles.errorText}>{errors.nombreevento}</Text>}
-            <Text style={styles.label}>Clasificación Estratégica</Text>
+           <Text style={styles.label}>
+              Clasificación Estratégica<Text style={styles.requiredAsterisk}>*</Text>
+            </Text>
             <TouchableOpacity
               style={[styles.inputGroup, errors.clasificacionSeleccionada && styles.inputError]}
               onPress={() => setShowClasificacionModal(true)}
@@ -1582,7 +1590,9 @@ const ProyectoEvento = () => {
             {errors.clasificacionSeleccionada && <Text style={styles.errorText}>{errors.clasificacionSeleccionada}</Text>}
             {clasificacionSeleccionada && CLASIFICACION_ESTRATEGICA[clasificacionSeleccionada]?.subcategorias && (
               <>
-                <Text style={styles.label}>Subcategoría</Text>
+               <Text style={styles.label}>
+                Subcategoría<Text style={styles.requiredAsterisk}>*</Text>
+              </Text>
                 <TouchableOpacity
                   style={[styles.inputGroup, errors.subcategoriaSeleccionada && styles.inputError]}
                   onPress={() => setShowSubcategoriaModal(true)}
@@ -1597,7 +1607,9 @@ const ProyectoEvento = () => {
                 {errors.subcategoriaSeleccionada && <Text style={styles.errorText}>{errors.subcategoriaSeleccionada}</Text>}
               </>
             )}
-            <Text style={styles.label}>Lugar del Evento</Text>
+            <Text style={styles.label}>
+              Lugar del Evento<Text style={styles.requiredAsterisk}>*</Text>
+            </Text>
             <TouchableOpacity
               style={[styles.inputGroup, errors.lugarevento && styles.inputError]}
               onPress={() => { setCampusSeleccionado(null); setShowLugarModal(true); }}
@@ -1610,7 +1622,7 @@ const ProyectoEvento = () => {
             {errors.lugarevento && <Text style={styles.errorText}>{errors.lugarevento}</Text>}
             {width <= 768 && (
               <>
-                <Text style={styles.label}>Fecha de Realización</Text>
+                <Text style={styles.label}>Fecha de Realización<Text style={styles.requiredAsterisk}>*</Text></Text>
                 <GoogleStyleCalendarView
                   fechaHoraSeleccionada={fechaHoraSeleccionada}
                   setFechaHoraSeleccionada={setFechaHoraSeleccionada}
@@ -1624,7 +1636,9 @@ const ProyectoEvento = () => {
                 />
               </>
             )}
-            <Text style={styles.label}>Tipo de Evento (puede seleccionar más de un tipo)</Text>
+            <Text style={styles.label}>
+              Tipo de Evento (puede seleccionar más de un tipo)<Text style={styles.requiredAsterisk}>*</Text>
+            </Text>
             {TIPOS_DE_EVENTO.map((item) => (
               <TouchableOpacity key={item.id} style={styles.checkboxRow} onPress={() => handleTipoEventoChange(item.id)}>
                 <Ionicons name={tiposSeleccionados[item.id] ? "checkbox" : "square-outline"} size={24} color={tiposSeleccionados[item.id] ? "#e95a0c" : "#888"} />
@@ -1650,7 +1664,9 @@ const ProyectoEvento = () => {
               onLayout={(event) => { const { y } = event.nativeEvent.layout; setObjetivosSectionY(y); }}
             >
               <Text style={styles.sectionTitle}>II. OBJETIVOS</Text>
-              <Text style={styles.label}>Objetivos de Evento (puede seleccionar más de un objetivo):</Text>
+              <Text style={styles.label}>
+                Objetivos de Evento (puede seleccionar más de un objetivo):<Text style={styles.requiredAsterisk}>*</Text>
+              </Text>
               <View style={styles.checkboxContainer}>
                 <View style={styles.checkboxColumn}>
                   {[
@@ -1684,7 +1700,9 @@ const ProyectoEvento = () => {
                   {objetivos.otroTexto.trim() && <Text style={styles.selectedText}>Selección: {objetivos.otroTexto}</Text>}
                 </View>
               )}
-              <Text style={styles.label}>Objetivo(s) del PDI Asociado(s):</Text>
+              <Text style={styles.label}>
+                Objetivo(s) del PDI Asociado(s):<Text style={styles.requiredAsterisk}>*</Text>
+              </Text>
               <View style={styles.objetivosPDIGrid}>
                 {objetivosPDI.map((objetivo, index) => (
                   <View key={index} style={[styles.objetivoPDIRow, styles.objetivoPDIColumn]}>
@@ -1699,7 +1717,9 @@ const ProyectoEvento = () => {
                   </View>
                 ))}
               </View>
-              <Text style={styles.label}>Definición del Segmento Objetivo (puede seleccionar más de un público):</Text>
+              <Text style={styles.label}>
+                Definición del Segmento Objetivo (puede seleccionar más de un público):<Text style={styles.requiredAsterisk}>*</Text>
+              </Text>
               <View style={styles.checkboxContainer}>
                 <View style={styles.checkboxColumn}>
                   {[
@@ -1747,7 +1767,9 @@ const ProyectoEvento = () => {
                   {segmentoObjetivo.otroTexto.trim() && <Text style={styles.selectedText}>Selección: {segmentoObjetivo.otroTexto}</Text>}
                 </View>
               )}
-              <Text style={styles.label}>Argumentación:</Text>
+              <Text style={styles.label}>
+                Argumentación:<Text style={styles.requiredAsterisk}>*</Text>
+              </Text>
               <View style={[styles.inputGroup, { alignItems: 'flex-start' }, errors.argumentacion && styles.inputError]}>
                 <Ionicons name="text-outline" size={20} style={[styles.inputIcon, { paddingTop: 14 }]} />
                 <TextInput
@@ -1772,21 +1794,21 @@ const ProyectoEvento = () => {
               <View style={[styles.formSection, isScrollingToResultados && styles.formSectionHighlighted]} ref={resultadosSectionRef}>
                 <Text style={styles.sectionTitle}>III. RESULTADOS ESPERADOS</Text>
                 <View style={styles.resultadoRow}>
-                  <Text style={styles.resultadoLabel}>Participación Efectiva</Text>
+                  <Text style={styles.resultadoLabel}>Participación Efectiva<Text style={styles.requiredAsterisk}>*</Text></Text>
                   <TextInput style={styles.resultadoInput} placeholder="Ej: 150" value={resultadosEsperados.participacion} onChangeText={(text) => handleResultadoChange('participacion', text)} keyboardType="numeric" />
                 </View>
                 <View style={styles.resultadoRow}>
-                  <Text style={styles.resultadoLabel}>Índice de Satisfacción</Text>
+                  <Text style={styles.resultadoLabel}>Índice de Satisfacción<Text style={styles.requiredAsterisk}>*</Text></Text>
                   <TextInput style={styles.resultadoInput} placeholder="Ej: 90% de satisfacción" value={resultadosEsperados.satisfaccion} onChangeText={(text) => handleResultadoChange('satisfaccion', text)} />
                 </View>
                 <View style={styles.resultadoRow}>
-                  <Text style={styles.resultadoLabel}>Otro</Text>
+                  <Text style={styles.resultadoLabel}>Otro<Text style={styles.requiredAsterisk}>*</Text></Text>
                   <TextInput style={styles.resultadoInput} placeholder="Otro resultado medible" value={resultadosEsperados.otro} onChangeText={(text) => handleResultadoChange('otro', text)} />
                 </View>
               </View>
               <View style={styles.formSection}>
                 <Text style={styles.sectionTitle}>IV. COMITÉ DEL EVENTO</Text>
-                <Text style={styles.comiteDescription}>Selecciona a los miembros del comité del evento:</Text>
+                <Text style={styles.comiteDescription}>Selecciona a los miembros del comité del evento:<Text style={styles.requiredAsterisk}>*</Text></Text>
                 
                 {comiteLoading ? (
                   <View style={styles.comiteLoadingContainer}>
@@ -2947,6 +2969,19 @@ facultadSelectedHint: {
     fontSize: 16,
     fontWeight: '700',
   },
+  requiredAsterisk: {
+  color: '#e74c3c',
+  fontSize: 16,
+  fontWeight: 'bold',
+  marginLeft: 2,
+},
+requiredNote: {
+  fontSize: 12,
+  color: '#666',
+  fontStyle: 'italic',
+  marginBottom: 15,
+  paddingHorizontal: 4,
+},
 });
 
 export default ProyectoEvento;
