@@ -209,18 +209,14 @@ const CrearUsuarioEstudiante = () => {
   }, []);
 
   useEffect(() => {
-    if (carreraSeleccionada) {
-      const facultadId = CARRERA_A_FACULTAD[carreraSeleccionada];
-      if (facultadId) {
-        setFacultadSeleccionada(facultadId);
-        setOpenFacultad(false);
-         const facultadEncontrada = opcionesFacultad.find(f => f.value === facultadId);
-      if (facultadEncontrada) {
-        setOpcionesFacultad(prev => [...prev]); 
-      }
-      }
+  if (carreraSeleccionada) {
+    const facultadId = CARRERA_A_FACULTAD[carreraSeleccionada];
+    if (facultadId) {
+      setFacultadSeleccionada(facultadId);
+      setOpenFacultad(false);
     }
-  }, [carreraSeleccionada, opcionesFacultad]);
+  }
+  }, [carreraSeleccionada]);
 
   useEffect(() => {
     const checkAuth = async () => {
