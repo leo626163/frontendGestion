@@ -536,15 +536,23 @@ const fetchNotifications = useCallback(async () => {
       timeout: 8000,
     });
 
-    // Mapear respuesta a formato esperado
+    console.log('📬 Respuesta del servidor:', response.data);
+    console.log('📊 Cantidad de notificaciones:', response.data?.length);
+
+    // Mapear respuesta - el backend devuelve 'idnotificacion'
     const mapped = (response.data || []).map(n => ({
       ...n,
+      id: n.idnotificacion, // ← Usar idnotificacion del backend
       read: n.estado === 'leido' || n.read === true
     }));
     
     setNotifications(mapped);
   } catch (error) {
-    console.error('Error al cargar notificaciones:', error);
+    console.error('❌ Error al cargar notificaciones:', error);
+    if (error.response) {
+      console.error('Status:', error.response.status);
+      console.error('Data:', error.response.data);
+    }
   }
 }, []);
 
