@@ -90,63 +90,104 @@ const EditUser = () => {
   }, [id]);
 
   const fetchUserData = async () => {
-    try {
-      const token = await getTokenAsync();
-      if (!token) {
-        Alert.alert('Error', 'No autenticado');
-        router.replace('/LoginAdmin');
-        return;
+  try {
+    const token = await getTokenAsync();
+    console.log('🔑 Token obtenido:', token ? `${token.substring(0, 20)}...` : 'NULL');
+    
+    if (!token) {
+      Alert.alert('Error', 'No autenticado. Por favor inicia sesión nuevamente.');
+      router.replace('/LoginAdmin');
+      return;
+    }
+
+    console.log(`📡 Solicitando usuario con ID: ${id}`);
+    
+    const response = await axios.get(`${API_BASE_URL}/users/${id}`, {
+      headers: { 
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
       }
+    });
 
-      const response = await axios.get(`${API_BASE_URL}/users/${id}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
+    console.log('✅ Usuario recibido:', response.data);
 
-      const userData = response.data.user || response.data;
-      setUser(userData);
-      setFormData({
-        username: userData.username || '',
-        nombre: userData.nombre || '',
-        apellidopat: userData.apellidopat || '',
-        apellidomat: userData.apellidomat || '',
-        email: userData.email || '',
-        role: userData.role || 'daf',
-        habilitado: userData.habilitado === 'true' || userData.habilitado === true,
-        contrasenia: '',
-        idcarrera: userData.academico?.idcarrera || '',
-        idfacultad: userData.academico?.facultad_id || userData.facultad_id || ''
-      });
-    } catch (error) {
-      console.error('Error fetching user:', error);
-      Alert.alert('Error', 'No se pudo cargar la información del usuario');
-    } finally {
-      setLoading(false);
+    const userData = response.data.user || response.data;
+    setUser(userData);
+    setFormData({
+      username: userData.username || '',
+      nombre: userData.nombre || '',
+      apellidopat: userData.apellidopat || '',
+      apellidomat: userData.apellidomat || '',
+      email: userData.email || '',
+      role: userData.role || 'daf',
+      habilitado: userData.habilitado === 'true' || userData.habilitado === true,
+      contrasenia: '',
+      idcarrera: userData.academico?.idcarrera || userData.idcarrera || '',
+      idfacultad: userData.academico?.facultad_id || userData.facultad_id || userData.idfacultad || ''
+    });
+  } catch (error) {
+    console.error('❌ Error fetching user:', error);
+    
+    if (error.response) {
+      console.error('Status:', error.response.status);
+      console.error('Data:', error.response.data);
+      
+      if (error.response.status === 403) {
+        Alert.alert(
+          'Sin Permisos', 
+          'No tienes permisos para ver este usuario. Tu sesión podría haber expirado.',
+          [{ text: 'OK', onPress: () => router.back() }]
+        );
+      } else if (error.response.status === 401) {
+        Alert.alert(
+          'Sesión Expirada', 
+          'Tu sesión ha expirado. Por favor inicia sesión nuevamente.',
+          [{ text: 'OK', onPress: () => router.replace('/LoginAdmin') }]
+        );
+      } else {
+        Alert.alert('Error', error.response.data?.message || 'No se pudo cargar el usuario');
+      }
+    } else {
+      Alert.alert('Error', 'No se pudo conectar al servidor');
     }
-  };
+  } finally {
+    setLoading(false);
+  }
+};
 
-  const fetchFacultades = async () => {
-    try {
-      const token = await getTokenAsync();
-      const response = await axios.get(`${API_BASE_URL}/facultades`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      setFacultades(response.data);
-    } catch (error) {
-      console.error('Error fetching facultades:', error);
-    }
-  };
+const fetchFacultades = async () => {
+  try {
+    const token = await getTokenAsync();
+    if (!token) return;
+    
+    const response = await axios.get(`${API_BASE_URL}/facultades`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    console.log('📚 Facultades cargadas:', response.data.length);
+    setFacultades(response.data);
+  } catch (error) {
+    console.error('Error fetching facultades:', error);
+    // No bloquear la carga si falla facultades
+  }
+};
 
-  const fetchCarreras = async () => {
-    try {
-      const token = await getTokenAsync();
-      const response = await axios.get(`${API_BASE_URL}/carreras`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      setCarreras(response.data);
-    } catch (error) {
-      console.error('Error fetching carreras:', error);
-    }
-  };
+const fetchCarreras = async () => {
+  try {
+    const token = await getTokenAsync();
+    if (!token) return;
+    
+    const response = await axios.get(`${API_BASE_URL}/carreras`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    console.log('🎓 Carreras cargadas:', response.data.length);
+    setCarreras(response.data);
+  } catch (error) {
+    console.error('Error fetching carreras:', error);
+    console.error('Status:', error.response?.status);
+    console.error('Data:', error.response?.data);
+    // No bloquear la carga si falla carreras (error 500 del backend)
+  }
+};
 
   const validateForm = () => {
     const newErrors = {};
