@@ -22,6 +22,7 @@ import { BarChart } from 'react-native-chart-kit';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import ChatEmbed from '../../components/ChatEmbed';
 import QRCode from 'react-qr-code';
+import { route } from '../../../uniBackend/routes/notificacionesRoutes';
 // Configuración de API
 let determinedApiBaseUrl;
 /*if (Platform.OS === 'android') {
@@ -236,7 +237,7 @@ const MinimalBottomDock = ({ onLogout, onActionPress, isExpanded, onToggleExpand
       title: 'Nuevo Usuario',
       icon: 'person-add-outline',
       color: COLORS.primary,
-      action: '/admin/UsuariosA'
+      route: '/admin/UsuariosA'
     },
     {
       id: 'pendientes',
@@ -261,7 +262,7 @@ const MinimalBottomDock = ({ onLogout, onActionPress, isExpanded, onToggleExpand
       title: 'Ajustes',
       icon: 'settings-outline',
       color: COLORS.secondary,
-      action: '/admin/Settings'
+      route: '/admin/Settings'
     }
   ];
 
@@ -281,7 +282,7 @@ const MinimalBottomDock = ({ onLogout, onActionPress, isExpanded, onToggleExpand
               <TouchableOpacity
                 key={action.id}
                 style={styles.minimalDockQuickActionButton}
-                onPress={() => onActionPress(action.action)}
+                onPress={() => onActionPress(action)}
               >
                 <Ionicons name={action.icon} size={22} color={action.color} />
                 <Text style={[styles.minimalDockQuickActionText, { color: action.color }]}>
@@ -924,16 +925,35 @@ useEffect(() => {
 ], [pendingContentCount]);
 
 const handleActionPress = (action) => {
-  if (action && action.role) {
+  // Si es un string directo
+  if (typeof action === 'string') {
+    router.push(action);
+    return;
+  }
+
+  if (!action) {
+    Alert.alert('Funcionalidad en Desarrollo', 'Esta característica estará disponible próximamente.');
+    return;
+  }
+
+  // Si tiene role (caso especial)
+  if (action.role) {
     router.push({
       pathname: '/admin/EventosAprobados',
-      params: { role: action.role } // ← PASA EL ROL
+      params: { role: action.role }
     });
     return;
   }
 
-  if (action && action.route) {
+  // Si tiene route (caso normal)
+  if (action.route) {
     router.push(action.route);
+    return;
+  }
+
+  // Si tiene action (legacy)
+  if (action.action) {
+    router.push(action.action);
     return;
   }
 
