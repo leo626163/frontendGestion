@@ -353,7 +353,7 @@ const NotificationBell = ({ notificationCount, onPress }) => (
     )}
   </TouchableOpacity>
 );
-const NotificationsModal = ({ visible, onClose, notifications, markAsRead }) => (
+const NotificationsModal = ({ visible, onClose, notifications, markAsRead, markAllAsRead, onNotificationPress }) => (
   <Modal
     visible={visible}
     transparent={true}
@@ -364,9 +364,9 @@ const NotificationsModal = ({ visible, onClose, notifications, markAsRead }) => 
       <View style={styles.notificationsModalContent}>
         <View style={styles.notificationsModalHeader}>
           <Text style={styles.notificationsModalTitle}>Notificaciones</Text>
-         <TouchableOpacity onPress={onClose} style={{ padding: 6 }}>  
-          <Ionicons name="close" size={24} color={COLORS.textSecondary} />
-        </TouchableOpacity>
+          <TouchableOpacity onPress={onClose} style={{ padding: 6 }}>  
+            <Ionicons name="close" size={24} color={COLORS.textSecondary} />
+          </TouchableOpacity>
         </View>
         
         <ScrollView style={styles.notificationsList}>
@@ -385,11 +385,8 @@ const NotificationsModal = ({ visible, onClose, notifications, markAsRead }) => 
                 ]}
                 onPress={() => {
                   markAsRead(notification.idnotification || notification.id);
-                  // Aquí puedes navegar según el tipo de notificación
-                  if (notification.tipo === 'nuevo_evento' && notification.id_relacionado) {
-                    onClose();
-                    router.push(`/admin/EventDetailScreen?eventId=${notification.id_relacionado}`);
-                  }
+                  onNotificationPress(notification);
+                  onClose();
                 }}
               >
                 <View style={styles.notificationIconContainer}>
@@ -420,10 +417,14 @@ const NotificationsModal = ({ visible, onClose, notifications, markAsRead }) => 
           )}
         </ScrollView>
         
-        {notifications.length > 0 && (
-          <TouchableOpacity style={styles.markAllReadButton} onPress={() => {
-            notifications.filter(n => !n.read).forEach(n => markAsRead(n.idnotification || n.id));
-          }}>
+        {notifications.some(n => !n.read) && (
+          <TouchableOpacity 
+            style={styles.markAllReadButton} 
+            onPress={() => {
+              markAllAsRead();
+            }}
+          >
+            <Ionicons name="checkmark-done" size={18} color={COLORS.primary} />
             <Text style={styles.markAllReadText}>Marcar todas como leídas</Text>
           </TouchableOpacity>
         )}
@@ -570,6 +571,70 @@ const markNotificationAsRead = useCallback(async (notificationId) => {
     console.error('Error al marcar notificación como leída:', error);
   }
 }, []);
+const markAllAsRead = useCallback(async () => {
+  try {
+    const token = await getTokenAsync();
+    if (!token) return;
+
+    const unreadNotifications = notifications.filter(n => !n.read);
+    
+    if (unreadNotifications.length === 0) return;
+
+    await Promise.all(
+      unreadNotifications.map(n => 
+        axios.patch(
+          `${API_BASE_URL}/notificaciones/${n.idnotification || n.id}/read`,
+          {},
+          { headers: { 'Authorization': `Bearer ${token}` } }
+        )
+      )
+    );
+
+    setNotifications(prev => 
+      prev.map(n => ({ ...n, read: true, estado: 'leido' }))
+    );
+    
+    console.log('✅ Todas las notificaciones marcadas como leídas');
+  } catch (error) {
+    console.error('Error al marcar todas como leídas:', error);
+  }
+}, [notifications]);
+
+const navigateByNotification = useCallback((notification) => {
+  const tipo = notification.tipo;
+  const idRelacionado = notification.id_relacionado || notification.idevento || notification.id_relacion;
+  
+  switch (tipo) {
+    case 'nuevo_evento':
+    case 'evento_aprobado':
+    case 'evento_rechazado':
+    case 'recordatorio':
+      if (idRelacionado) {
+        router.push(`/admin/EventDetailScreen?eventId=${idRelacionado}`);
+      } else {
+        router.push('/admin/EventosPendientes');
+      }
+      break;
+      
+    case 'comite_invitacion':
+      if (idRelacionado) {
+        router.push(`/admin/EventDetailComite?eventId=${idRelacionado}`);
+      } else {
+        router.push('/admin/EventosPendientes');
+      }
+      break;
+      
+    case 'mensaje_nuevo':
+      setIsChatOpen(true);
+      break;
+      
+    default:
+      if (idRelacionado) {
+        router.push(`/admin/EventDetailScreen?eventId=${idRelacionado}`);
+      }
+      break;
+  }
+}, [router]);
 const fetchCommitteeEvents = useCallback(async () => {
   setLoadingComitee(true);
   try {
@@ -1107,6 +1172,8 @@ const handleActionPress = (action) => {
         onClose={() => setShowNotifications(false)}
         notifications={notifications}
         markAsRead={markNotificationAsRead}
+        markAllAsRead={markAllAsRead}
+        onNotificationPress={navigateByNotification}
       />
 
      
