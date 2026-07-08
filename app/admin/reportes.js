@@ -49,49 +49,73 @@ const getTokenAsync = async () => {
 const MONTH_NAMES_SHORT = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
 const MONTH_NAMES_FULL  = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 
-const MiniBarChart = ({ data, width }) => {
+const HorizontalBarChart = ({ data, width }) => {
   if (!data?.length) return null;
   const max = Math.max(...data.map(d => d.value), 1);
-  const barH = 200;
-  const padL = 8, padB = 60, padT = 16, padR = 8;
-  const cw = width - padL - padR;
-  const ch = barH - padT - padB;
-  const gap = cw / data.length;
-  const barW = Math.max(gap * 0.6, 12);
+  const barHeight = 32;
+  const spacing = 12;
+  const totalHeight = data.length * (barHeight + spacing) + 20;
+  const CHART_COLORS = ['#3B82F6', '#6366F1', '#8B5CF6', '#A855F7', '#D946EF', '#EC4899'];
+  const labelWidth = 110; // Espacio reservado para el nombre a la izquierda
 
-   const BAR_COLORS = ['#3B82F6', '#6366F1', '#8B5CF6', '#A855F7', '#D946EF', '#EC4899'];
-
-   return (
-    <Svg width={width} height={barH}>
+  return (
+    <Svg width={width} height={totalHeight}>
       {data.map((d, i) => {
-        const h = (d.value / max) * ch;
-        const x = padL + gap * i + (gap - barW) / 2;
-        const y = padT + ch - h;
-        const barColor = BAR_COLORS[i % BAR_COLORS.length];
+        const barMaxWidth = width - labelWidth - 50; // espacio para el número a la derecha
+        const barWidth = (d.value / max) * barMaxWidth;
+        const y = 10 + i * (barHeight + spacing);
+        const color = CHART_COLORS[i % CHART_COLORS.length];
+
         return (
           <G key={i}>
-            <Rect x={x} y={y} width={barW} height={h} fill={barColor} rx={4} fillOpacity={0.9} />
-            <SvgText x={x + barW / 2} y={y - 4} fontSize="10" fill={barColor} textAnchor="middle" fontWeight="700">{d.value}</SvgText>
-            {/* ✅ SIN TRUNCAMIENTO: muestra el nombre completo rotado si es necesario */}
+            {/* Nombre de la facultad (izquierda) */}
             <SvgText
-              x={x + barW / 2}
-              y={padT + ch + 12}
-              fontSize="9"
-              fill={COLORS.textSecondary}
-              textAnchor="middle"
-              rotation={data.length > 4 ? -25 : 0}
-              origin={`${x + barW / 2}, ${padT + ch + 12}`}
+              x={0}
+              y={y + barHeight / 2 + 4}
+              fontSize="11"
+              fill={COLORS.textPrimary}
+              fontWeight="500"
             >
-              {d.label.length > 18 ? d.label.slice(0, 18) + '…' : d.label}
+              {d.label.length > 22 ? d.label.slice(0, 22) + '…' : d.label}
+            </SvgText>
+
+            {/* Barra de fondo */}
+            <Rect
+              x={labelWidth}
+              y={y}
+              width={barMaxWidth}
+              height={barHeight}
+              fill={COLORS.divider}
+              rx={6}
+            />
+
+            {/* Barra de valor */}
+            <Rect
+              x={labelWidth}
+              y={y}
+              width={barWidth}
+              height={barHeight}
+              fill={color}
+              rx={6}
+            />
+
+            {/* Número a la derecha */}
+            <SvgText
+              x={width - 10}
+              y={y + barHeight / 2 + 4}
+              fontSize="13"
+              fill={color}
+              fontWeight="700"
+              textAnchor="end"
+            >
+              {d.value}
             </SvgText>
           </G>
         );
       })}
-      <Line x1={padL} y1={padT + ch} x2={width - padR} y2={padT + ch} stroke={COLORS.border} strokeWidth="1" />
     </Svg>
   );
 };
-
 const KpiCard = ({ label, value, icon, color, sub }) => (
   <View style={[styles.kpiCard, { borderTopColor: color }]}>
     <View style={[styles.kpiIconWrap, { backgroundColor: color + '15' }]}>
@@ -641,7 +665,7 @@ try {
   <View style={styles.card}>
     {rankingFacultades.length > 0 ? (
       <>
-        <MiniBarChart data={rankingFacultades} width={chartW - 32} />
+      <HorizontalBarChart data={rankingFacultades} width={chartW - 32} />
         <View style={{ marginTop: 16 }}>
           {rankingFacultades.map((f, i) => {
             const maxVal = rankingFacultades[0]?.value || 1;
