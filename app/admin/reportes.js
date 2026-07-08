@@ -52,25 +52,37 @@ const MONTH_NAMES_FULL  = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Jul
 const MiniBarChart = ({ data, width }) => {
   if (!data?.length) return null;
   const max = Math.max(...data.map(d => d.value), 1);
-  const barH = 180;
-  const padL = 8, padB = 32, padT = 16, padR = 8;
+  const barH = 200;
+  const padL = 8, padB = 60, padT = 16, padR = 8;
   const cw = width - padL - padR;
   const ch = barH - padT - padB;
   const gap = cw / data.length;
   const barW = Math.max(gap * 0.6, 12);
 
-  return (
+   const BAR_COLORS = ['#3B82F6', '#6366F1', '#8B5CF6', '#A855F7', '#D946EF', '#EC4899'];
+
+   return (
     <Svg width={width} height={barH}>
       {data.map((d, i) => {
         const h = (d.value / max) * ch;
         const x = padL + gap * i + (gap - barW) / 2;
         const y = padT + ch - h;
+        const barColor = BAR_COLORS[i % BAR_COLORS.length];
         return (
           <G key={i}>
-            <Rect x={x} y={y} width={barW} height={h} fill={COLORS.primary} rx={4} fillOpacity={0.85} />
-            <SvgText x={x + barW / 2} y={y - 4} fontSize="10" fill={COLORS.primary} textAnchor="middle" fontWeight="700">{d.value}</SvgText>
-            <SvgText x={x + barW / 2} y={barH - padB + 14} fontSize="9" fill={COLORS.textSecondary} textAnchor="middle">
-              {d.label.length > 8 ? d.label.slice(0, 8) + '…' : d.label}
+            <Rect x={x} y={y} width={barW} height={h} fill={barColor} rx={4} fillOpacity={0.9} />
+            <SvgText x={x + barW / 2} y={y - 4} fontSize="10" fill={barColor} textAnchor="middle" fontWeight="700">{d.value}</SvgText>
+            {/* ✅ SIN TRUNCAMIENTO: muestra el nombre completo rotado si es necesario */}
+            <SvgText
+              x={x + barW / 2}
+              y={padT + ch + 12}
+              fontSize="9"
+              fill={COLORS.textSecondary}
+              textAnchor="middle"
+              rotation={data.length > 4 ? -25 : 0}
+              origin={`${x + barW / 2}, ${padT + ch + 12}`}
+            >
+              {d.label.length > 18 ? d.label.slice(0, 18) + '…' : d.label}
             </SvgText>
           </G>
         );
@@ -127,7 +139,6 @@ const ReportesAvanzadosScreen = () => {
 
   const showError = (msg) => Alert.alert('Error', msg, [{ text: 'OK' }]);
 
-  // ── Carga principal ────────────────────────────────────────────────────────
   const cargarDatos = useCallback(async () => {
     setLoadingMain(true);
     try {
@@ -157,7 +168,6 @@ const ReportesAvanzadosScreen = () => {
         setEventosPorEstado(pie.length ? pie : null);
       }
 
-      // Ranking facultades
       if (Array.isArray(data.eventosPorFacultad)) {
         setRankingFacultades(
           data.eventosPorFacultad
@@ -167,7 +177,6 @@ const ReportesAvanzadosScreen = () => {
         );
       }
 
-      // Reportes mensuales
       const reportes = Array.isArray(mensualRes.data)
         ? mensualRes.data.sort((a, b) => new Date(b.mes) - new Date(a.mes))
         : [];
@@ -227,7 +236,6 @@ const cargarEventos = useCallback(async () => {
   useEffect(() => { cargarDatos(); },   [cargarDatos]);
   useEffect(() => { cargarEventos(); }, [cargarEventos]);
 
-  // ── Exportar CSV ───────────────────────────────────────────────────────────
   const exportarCSV = async () => {
     try {
       const token = await getTokenAsync();
@@ -279,7 +287,6 @@ const generarPDF = async (mesFormato) => {
     const [year, monthNum] = mesFormato.split('-');
     const mesNombre = MONTH_NAMES_FULL[parseInt(monthNum) - 1];
 
-// ✅ NUEVO: Obtener eventos específicos del mes seleccionado
 let eventosDelMes = [];
 try {
   const res = await axios.get(`${API_BASE_URL}/eventos`, {
@@ -629,34 +636,47 @@ try {
               </View>
             </View>
 
-            {/* ── RANKING FACULTADES ── */}
             <View style={styles.section}>
-              <SectionHeader icon="school-outline" title="Ranking de Facultades" subtitle="Eventos creados" />
-              <View style={styles.card}>
-                {rankingFacultades.length > 0 ? (
-                  <>
-                    <MiniBarChart data={rankingFacultades} width={chartW - 32} />
-                    <View style={{ marginTop: 12 }}>
-                      {rankingFacultades.map((f, i) => (
-                        <View key={i} style={styles.rankRow}>
-                          <View style={[styles.rankBadge, i === 0 && { backgroundColor: COLORS.primary }]}>
-                            <Text style={[styles.rankNum, i === 0 && { color: COLORS.white }]}>{i + 1}</Text>
-                          </View>
-                          <Text style={styles.rankLabel} numberOfLines={1}>{f.label}</Text>
-                          <Text style={styles.rankValue}>{f.value} eventos</Text>
-                        </View>
-                      ))}
-                    </View>
-                  </>
-                ) : (
-                  <View style={styles.emptyChart}>
-                    <Ionicons name="school-outline" size={40} color={COLORS.textTertiary} />
-                    <Text style={styles.emptyText}>Sin datos de facultades</Text>
+            <SectionHeader icon="school-outline" title="Ranking de Facultades" subtitle="Eventos creados" />
+  <View style={styles.card}>
+    {rankingFacultades.length > 0 ? (
+      <>
+        <MiniBarChart data={rankingFacultades} width={chartW - 32} />
+        <View style={{ marginTop: 16 }}>
+          {rankingFacultades.map((f, i) => {
+            const maxVal = rankingFacultades[0]?.value || 1;
+            const pct = Math.round((f.value / maxVal) * 100);
+            // 🎨 NUEVOS COLORES para el ranking
+            const RANK_COLORS = ['#3B82F6', '#6366F1', '#8B5CF6', '#A855F7', '#D946EF', '#EC4899'];
+            const rankColor = RANK_COLORS[i % RANK_COLORS.length];
+            return (
+              <View key={i} style={styles.rankRowNew}>
+                {/* Badge con color dinámico */}
+                <View style={[styles.rankBadgeNew, { backgroundColor: rankColor }]}>
+                  <Text style={styles.rankNumNew}>{i + 1}</Text>
+                </View>
+                {/* Label SIN numberOfLines para que se vea completo */}
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.rankLabelNew}>{f.label}</Text>
+                  {/* Barra de progreso con el color del ranking */}
+                  <View style={styles.rankBarBg}>
+                    <View style={[styles.rankBarFill, { width: `${pct}%`, backgroundColor: rankColor }]} />
                   </View>
-                )}
+                </View>
+                <Text style={[styles.rankValueNew, { color: rankColor }]}>{f.value}</Text>
               </View>
-            </View>
-
+                    );
+                  })}
+                </View>
+              </>
+            ) : (
+              <View style={styles.emptyChart}>
+                <Ionicons name="school-outline" size={40} color={COLORS.textTertiary} />
+                <Text style={styles.emptyText}>Sin datos de facultades</Text>
+              </View>
+            )}
+          </View>
+          </View>
             {/* ── HISTÓRICO MENSUAL ── */}
             {reportesMensuales.length > 0 && (
               <View style={styles.section}>
@@ -884,6 +904,49 @@ const styles = StyleSheet.create({
   modalBtns: { flexDirection: 'row', gap: 10, marginTop: 20 },
   modalBtn: { flex: 1, paddingVertical: 12, borderRadius: 8, alignItems: 'center' },
   modalBtnText: { color: COLORS.white, fontWeight: '700', fontSize: 14 },
+  rankRowNew: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  paddingVertical: 10,
+  paddingHorizontal: 4,
+  borderBottomWidth: 1,
+  borderColor: COLORS.divider,
+  gap: 12,
+},
+rankBadgeNew: {
+  width: 30,
+  height: 30,
+  borderRadius: 15,
+  justifyContent: 'center',
+  alignItems: 'center',
+},
+rankNumNew: {
+  fontSize: 13,
+  fontWeight: '800',
+  color: COLORS.white,
+},
+rankLabelNew: {
+  fontSize: 13,
+  fontWeight: '600',
+  color: COLORS.textPrimary,
+  marginBottom: 4,
+},
+rankBarBg: {
+  height: 6,
+  backgroundColor: COLORS.divider,
+  borderRadius: 3,
+  overflow: 'hidden',
+},
+rankBarFill: {
+  height: '100%',
+  borderRadius: 3,
+},
+rankValueNew: {
+  fontSize: 15,
+  fontWeight: '800',
+  minWidth: 36,
+  textAlign: 'right',
+},
 });
 
 export default ReportesAvanzadosScreen;
