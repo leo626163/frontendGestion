@@ -195,7 +195,7 @@ const ReportesAvanzadosScreen = () => {
       if (Array.isArray(data.eventosPorFacultad)) {
         setRankingFacultades(
           data.eventosPorFacultad
-            .map(f => ({ label: f.facultad || 'N/A', value: f.total || 0 }))
+            .map(f => ({ label: f.facultad || 'N/A', value: f.aprobados || 0 })) // ← Cambia f.total por f.aprobados
             .sort((a, b) => b.value - a.value)
             .slice(0, 6)
         );
