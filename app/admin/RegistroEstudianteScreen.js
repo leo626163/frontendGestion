@@ -28,9 +28,9 @@ const API_BASE_URL =  'https://backendgestion-production-e2aa.up.railway.app';
 
 
 const CARRERA_A_FACULTAD = {
-  '1': '5',  
   '2': '3',  
   '3': '4',  
+  '1': '5',  
   '4': '2',  
   '5': '2',  
   '6': '2',  
@@ -214,9 +214,13 @@ const CrearUsuarioEstudiante = () => {
       if (facultadId) {
         setFacultadSeleccionada(facultadId);
         setOpenFacultad(false);
+         const facultadEncontrada = opcionesFacultad.find(f => f.value === facultadId);
+      if (facultadEncontrada) {
+        setOpcionesFacultad(prev => [...prev]); 
+      }
       }
     }
-  }, [carreraSeleccionada]);
+  }, [carreraSeleccionada, opcionesFacultad]);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -600,6 +604,8 @@ const CrearUsuarioEstudiante = () => {
             disabled={!!carreraSeleccionada}
             disabledStyle={{ backgroundColor: '#f0f0f0' }}
             disabledTextStyle={{ color: '#666', fontWeight: '600' }}
+            zIndex={1000}
+            zIndexInverse={1000}
           />
         </View>
         {errors.facultad && <Text style={styles.errorText}>{errors.facultad}</Text>}
