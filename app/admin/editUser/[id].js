@@ -190,9 +190,9 @@ const EditUser = () => {
         updateData.contrasenia = formData.contrasenia;
       }
 
-      await axios.put(`${API_BASE_URL}/${id}`, updateData, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
+      await axios.put(`${API_BASE_URL}/users/${id}`, updateData, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
 
       Alert.alert('Éxito', 'Usuario actualizado correctamente', [
         {
