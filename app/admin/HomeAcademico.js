@@ -22,7 +22,7 @@ import { BarChart } from 'react-native-chart-kit';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import ChatEmbed from '../../components/ChatEmbed';
 import QRCode from 'react-qr-code';
-import { route } from '../../../uniBackend/routes/notificacionesRoutes';
+import { route } from '../../../notificacionesRoutes';
 // Configuración de API
 let determinedApiBaseUrl;
 /*if (Platform.OS === 'android') {
