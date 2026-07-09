@@ -704,71 +704,43 @@ const HomeAdministradorScreen = () => {
       return;
     }
 
-    console.log('🔗 Intentando desvincular Telegram...');
-    console.log('🔑 Token:', token.substring(0, 20) + '...');
+    console.log('🔗 Intentando desvincular Telegram usando /profile...');
 
-    const endpoints = [
-      { url: `${API_BASE_URL}/users/unlink-telegram`, method: 'put' },
-      { url: `${API_BASE_URL}/profile/unlink-telegram`, method: 'put' },
-      { url: `${API_BASE_URL}/users/unlink-telegram`, method: 'delete' },
-      { url: `${API_BASE_URL}/profile/telegram`, method: 'delete' },
-    ];
-
-    let success = false;
-    let lastError = null;
-
-    for (const endpoint of endpoints) {
-      try {
-        console.log(`📡 Probando endpoint: ${endpoint.method.toUpperCase()} ${endpoint.url}`);
-        
-        const config = {
-          headers: { 'Authorization': `Bearer ${token}` },
-        };
-
-        let response;
-        if (endpoint.method === 'put') {
-          response = await axios.put(endpoint.url, {}, config);
-        } else if (endpoint.method === 'delete') {
-          response = await axios.delete(endpoint.url, config);
-        }
-
-        console.log('✅ Respuesta exitosa:', response.data);
-        success = true;
-        break;
-      } catch (err) {
-        console.log(`❌ Error en ${endpoint.url}:`, err.response?.status, err.response?.data);
-        lastError = err;
-        
-        if (err.response?.status === 404) {
-          continue;
-        }
-        throw err;
+    // Usar el endpoint /profile que ya funciona para actualizar
+    const response = await axios.put(
+      `${API_BASE_URL}/profile`,
+      {
+        telegram_chat_id: null,
+        telegram_username: null
+      },
+      { 
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        } 
       }
-    }
+    );
 
-    if (success) {
-      setIsTelegramLinked(false);
-      setTelegramUsername('');
-      
-      if (Platform.OS === 'web') {
-        window.alert('✓ Telegram desvinculado correctamente');
-      } else {
-        Alert.alert('✓ Éxito', 'Telegram desvinculado correctamente');
-      }
+    console.log('✅ Respuesta exitosa:', response.data);
+    
+    setIsTelegramLinked(false);
+    setTelegramUsername('');
+    
+    if (Platform.OS === 'web') {
+      window.alert('✓ Telegram desvinculado correctamente');
     } else {
-      throw lastError;
+      Alert.alert('✓ Éxito', 'Telegram desvinculado correctamente');
     }
 
   } catch (error) {
-    console.error('❌ Error completo al desvincular Telegram:', error);
+    console.error('❌ Error al desvincular Telegram:', error);
     console.error('📊 Status:', error.response?.status);
     console.error('📦 Data:', error.response?.data);
-    console.error('📝 Message:', error.message);
     
     let errorMessage = 'No se pudo desvincular Telegram';
     
     if (error.response?.status === 404) {
-      errorMessage = 'El endpoint de desvinculación no existe en el servidor';
+      errorMessage = 'El endpoint no existe. Contacta al administrador';
     } else if (error.response?.status === 401) {
       errorMessage = 'Sesión expirada. Por favor, inicia sesión nuevamente';
     } else if (error.response?.data?.message) {
