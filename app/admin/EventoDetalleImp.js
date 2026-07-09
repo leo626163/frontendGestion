@@ -367,6 +367,9 @@ const EventDetailScreen = () => {
     const layoutHtml = event.layout ? `
       <div class="section">
         <div class="section-title">Layout del Evento</div>
+        ${event.layout.url_imagen ? `
+          <img src="${API_BASE_URL}/uploads/${event.layout.url_imagen}" style="width:100%; max-width:500px; border-radius:8px; margin-bottom:0.3cm;" />
+        ` : ''}
         <div>${event.layout.nombre || `Layout ID: ${event.layout.idlayout}`}</div>
       </div>` : '';
 
@@ -626,125 +629,126 @@ const EventDetailScreen = () => {
           </View>
         )}
 
-        {/*  {/* FASE 2: ACTIVIDADES PREVIAS */}
-                {event.idfase >= 2 && event.actividadesPrevias && event.actividadesPrevias.length > 0 && (
-                  <View style={styles.sectionCard}>
-                    <Text style={styles.sectionTitle}>Actividades Previas</Text>
-                    {event.actividadesPrevias.map((act, index) => (
-                      <View key={index} style={styles.activityItem}>
-                        <View style={styles.activityHeader}>
-                          <Ionicons name="list-circle-outline" size={20} color={COLORS.primary} />
-                          <Text style={styles.activityTitle}>{act.nombre || `Actividad ${index + 1}`}</Text>
-                        </View>
-                        <View style={styles.activityDetails}>
-                          <View style={styles.activityDetailRow}>
-                            <Ionicons name="person-outline" size={16} color={COLORS.grayText} />
-                            <Text style={styles.activityDetailText}>Responsable: {act.responsable || 'No especificado'}</Text>
-                          </View>
-                          <View style={styles.activityDetailRow}>
-                            <Ionicons name="calendar-outline" size={16} color={COLORS.grayText} />
-                            <Text style={styles.activityDetailText}>Inicio: {formatDate(act.fecha_inicio)}</Text>
-                          </View>
-                          <View style={styles.activityDetailRow}>
-                            <Ionicons name="calendar-outline" size={16} color={COLORS.grayText} />
-                            <Text style={styles.activityDetailText}>Fin: {formatDate(act.fecha_fin)}</Text>
-                          </View>
-                        </View>
-                      </View>
-                    ))}
+        {/* FASE 2: ACTIVIDADES PREVIAS */}
+        {event.idfase >= 2 && event.actividadesPrevias && event.actividadesPrevias.length > 0 && (
+          <View style={styles.sectionCard}>
+            <Text style={styles.sectionTitle}>Actividades Previas</Text>
+            {event.actividadesPrevias.map((act, index) => (
+              <View key={index} style={styles.activityItem}>
+                <View style={styles.activityHeader}>
+                  <Ionicons name="list-circle-outline" size={20} color={COLORS.primary} />
+                  <Text style={styles.activityTitle}>{act.nombre || `Actividad ${index + 1}`}</Text>
+                </View>
+                <View style={styles.activityDetails}>
+                  <View style={styles.activityDetailRow}>
+                    <Ionicons name="person-outline" size={16} color={COLORS.grayText} />
+                    <Text style={styles.activityDetailText}>Responsable: {act.responsable || 'No especificado'}</Text>
                   </View>
-                )}
-        
-                {/* FASE 2: ACTIVIDADES DURANTE EL EVENTO */}
-                {event.idfase >= 2 && event.actividadesDurante && event.actividadesDurante.length > 0 && (
-                  <View style={styles.sectionCard}>
-                    <Text style={styles.sectionTitle}>Actividades Durante el Evento</Text>
-                    {event.actividadesDurante.map((act, index) => (
-                      <View key={index} style={styles.activityItem}>
-                        <View style={styles.activityHeader}>
-                          <Ionicons name="play-circle-outline" size={20} color={COLORS.success} />
-                          <Text style={styles.activityTitle}>{act.nombre || `Actividad ${index + 1}`}</Text>
-                        </View>
-                        <View style={styles.activityDetails}>
-                          <View style={styles.activityDetailRow}>
-                            <Ionicons name="person-outline" size={16} color={COLORS.grayText} />
-                            <Text style={styles.activityDetailText}>Responsable: {act.responsable || 'No especificado'}</Text>
-                          </View>
-                          <View style={styles.activityDetailRow}>
-                            <Ionicons name="calendar-outline" size={16} color={COLORS.grayText} />
-                            <Text style={styles.activityDetailText}>Inicio: {formatDate(act.fecha_inicio)}</Text>
-                          </View>
-                          <View style={styles.activityDetailRow}>
-                            <Ionicons name="calendar-outline" size={16} color={COLORS.grayText} />
-                            <Text style={styles.activityDetailText}>Fin: {formatDate(act.fecha_fin)}</Text>
-                          </View>
-                        </View>
-                      </View>
-                    ))}
+                  <View style={styles.activityDetailRow}>
+                    <Ionicons name="calendar-outline" size={16} color={COLORS.grayText} />
+                    <Text style={styles.activityDetailText}>Inicio: {formatDate(act.fecha_inicio)}</Text>
                   </View>
-                )}
-        
-                {/* FASE 2: ACTIVIDADES POST-EVENTO */}
-                {event.idfase >= 2 && event.actividadesPost && event.actividadesPost.length > 0 && (
-                  <View style={styles.sectionCard}>
-                    <Text style={styles.sectionTitle}>Actividades Después del Evento</Text>
-                    {event.actividadesPost.map((act, index) => (
-                      <View key={index} style={styles.activityItem}>
-                        <View style={styles.activityHeader}>
-                          <Ionicons name="checkmark-done-outline" size={20} color={COLORS.info} />
-                          <Text style={styles.activityTitle}>{act.nombre || `Actividad ${index + 1}`}</Text>
-                        </View>
-                        <View style={styles.activityDetails}>
-                          <View style={styles.activityDetailRow}>
-                            <Ionicons name="person-outline" size={16} color={COLORS.grayText} />
-                            <Text style={styles.activityDetailText}>Responsable: {act.responsable || 'No especificado'}</Text>
-                          </View>
-                          <View style={styles.activityDetailRow}>
-                            <Ionicons name="calendar-outline" size={16} color={COLORS.grayText} />
-                            <Text style={styles.activityDetailText}>Inicio: {formatDate(act.fecha_inicio)}</Text>
-                          </View>
-                          <View style={styles.activityDetailRow}>
-                            <Ionicons name="calendar-outline" size={16} color={COLORS.grayText} />
-                            <Text style={styles.activityDetailText}>Fin: {formatDate(act.fecha_fin)}</Text>
-                          </View>
-                        </View>
-                      </View>
-                    ))}
+                  <View style={styles.activityDetailRow}>
+                    <Ionicons name="calendar-outline" size={16} color={COLORS.grayText} />
+                    <Text style={styles.activityDetailText}>Fin: {formatDate(act.fecha_fin)}</Text>
                   </View>
-                )}
-        
-                {/* FASE 2: SERVICIOS CONTRATADOS */}
-                {event.idfase >= 2 && event.serviciosContratados && event.serviciosContratados.length > 0 && (
-                  <View style={styles.sectionCard}>
-                    <Text style={styles.sectionTitle}>Servicios Contratados</Text>
-                    {event.serviciosContratados.map((serv, index) => (
-                      <View key={index} style={styles.serviceItem}>
-                        <View style={styles.serviceHeader}>
-                          <Ionicons name="build-outline" size={20} color={COLORS.purple} />
-                          <Text style={styles.serviceTitle}>{serv.nombreServicio || `Servicio ${index + 1}`}</Text>
-                        </View>
-                        <View style={styles.serviceDetails}>
-                          {serv.caracteristica && (
-                            <View style={styles.serviceDetailRow}>
-                              <Ionicons name="list-outline" size={16} color={COLORS.grayText} />
-                              <Text style={styles.serviceDetailText}>Características: {serv.caracteristica}</Text>
-                            </View>
-                          )}
-                          <View style={styles.serviceDetailRow}>
-                            <Ionicons name="calendar-outline" size={16} color={COLORS.grayText} />
-                            <Text style={styles.serviceDetailText}>Fecha Entrega: {formatDate(serv.fechaInicio)}</Text>
-                          </View>
-                          {serv.observaciones && (
-                            <View style={styles.serviceDetailRow}>
-                              <Ionicons name="document-text-outline" size={16} color={COLORS.grayText} />
-                              <Text style={styles.serviceDetailText}>Obs: {serv.observaciones}</Text>
-                            </View>
-                          )}
-                        </View>
-                      </View>
-                    ))}
+                </View>
+              </View>
+            ))}
+          </View>
+        )}
+
+        {/* FASE 2: ACTIVIDADES DURANTE EL EVENTO */}
+        {event.idfase >= 2 && event.actividadesDurante && event.actividadesDurante.length > 0 && (
+          <View style={styles.sectionCard}>
+            <Text style={styles.sectionTitle}>Actividades Durante el Evento</Text>
+            {event.actividadesDurante.map((act, index) => (
+              <View key={index} style={styles.activityItem}>
+                <View style={styles.activityHeader}>
+                  <Ionicons name="play-circle-outline" size={20} color={COLORS.success} />
+                  <Text style={styles.activityTitle}>{act.nombre || `Actividad ${index + 1}`}</Text>
+                </View>
+                <View style={styles.activityDetails}>
+                  <View style={styles.activityDetailRow}>
+                    <Ionicons name="person-outline" size={16} color={COLORS.grayText} />
+                    <Text style={styles.activityDetailText}>Responsable: {act.responsable || 'No especificado'}</Text>
                   </View>
-                )}
+                  <View style={styles.activityDetailRow}>
+                    <Ionicons name="calendar-outline" size={16} color={COLORS.grayText} />
+                    <Text style={styles.activityDetailText}>Inicio: {formatDate(act.fecha_inicio)}</Text>
+                  </View>
+                  <View style={styles.activityDetailRow}>
+                    <Ionicons name="calendar-outline" size={16} color={COLORS.grayText} />
+                    <Text style={styles.activityDetailText}>Fin: {formatDate(act.fecha_fin)}</Text>
+                  </View>
+                </View>
+              </View>
+            ))}
+          </View>
+        )}
+
+        {/* FASE 2: ACTIVIDADES POST-EVENTO */}
+        {event.idfase >= 2 && event.actividadesPost && event.actividadesPost.length > 0 && (
+          <View style={styles.sectionCard}>
+            <Text style={styles.sectionTitle}>Actividades Después del Evento</Text>
+            {event.actividadesPost.map((act, index) => (
+              <View key={index} style={styles.activityItem}>
+                <View style={styles.activityHeader}>
+                  <Ionicons name="checkmark-done-outline" size={20} color={COLORS.info} />
+                  <Text style={styles.activityTitle}>{act.nombre || `Actividad ${index + 1}`}</Text>
+                </View>
+                <View style={styles.activityDetails}>
+                  <View style={styles.activityDetailRow}>
+                    <Ionicons name="person-outline" size={16} color={COLORS.grayText} />
+                    <Text style={styles.activityDetailText}>Responsable: {act.responsable || 'No especificado'}</Text>
+                  </View>
+                  <View style={styles.activityDetailRow}>
+                    <Ionicons name="calendar-outline" size={16} color={COLORS.grayText} />
+                    <Text style={styles.activityDetailText}>Inicio: {formatDate(act.fecha_inicio)}</Text>
+                  </View>
+                  <View style={styles.activityDetailRow}>
+                    <Ionicons name="calendar-outline" size={16} color={COLORS.grayText} />
+                    <Text style={styles.activityDetailText}>Fin: {formatDate(act.fecha_fin)}</Text>
+                  </View>
+                </View>
+              </View>
+            ))}
+          </View>
+        )}
+
+        {/* FASE 2: SERVICIOS CONTRATADOS */}
+        {event.idfase >= 2 && event.serviciosContratados && event.serviciosContratados.length > 0 && (
+          <View style={styles.sectionCard}>
+            <Text style={styles.sectionTitle}>Servicios Contratados</Text>
+            {event.serviciosContratados.map((serv, index) => (
+              <View key={index} style={styles.serviceItem}>
+                <View style={styles.serviceHeader}>
+                  <Ionicons name="build-outline" size={20} color={COLORS.purple} />
+                  <Text style={styles.serviceTitle}>{serv.nombreservicio || `Servicio ${index + 1}`}</Text>
+                </View>
+                <View style={styles.serviceDetails}>
+                  {serv.caracteristicas && (
+                    <View style={styles.serviceDetailRow}>
+                      <Ionicons name="list-outline" size={16} color={COLORS.grayText} />
+                      <Text style={styles.serviceDetailText}>Características: {serv.caracteristicas}</Text>
+                    </View>
+                  )}
+                  <View style={styles.serviceDetailRow}>
+                    <Ionicons name="calendar-outline" size={16} color={COLORS.grayText} />
+                    <Text style={styles.serviceDetailText}>Fecha Entrega: {formatDate(serv.fechadeentrega)}</Text>
+                  </View>
+                  {serv.observaciones && (
+                    <View style={styles.serviceDetailRow}>
+                      <Ionicons name="document-text-outline" size={16} color={COLORS.grayText} />
+                      <Text style={styles.serviceDetailText}>Obs: {serv.observaciones}</Text>
+                    </View>
+                  )}
+                </View>
+              </View>
+            ))}
+          </View>
+        )}
+
         {/* FASE 2: LAYOUT */}
         {event.idfase >= 2 && event.layout && (
           <View style={styles.sectionCard}>
