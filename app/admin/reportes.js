@@ -161,6 +161,11 @@ const ReportesAvanzadosScreen = () => {
   const [eventosDelMesSeleccionado, setEventosDelMesSeleccionado] = useState([]);
   const [eventosSeleccionados, setEventosSeleccionados] = useState([]);
   const [mesParaReporte, setMesParaReporte] = useState(null);
+  
+  // 🆕 ESTADOS PARA REPORTE POR EVENTO
+  const [showEventPicker, setShowEventPicker] = useState(false);
+  const [todosLosEventos, setTodosLosEventos] = useState([]);
+
   const years  = Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i);
   const months = MONTH_NAMES_FULL.map((name, i) => ({ value: i + 1, name }));
 
@@ -302,518 +307,670 @@ const cargarEventos = useCallback(async () => {
       showError('Error al exportar: ' + err.message);
     }
   };
+
   const cargarEventosDelMes = async (mesFormato) => {
-  setLoading(true);
-  try {
-    const token = await getTokenAsync();
-    if (!token) return;
+    setLoading(true);
+    try {
+      const token = await getTokenAsync();
+      if (!token) return;
 
-    const [yearStr, monthStr] = mesFormato.split('-');
-    const yearNum = parseInt(yearStr);
-    const monthNum = parseInt(monthStr);
-    
-    const res = await axios.get(`${API_BASE_URL}/eventos`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    const todosEventos = Array.isArray(res.data) ? res.data : [];
-    
-    // Filtrar eventos del mes seleccionado
-    const eventosFiltrados = todosEventos.filter(ev => {
-      if (!ev.fechaevento) return false;
-      const fechaEvento = new Date(ev.fechaevento);
-      return fechaEvento.getFullYear() === yearNum && 
-             (fechaEvento.getMonth() + 1) === monthNum;
-    });
-    
-    setEventosDelMesSeleccionado(eventosFiltrados);
-    setEventosSeleccionados(eventosFiltrados.map(e => e.idevento)); // Seleccionar todos por defecto
-    setMesParaReporte(mesFormato);
-    setShowEventSelector(true);
-  } catch (err) {
-    console.error(err);
-    showError('Error al cargar eventos del mes');
-  } finally {
-    setLoading(false);
-  }
-};
-const generarPDF = async (mesFormato) => {
-  setLoading(true);
-  try {
-    const token = await getTokenAsync();
-    if (!token) return;
-
-    const reporte = reportesMensuales.find(r => r.mes === mesFormato);
-    if (!reporte) { showError(`Sin datos para ${mesFormato}.`); return; }
-
-    const [year, monthNum] = mesFormato.split('-');
-    const mesNombre = MONTH_NAMES_FULL[parseInt(monthNum) - 1];
-
-let eventosDelMes = [];
-if (eventosIds && Array.isArray(eventosIds)) {
-      // Usar solo los eventos seleccionados
+      const [yearStr, monthStr] = mesFormato.split('-');
+      const yearNum = parseInt(yearStr);
+      const monthNum = parseInt(monthStr);
+      
       const res = await axios.get(`${API_BASE_URL}/eventos`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const todosEventos = Array.isArray(res.data) ? res.data : [];
-      eventosDelMes = todosEventos.filter(ev => eventosIds.includes(ev.idevento));
-    } else {
-  const res = await axios.get(`${API_BASE_URL}/eventos`, {
-    headers: { Authorization: `Bearer ${token}` },
-    params: { mes: mesFormato } // Filtrar por mes
-  });
-  const todosEventos = Array.isArray(res.data) ? res.data : [];
-  
-  const [yearStr, monthStr] = mesFormato.split('-');
-  const yearNum = parseInt(yearStr);
-  const monthNum2 = parseInt(monthStr);
-  const fechaLimite = new Date(yearNum, monthNum2, 0); // último día del mes
-  fechaLimite.setMonth(fechaLimite.getMonth() + 1); // +1 mes
-  
-  
-  eventosDelMes = todosEventos.filter(ev => {
+      
+      // Filtrar eventos del mes seleccionado
+      const eventosFiltrados = todosEventos.filter(ev => {
         if (!ev.fechaevento) return false;
         const fechaEvento = new Date(ev.fechaevento);
-        const fechaCreacion = ev.created_at ? new Date(ev.created_at) : fechaEvento;
-        const añoEvento = fechaEvento.getFullYear();
-        if (añoEvento !== yearNum) return false;
-        const diffMs = fechaEvento.getTime() - fechaCreacion.getTime();
-        const diffDias = diffMs / (1000 * 60 * 60 * 24);
-        if (diffDias > 30) return false;
-        if (fechaEvento > fechaLimite) return false;
-        return true;
+        return fechaEvento.getFullYear() === yearNum && 
+              (fechaEvento.getMonth() + 1) === monthNum;
       });
+      
+      setEventosDelMesSeleccionado(eventosFiltrados);
+      setEventosSeleccionados(eventosFiltrados.map(e => e.idevento)); // Seleccionar todos por defecto
+      setMesParaReporte(mesFormato);
+      setShowEventSelector(true);
+    } catch (err) {
+      console.error(err);
+      showError('Error al cargar eventos del mes');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 🆕 CARGAR EVENTOS PARA EL PICKER (REPORTE POR EVENTO)
+  const cargarEventosParaPicker = async () => {
+    setLoading(true);
+    try {
+      const token = await getTokenAsync();
+      if (!token) return;
+      const res = await axios.get(`${API_BASE_URL}/eventos`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const lista = Array.isArray(res.data) ? res.data : [];
+      // Ordenar por fecha descendente para mostrar los más recientes primero
+      lista.sort((a, b) => new Date(b.fechaevento || 0) - new Date(a.fechaevento || 0));
+      setTodosLosEventos(lista);
+      setShowEventPicker(true);
+    } catch (err) {
+      console.error(err);
+      showError('Error al cargar eventos');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 🆕 GENERAR PDF POR EVENTO INDIVIDUAL
+  const generarPDFporEvento = async (evento) => {
+    setLoading(true);
+    try {
+      const ev = evento;
+      const estadoColors = {
+        aprobado: { bg: '#d1fae5', text: '#059669', border: '#10b981' },
+        pendiente: { bg: '#fef3c7', text: '#d97706', border: '#f59e0b' },
+        rechazado: { bg: '#fee2e2', text: '#dc2626', border: '#ef4444' },
+      };
+      const estadoStyle = estadoColors[(ev.estado || '').toLowerCase()] || { bg: '#f3f4f6', text: '#6b7280', border: '#9ca3af' };
+      const estadoTexto = (ev.estado || 'N/A').charAt(0).toUpperCase() + (ev.estado || '').slice(1);
+      const fechaEventoStr = ev.fechaevento ? new Date(ev.fechaevento).toLocaleDateString('es-ES', {day:'2-digit',month:'long',year:'numeric'}) : 'Sin fecha definida';
+
+      const descripcion = ev.descripcion || ev.descripcionevento || '';
+      const observaciones = ev.observaciones || ev.comentarios || '';
+      const facultad = ev.facultad || ev.departamento || ev.facultadEvento || 'No especificada';
+      const asistentes = ev.asistentes ?? ev.cantidadasistentes ?? 'No registrado';
+
+      const html = `<!DOCTYPE html><html><head><meta charset="utf-8">
+        <style>
+          *{margin:0;padding:0;box-sizing:border-box}
+          body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;padding:40px;background:#f9fafb;line-height:1.6}
+          .wrap{max-width:800px;margin:0 auto;background:#fff;border-radius:16px;padding:40px;box-shadow:0 4px 20px rgba(0,0,0,.08)}
+          .header{text-align:center;margin-bottom:32px;padding-bottom:24px;border-bottom:3px solid #E95A0C}
+          h1{color:#E95A0C;font-size:28px;margin-bottom:8px;font-weight:800}
+          .sub{color:#6b7280;font-size:14px}
+          .section{margin-bottom:28px}
+          .section-title{font-size:18px;font-weight:700;color:#1f2937;margin-bottom:16px;display:flex;align-items:center;gap:8px;padding-bottom:8px;border-bottom:2px solid #f3f4f6}
+          .section-title::before{content:'';width:4px;height:20px;background:#E95A0C;border-radius:2px}
+          .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+          .info-card{background:#f9fafb;border-radius:12px;padding:16px;border-left:4px solid #E95A0C}
+          .info-label{font-size:11px;color:#6b7280;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px;font-weight:700}
+          .info-value{font-size:15px;font-weight:600;color:#1f2937}
+          .estado-badge{display:inline-block;padding:8px 20px;border-radius:20px;font-size:14px;font-weight:800;border:2px solid ${estadoStyle.border};background:${estadoStyle.bg};color:${estadoStyle.text};letter-spacing:0.5px}
+          .desc{background:#f9fafb;border-radius:12px;padding:20px;font-size:14px;color:#374151;border:1px solid #e5e7eb;white-space:pre-wrap;line-height:1.7}
+          .footer{text-align:center;color:#9ca3af;font-size:12px;margin-top:32px;padding-top:16px;border-top:1px solid #e5e7eb}
+          @media print{body{padding:20px}.wrap{box-shadow:none;max-width:100%}}
+        </style></head><body><div class="wrap">
+        
+        <div class="header">
+          <h1>Reporte Detallado de Evento</h1>
+          <p class="sub">ID del Evento: <strong>${ev.idevento || 'N/A'}</strong> · Generado el ${new Date().toLocaleDateString('es-ES', {day:'2-digit',month:'2-digit',year:'numeric'})}</p>
+        </div>
   
-    }
-    const aprobado       = reporte.aprobado  || 0;
-    const pendiente      = reporte.pendiente || 0;
-    const rechazado      = reporte.rechazado || 0;
-    const totalEvents    = reporte.totalEvents    || (aprobado + pendiente + rechazado);
-    const tasaAprobacion = reporte.tasaAprobacion || (totalEvents > 0 ? Math.round((aprobado / totalEvents) * 100) : 0);
-    const activeUsers    = reporte.activeUsers    || stats?.activeUsers    || 0;
-    const usuariosNuevos = reporte.usuariosNuevosEsteMes || stats?.usuariosNuevosEsteMes || 0;
-    const tiempoPromedio = reporte.tiempoPromedioAprobacion || stats?.tiempoPromedioAprobacion || 0;
-
-    const rankingRows = rankingFacultades.map((f, i) => {
-      const maxVal = rankingFacultades[0]?.value || 1;
-      const width = Math.round((f.value / maxVal) * 100);
-      return `
-        <tr>
-          <td style="padding:8px;border-bottom:1px solid #e5e7eb;">
-            <span style="display:inline-block;width:24px;height:24px;border-radius:12px;background:${i === 0 ? '#E95A0C' : '#f3f4f6'};color:${i === 0 ? 'white' : '#6b7280'};text-align:center;line-height:24px;font-weight:bold;font-size:12px;">${i + 1}</span>
-          </td>
-          <td style="padding:8px;border-bottom:1px solid #e5e7eb;font-weight:600;">${f.label}</td>
-          <td style="padding:8px;border-bottom:1px solid #e5e7eb;width:120px;">
-            <div style="background:#f3f4f6;border-radius:4px;height:8px;overflow:hidden;">
-              <div style="background:#E95A0C;height:100%;width:${width}%;border-radius:4px;"></div>
+        <div class="section">
+          <div class="section-title">Información General</div>
+          <div style="text-align:center;margin-bottom:24px;">
+            <h2 style="font-size:24px;color:#1f2937;margin-bottom:12px;">${ev.nombreevento || 'Sin nombre'}</h2>
+            <span class="estado-badge">${estadoTexto}</span>
+          </div>
+          <div class="grid">
+            <div class="info-card">
+              <div class="info-label">📅 Fecha del Evento</div>
+              <div class="info-value">${fechaEventoStr}</div>
             </div>
-          </td>
-          <td style="padding:8px;border-bottom:1px solid #e5e7eb;text-align:right;font-weight:700;">${f.value}</td>
-        </tr>
-      `;
-    }).join('');
-
-    // ✅ USAR eventosDelMes en lugar de eventosRecientes
-    const eventosRows = eventosDelMes.slice(0, 10).map(ev => {
-      const estadoColors = {
-        aprobado: { bg: '#d1fae5', text: '#059669' },
-        pendiente: { bg: '#fef3c7', text: '#d97706' },
-        rechazado: { bg: '#fee2e2', text: '#dc2626' },
-      };
-      const estadoStyle = estadoColors[(ev.estado || '').toLowerCase()] || { bg: '#f3f4f6', text: '#6b7280' };
-      const fecha = ev.fechaevento?.split('T')[0] || '–';
-      
-      return `
-        <tr>
-          <td style="padding:10px;border-bottom:1px solid #e5e7eb;">
-            <div style="font-weight:600;color:#1f2937;">${ev.nombreevento || 'Sin nombre'}</div>
-            <div style="font-size:12px;color:#6b7280;margin-top:2px;">${fecha} · ${ev.lugarevento || '–'}</div>
-          </td>
-          <td style="padding:10px;border-bottom:1px solid #e5e7eb;text-align:center;">
-            <span style="background:${estadoStyle.bg};color:${estadoStyle.text};padding:4px 12px;border-radius:12px;font-size:11px;font-weight:700;">
-              ${(ev.estado || 'N/A').charAt(0).toUpperCase() + (ev.estado || '').slice(1)}
-            </span>
-          </td>
-        </tr>
-      `;
-    }).join('');
-
-    const totalEstados = aprobado + pendiente + rechazado;
-    const pctAprobado = totalEstados > 0 ? Math.round((aprobado / totalEstados) * 100) : 0;
-    const pctPendiente = totalEstados > 0 ? Math.round((pendiente / totalEstados) * 100) : 0;
-    const pctRechazado = totalEstados > 0 ? Math.round((rechazado / totalEstados) * 100) : 0;
-
-    const html = `<!DOCTYPE html><html><head><meta charset="utf-8">
-      <style>
-        *{margin:0;padding:0;box-sizing:border-box}
-        body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;padding:40px;background:#f9fafb;line-height:1.5}
-        .wrap{max-width:800px;margin:0 auto;background:#fff;border-radius:16px;padding:40px;box-shadow:0 4px 20px rgba(0,0,0,.08)}
-        .header{text-align:center;margin-bottom:32px;padding-bottom:24px;border-bottom:3px solid #E95A0C}
-        h1{color:#E95A0C;font-size:28px;margin-bottom:8px;font-weight:800}
-        .sub{color:#6b7280;font-size:14px}
-        .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:32px}
-        .card{background:#f9fafb;border-radius:12px;padding:20px;border-left:4px solid #E95A0C}
-        .card-label{font-size:12px;color:#6b7280;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px}
-        .card-value{font-size:32px;font-weight:800;color:#1f2937}
-        .section{margin-bottom:32px}
-        .section-title{font-size:18px;font-weight:700;color:#1f2937;margin-bottom:16px;display:flex;align-items:center;gap:8px}
-        .section-title::before{content:'';width:4px;height:20px;background:#E95A0C;border-radius:2px}
-        table{width:100%;border-collapse:collapse}
-        th{background:#f9fafb;padding:12px;text-align:left;font-size:12px;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #e5e7eb}
-        .estado-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:24px}
-        .estado-card{background:#f9fafb;border-radius:8px;padding:16px;text-align:center}
-        .estado-num{font-size:28px;font-weight:800;margin-bottom:4px}
-        .estado-label{font-size:12px;color:#6b7280}
-        .aprobado{color:#10b981;border-top:3px solid #10b981}
-        .pendiente{color:#f59e0b;border-top:3px solid #f59e0b}
-        .rechazado{color:#ef4444;border-top:3px solid #ef4444}
-        .bar-container{background:#f3f4f6;border-radius:4px;height:12px;overflow:hidden;margin:4px 0}
-        .bar{height:100%;border-radius:4px;transition:width .3s}
-        .bar-aprobado{background:#10b981}
-        .bar-pendiente{background:#f59e0b}
-        .bar-rechazado{background:#ef4444}
-        .footer{text-align:center;color:#9ca3af;font-size:12px;margin-top:32px;padding-top:16px;border-top:1px solid #e5e7eb}
-        .badge{display:inline-block;padding:4px 12px;border-radius:12px;font-size:11px;font-weight:700}
-        @media print{body{padding:0}.wrap{box-shadow:none}}
-      </style></head><body><div class="wrap">
-      
-      <div class="header">
-        <h1>Reporte Mensual de Actividad</h1>
-        <p class="sub">${mesNombre} ${year} · Generado el ${new Date().toLocaleDateString('es-ES', {day:'2-digit',month:'2-digit',year:'numeric'})}</p>
-      </div>
-
-      <div class="grid">
-        <div class="card">
-          <div class="card-label">Eventos Totales</div>
-          <div class="card-value">${totalEvents}</div>
-        </div>
-        <div class="card">
-          <div class="card-label">Tasa Aprobación</div>
-          <div class="card-value">${tasaAprobacion}%</div>
-        </div>
-        <div class="card">
-          <div class="card-label">Usuarios Activos</div>
-          <div class="card-value">${activeUsers}</div>
-        </div>
-        <div class="card">
-          <div class="card-label">Nuevos Usuarios</div>
-          <div class="card-value">${usuariosNuevos}</div>
-        </div>
-      </div>
-
-      <div class="section">
-        <div class="section-title">Distribución por Estado</div>
-        <div class="estado-grid">
-          <div class="estado-card aprobado">
-            <div class="estado-num">${aprobado}</div>
-            <div class="estado-label">Aprobados (${pctAprobado}%)</div>
-            <div class="bar-container"><div class="bar bar-aprobado" style="width:${pctAprobado}%"></div></div>
-          </div>
-          <div class="estado-card pendiente">
-            <div class="estado-num">${pendiente}</div>
-            <div class="estado-label">Pendientes (${pctPendiente}%)</div>
-            <div class="bar-container"><div class="bar bar-pendiente" style="width:${pctPendiente}%"></div></div>
-          </div>
-          <div class="estado-card rechazado">
-            <div class="estado-num">${rechazado}</div>
-            <div class="estado-label">Rechazados (${pctRechazado}%)</div>
-            <div class="bar-container"><div class="bar bar-rechazado" style="width:${pctRechazado}%"></div></div>
-          </div>
-        </div>
-      </div>
-
-      ${rankingFacultades.length > 0 ? `
-      <div class="section">
-        <div class="section-title">Ranking de Facultades</div>
-        <table>
-          <thead>
-            <tr>
-              <th style="width:40px">#</th>
-              <th>Facultad</th>
-              <th style="width:120px">Progreso</th>
-              <th style="width:80px;text-align:right">Eventos</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${rankingRows}
-          </tbody>
-        </table>
-      </div>
-      ` : ''}
-
-      <div class="section">
-        <div class="section-title">Métricas Adicionales</div>
-        <table>
-          <tr>
-            <td style="padding:12px;border-bottom:1px solid #e5e7eb;color:#6b7280">Tiempo Promedio de Aprobación</td>
-            <td style="padding:12px;border-bottom:1px solid #e5e7eb;text-align:right;font-weight:700">${tiempoPromedio} horas</td>
-          </tr>
-          <tr>
-            <td style="padding:12px;border-bottom:1px solid #e5e7eb;color:#6b7280">Eventos Aprobados</td>
-            <td style="padding:12px;border-bottom:1px solid #e5e7eb;text-align:right;font-weight:700;color:#10b981">${aprobado}</td>
-          </tr>
-          <tr>
-            <td style="padding:12px;border-bottom:1px solid #e5e7eb;color:#6b7280">Eventos Pendientes</td>
-            <td style="padding:12px;border-bottom:1px solid #e5e7eb;text-align:right;font-weight:700;color:#f59e0b">${pendiente}</td>
-          </tr>
-          <tr>
-            <td style="padding:12px;color:#6b7280">Eventos Rechazados</td>
-            <td style="padding:12px;text-align:right;font-weight:700;color:#ef4444">${rechazado}</td>
-          </tr>
-        </table>
-      </div>
-
-      ${eventosDelMes.length > 0 ? `
-      <div class="section">
-        <div class="section-title">Eventos del Período (${eventosDelMes.length} eventos)</div>
-        <table>
-          <thead>
-            <tr>
-              <th>Evento</th>
-              <th style="width:120px;text-align:center">Estado</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${eventosRows}
-          </tbody>
-        </table>
-      </div>
-      ` : ''}
-
-      <div class="footer">
-        Panel de Administración UFT · Sistema de Gestión de Eventos
-      </div>
-      
-      </div></body></html>`;
-
-    if (Platform.OS === 'web') {
-      const w = window.open('', '_blank');
-      if (w) { 
-        w.document.write(html); 
-        w.document.close(); 
-        setTimeout(() => w.print(), 800); 
-      }
-      else showError('Permite ventanas emergentes para ver el reporte.');
-    } else {
-      const { uri } = await Print.printToFileAsync({ html });
-      await Sharing.shareAsync(uri, { mimeType: 'application/pdf', dialogTitle: 'Compartir Reporte' });
-    }
-  } catch (err) {
-    showError('Error al generar PDF: ' + err.message);
-  } finally {
-    setLoading(false);
-  }
-};
-const generarReporteAnual = async (year) => {
-  setLoading(true);
-  try {
-    const token = await getTokenAsync();
-    if (!token) return;
-
-    // Obtener TODOS los eventos del año
-    const res = await axios.get(`${API_BASE_URL}/eventos`, {
-      headers: { Authorization: `Bearer ${token}` },
-      params: { year: year }
-    });
-    const todosEventos = Array.isArray(res.data) ? res.data : [];
-
-    // Filtrar solo los del año seleccionado
-    const eventosAnuales = todosEventos.filter(ev => {
-      if (!ev.fechaevento) return false;
-      return new Date(ev.fechaevento).getFullYear() === year;
-    });
-
-    // Contar por estado
-    const aprobados = eventosAnuales.filter(e => e.estado === 'aprobado').length;
-    const pendientes = eventosAnuales.filter(e => e.estado === 'pendiente').length;
-    const rechazados = eventosAnuales.filter(e => e.estado === 'rechazado').length;
-    const total = eventosAnuales.length;
-
-    // Obtener TODAS las facultades (sin límite)
-    const statsRes = await axios.get(`${API_BASE_URL}/dashboard/stats`, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    const todasFacultades = statsRes.data.eventosPorFacultad || [];
-
-    // Generar filas de facultades
-    const facultadesRows = todasFacultades.map((f, i) => {
-      const maxVal = todasFacultades[0]?.aprobados || 1;
-      const width = Math.round((f.aprobados / maxVal) * 100);
-      return `
-        <tr>
-          <td style="padding:10px;border-bottom:1px solid #e5e7eb;text-align:center;font-weight:700;color:${i < 3 ? '#E95A0C' : '#6b7280'}">${i + 1}</td>
-          <td style="padding:10px;border-bottom:1px solid #e5e7eb;font-weight:600;">${f.facultad}</td>
-          <td style="padding:10px;border-bottom:1px solid #e5e7eb;width:150px;">
-            <div style="background:#f3f4f6;border-radius:4px;height:10px;overflow:hidden;">
-              <div style="background:#E95A0C;height:100%;width:${width}%;border-radius:4px;"></div>
+            <div class="info-card">
+              <div class="info-label">📍 Lugar</div>
+              <div class="info-value">${ev.lugarevento || 'No especificado'}</div>
             </div>
-          </td>
-          <td style="padding:10px;border-bottom:1px solid #e5e7eb;text-align:right;font-weight:700;color:#10b981">${f.aprobados}</td>
-          <td style="padding:10px;border-bottom:1px solid #e5e7eb;text-align:right;font-weight:700;color:#f59e0b">${f.pendientes}</td>
-          <td style="padding:10px;border-bottom:1px solid #e5e7eb;text-align:right;font-weight:700;color:#ef4444">${f.rechazados}</td>
-          <td style="padding:10px;border-bottom:1px solid #e5e7eb;text-align:right;font-weight:800">${f.total}</td>
-        </tr>
-      `;
-    }).join('');
-
-    // Generar filas de eventos (todos)
-    const eventosRows = eventosAnuales.map(ev => {
-      const estadoColors = {
-        aprobado: { bg: '#d1fae5', text: '#059669' },
-        pendiente: { bg: '#fef3c7', text: '#d97706' },
-        rechazado: { bg: '#fee2e2', text: '#dc2626' },
-      };
-      const estadoStyle = estadoColors[(ev.estado || '').toLowerCase()] || { bg: '#f3f4f6', text: '#6b7280' };
-      const fecha = ev.fechaevento?.split('T')[0] || '–';
-      
-      return `
-        <tr>
-          <td style="padding:10px;border-bottom:1px solid #e5e7eb;font-size:11px;color:#6b7280">${ev.idevento}</td>
-          <td style="padding:10px;border-bottom:1px solid #e5e7eb;">
-            <div style="font-weight:600;color:#1f2937;">${ev.nombreevento || 'Sin nombre'}</div>
-            <div style="font-size:11px;color:#6b7280;margin-top:2px;">${fecha} · ${ev.lugarevento || '–'}</div>
-          </td>
-          <td style="padding:10px;border-bottom:1px solid #e5e7eb;text-align:center;">
-            <span style="background:${estadoStyle.bg};color:${estadoStyle.text};padding:4px 12px;border-radius:12px;font-size:11px;font-weight:700;">
-              ${(ev.estado || 'N/A').charAt(0).toUpperCase() + (ev.estado || '').slice(1)}
-            </span>
-          </td>
-        </tr>
-      `;
-    }).join('');
-
-    const tasaAprobacion = total > 0 ? Math.round((aprobados / total) * 100) : 0;
-
-    const html = `<!DOCTYPE html><html><head><meta charset="utf-8">
-      <style>
-        *{margin:0;padding:0;box-sizing:border-box}
-        body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;padding:30px;background:#f9fafb;line-height:1.5}
-        .wrap{max-width:900px;margin:0 auto;background:#fff;border-radius:16px;padding:40px;box-shadow:0 4px 20px rgba(0,0,0,.08)}
-        .header{text-align:center;margin-bottom:32px;padding-bottom:24px;border-bottom:4px solid #E95A0C}
-        h1{color:#E95A0C;font-size:32px;margin-bottom:8px;font-weight:800}
-        .sub{color:#6b7280;font-size:14px}
-        .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:32px}
-        .card{background:#f9fafb;border-radius:12px;padding:18px;border-left:4px solid #E95A0C;text-align:center}
-        .card-label{font-size:11px;color:#6b7280;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px}
-        .card-value{font-size:28px;font-weight:800;color:#1f2937}
-        .section{margin-bottom:32px;page-break-inside:avoid}
-        .section-title{font-size:20px;font-weight:700;color:#1f2937;margin-bottom:16px;display:flex;align-items:center;gap:8px;padding-bottom:8px;border-bottom:2px solid #f3f4f6}
-        .section-title::before{content:'';width:5px;height:24px;background:#E95A0C;border-radius:2px}
-        table{width:100%;border-collapse:collapse;font-size:13px}
-        th{background:#f9fafb;padding:12px;text-align:left;font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #e5e7eb}
-        .estado-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:24px}
-        .estado-card{background:#f9fafb;border-radius:8px;padding:20px;text-align:center}
-        .estado-num{font-size:36px;font-weight:800;margin-bottom:4px}
-        .estado-label{font-size:12px;color:#6b7280}
-        .aprobado{color:#10b981;border-top:4px solid #10b981}
-        .pendiente{color:#f59e0b;border-top:4px solid #f59e0b}
-        .rechazado{color:#ef4444;border-top:4px solid #ef4444}
-        .footer{text-align:center;color:#9ca3af;font-size:12px;margin-top:32px;padding-top:16px;border-top:1px solid #e5e7eb}
-        .page-break{page-break-after:always}
-        @media print{body{padding:0}.wrap{box-shadow:none}}
-      </style></head><body><div class="wrap">
-      
-      <div class="header">
-        <h1>📊 Reporte Anual Completo ${year}</h1>
-        <p class="sub">Sistema de Gestión de Eventos · Generado el ${new Date().toLocaleDateString('es-ES', {day:'2-digit',month:'2-digit',year:'numeric'})}</p>
-      </div>
-
-      <div class="grid">
-        <div class="card">
-          <div class="card-label">Total Eventos</div>
-          <div class="card-value">${total}</div>
-        </div>
-        <div class="card" style="border-left-color:#10b981">
-          <div class="card-label">Aprobados</div>
-          <div class="card-value" style="color:#10b981">${aprobados}</div>
-        </div>
-        <div class="card" style="border-left-color:#f59e0b">
-          <div class="card-label">Pendientes</div>
-          <div class="card-value" style="color:#f59e0b">${pendientes}</div>
-        </div>
-        <div class="card" style="border-left-color:#3B82F6">
-          <div class="card-label">Tasa Aprobación</div>
-          <div class="card-value" style="color:#3B82F6">${tasaAprobacion}%</div>
-        </div>
-      </div>
-
-      <div class="section">
-        <div class="section-title">📈 Distribución por Estado</div>
-        <div class="estado-grid">
-          <div class="estado-card aprobado">
-            <div class="estado-num">${aprobados}</div>
-            <div class="estado-label">Aprobados (${total > 0 ? Math.round((aprobados/total)*100) : 0}%)</div>
-          </div>
-          <div class="estado-card pendiente">
-            <div class="estado-num">${pendientes}</div>
-            <div class="estado-label">Pendientes (${total > 0 ? Math.round((pendientes/total)*100) : 0}%)</div>
-          </div>
-          <div class="estado-card rechazado">
-            <div class="estado-num">${rechazados}</div>
-            <div class="estado-label">Rechazados (${total > 0 ? Math.round((rechazados/total)*100) : 0}%)</div>
+            <div class="info-card">
+              <div class="info-label">👤 Responsable</div>
+              <div class="info-value">${ev.responsable_evento || 'No asignado'}</div>
+            </div>
+            <div class="info-card">
+              <div class="info-label">🏢 Facultad / Departamento</div>
+              <div class="info-value">${facultad}</div>
+            </div>
+            <div class="info-card">
+              <div class="info-label">🕒 Hora de Inicio</div>
+              <div class="info-value">${ev.horainicio || '–'}</div>
+            </div>
+            <div class="info-card">
+              <div class="info-label">🕒 Hora de Fin</div>
+              <div class="info-value">${ev.horafin || '–'}</div>
+            </div>
+            <div class="info-card">
+              <div class="info-label">👥 Cantidad de Asistentes</div>
+              <div class="info-value">${asistentes}</div>
+            </div>
+            <div class="info-card">
+              <div class="info-label">📅 Fecha de Registro</div>
+              <div class="info-value">${ev.created_at ? new Date(ev.created_at).toLocaleDateString('es-ES') : '–'}</div>
+            </div>
           </div>
         </div>
-      </div>
-
-      <div class="section page-break">
-        <div class="section-title">🏛️ Ranking Completo de Facultades (${todasFacultades.length} facultades)</div>
-        <table>
-          <thead>
-            <tr>
-              <th style="width:40px">#</th>
-              <th>Facultad</th>
-              <th style="width:150px">Progreso</th>
-              <th style="width:80px;text-align:right;color:#10b981">Aprob.</th>
-              <th style="width:80px;text-align:right;color:#f59e0b">Pend.</th>
-              <th style="width:80px;text-align:right;color:#ef4444">Rech.</th>
-              <th style="width:80px;text-align:right">Total</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${facultadesRows}
-          </tbody>
-        </table>
-      </div>
-
-      <div class="section page-break">
-        <div class="section-title">📋 Listado Completo de Eventos (${eventosAnuales.length} eventos)</div>
-        <table>
-          <thead>
-            <tr>
-              <th style="width:60px">ID</th>
-              <th>Evento</th>
-              <th style="width:120px;text-align:center">Estado</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${eventosRows}
-          </tbody>
-        </table>
-      </div>
-
-      <div class="footer">
-        <strong>Panel de Administración UFT</strong> · Sistema de Gestión de Eventos · Año ${year}
-      </div>
-      
-      </div></body></html>`;
-
-    if (Platform.OS === 'web') {
-      const w = window.open('', '_blank');
-      if (w) { 
-        w.document.write(html); 
-        w.document.close(); 
-        setTimeout(() => w.print(), 800); 
+  
+        ${descripcion ? `
+        <div class="section">
+          <div class="section-title">📝 Descripción del Evento</div>
+          <div class="desc">${descripcion}</div>
+        </div>
+        ` : ''}
+  
+        ${observaciones ? `
+        <div class="section">
+          <div class="section-title">💬 Observaciones</div>
+          <div class="desc">${observaciones}</div>
+        </div>
+        ` : ''}
+  
+        <div class="footer">
+          Panel de Administración UFT · Sistema de Gestión de Eventos
+        </div>
+        
+        </div></body></html>`;
+  
+      if (Platform.OS === 'web') {
+        const w = window.open('', '_blank');
+        if (w) { 
+          w.document.write(html); 
+          w.document.close(); 
+          setTimeout(() => w.print(), 800); 
+        }
+        else showError('Permite ventanas emergentes para ver el reporte.');
+      } else {
+        const { uri } = await Print.printToFileAsync({ html });
+        await Sharing.shareAsync(uri, { mimeType: 'application/pdf', dialogTitle: `Reporte_${ev.nombreevento || ev.idevento}` });
       }
-      else showError('Permite ventanas emergentes para ver el reporte.');
-    } else {
-      const { uri } = await Print.printToFileAsync({ html });
-      await Sharing.shareAsync(uri, { mimeType: 'application/pdf', dialogTitle: 'Reporte Anual Completo' });
+    } catch (err) {
+      console.error(err);
+      showError('Error al generar PDF: ' + err.message);
+    } finally {
+      setLoading(false);
     }
-  } catch (err) {
-    showError('Error al generar reporte: ' + err.message);
-  } finally {
-    setLoading(false);
-  }
-};
+  };
+
+  const generarPDF = async (mesFormato) => {
+    setLoading(true);
+    try {
+      const token = await getTokenAsync();
+      if (!token) return;
+
+      const reporte = reportesMensuales.find(r => r.mes === mesFormato);
+      if (!reporte) { showError(`Sin datos para ${mesFormato}.`); return; }
+
+      const [year, monthNum] = mesFormato.split('-');
+      const mesNombre = MONTH_NAMES_FULL[parseInt(monthNum) - 1];
+
+      let eventosDelMes = [];
+      const eventosIds = undefined; // 🔧 CORRECCIÓN: Se declara para evitar ReferenceError
+      if (eventosIds && Array.isArray(eventosIds)) {
+        // Usar solo los eventos seleccionados
+        const res = await axios.get(`${API_BASE_URL}/eventos`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const todosEventos = Array.isArray(res.data) ? res.data : [];
+        eventosDelMes = todosEventos.filter(ev => eventosIds.includes(ev.idevento));
+      } else {
+        const res = await axios.get(`${API_BASE_URL}/eventos`, {
+          headers: { Authorization: `Bearer ${token}` },
+          params: { mes: mesFormato } // Filtrar por mes
+        });
+        const todosEventos = Array.isArray(res.data) ? res.data : [];
+        
+        const [yearStr, monthStr] = mesFormato.split('-');
+        const yearNum = parseInt(yearStr);
+        const monthNum2 = parseInt(monthStr);
+        const fechaLimite = new Date(yearNum, monthNum2, 0); // último día del mes
+        fechaLimite.setMonth(fechaLimite.getMonth() + 1); // +1 mes
+        
+        
+        eventosDelMes = todosEventos.filter(ev => {
+              if (!ev.fechaevento) return false;
+              const fechaEvento = new Date(ev.fechaevento);
+              const fechaCreacion = ev.created_at ? new Date(ev.created_at) : fechaEvento;
+              const añoEvento = fechaEvento.getFullYear();
+              if (añoEvento !== yearNum) return false;
+              const diffMs = fechaEvento.getTime() - fechaCreacion.getTime();
+              const diffDias = diffMs / (1000 * 60 * 60 * 24);
+              if (diffDias > 30) return false;
+              if (fechaEvento > fechaLimite) return false;
+              return true;
+            });
+        
+      }
+      const aprobado       = reporte.aprobado  || 0;
+      const pendiente      = reporte.pendiente || 0;
+      const rechazado      = reporte.rechazado || 0;
+      const totalEvents    = reporte.totalEvents    || (aprobado + pendiente + rechazado);
+      const tasaAprobacion = reporte.tasaAprobacion || (totalEvents > 0 ? Math.round((aprobado / totalEvents) * 100) : 0);
+      const activeUsers    = reporte.activeUsers    || stats?.activeUsers    || 0;
+      const usuariosNuevos = reporte.usuariosNuevosEsteMes || stats?.usuariosNuevosEsteMes || 0;
+      const tiempoPromedio = reporte.tiempoPromedioAprobacion || stats?.tiempoPromedioAprobacion || 0;
+
+      const rankingRows = rankingFacultades.map((f, i) => {
+        const maxVal = rankingFacultades[0]?.value || 1;
+        const width = Math.round((f.value / maxVal) * 100);
+        return `
+          <tr>
+            <td style="padding:8px;border-bottom:1px solid #e5e7eb;">
+              <span style="display:inline-block;width:24px;height:24px;border-radius:12px;background:${i === 0 ? '#E95A0C' : '#f3f4f6'};color:${i === 0 ? 'white' : '#6b7280'};text-align:center;line-height:24px;font-weight:bold;font-size:12px;">${i + 1}</span>
+            </td>
+            <td style="padding:8px;border-bottom:1px solid #e5e7eb;font-weight:600;">${f.label}</td>
+            <td style="padding:8px;border-bottom:1px solid #e5e7eb;width:120px;">
+              <div style="background:#f3f4f6;border-radius:4px;height:8px;overflow:hidden;">
+                <div style="background:#E95A0C;height:100%;width:${width}%;border-radius:4px;"></div>
+              </div>
+            </td>
+            <td style="padding:8px;border-bottom:1px solid #e5e7eb;text-align:right;font-weight:700;">${f.value}</td>
+          </tr>
+        `;
+      }).join('');
+
+      // ✅ USAR eventosDelMes en lugar de eventosRecientes
+      const eventosRows = eventosDelMes.slice(0, 10).map(ev => {
+        const estadoColors = {
+          aprobado: { bg: '#d1fae5', text: '#059669' },
+          pendiente: { bg: '#fef3c7', text: '#d97706' },
+          rechazado: { bg: '#fee2e2', text: '#dc2626' },
+        };
+        const estadoStyle = estadoColors[(ev.estado || '').toLowerCase()] || { bg: '#f3f4f6', text: '#6b7280' };
+        const fecha = ev.fechaevento?.split('T')[0] || '–';
+        
+        return `
+          <tr>
+            <td style="padding:10px;border-bottom:1px solid #e5e7eb;">
+              <div style="font-weight:600;color:#1f2937;">${ev.nombreevento || 'Sin nombre'}</div>
+              <div style="font-size:12px;color:#6b7280;margin-top:2px;">${fecha} · ${ev.lugarevento || '–'}</div>
+            </td>
+            <td style="padding:10px;border-bottom:1px solid #e5e7eb;text-align:center;">
+              <span style="background:${estadoStyle.bg};color:${estadoStyle.text};padding:4px 12px;border-radius:12px;font-size:11px;font-weight:700;">
+                ${(ev.estado || 'N/A').charAt(0).toUpperCase() + (ev.estado || '').slice(1)}
+              </span>
+            </td>
+          </tr>
+        `;
+      }).join('');
+
+      const totalEstados = aprobado + pendiente + rechazado;
+      const pctAprobado = totalEstados > 0 ? Math.round((aprobado / totalEstados) * 100) : 0;
+      const pctPendiente = totalEstados > 0 ? Math.round((pendiente / totalEstados) * 100) : 0;
+      const pctRechazado = totalEstados > 0 ? Math.round((rechazado / totalEstados) * 100) : 0;
+
+      const html = `<!DOCTYPE html><html><head><meta charset="utf-8">
+        <style>
+          *{margin:0;padding:0;box-sizing:border-box}
+          body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;padding:40px;background:#f9fafb;line-height:1.5}
+          .wrap{max-width:800px;margin:0 auto;background:#fff;border-radius:16px;padding:40px;box-shadow:0 4px 20px rgba(0,0,0,.08)}
+          .header{text-align:center;margin-bottom:32px;padding-bottom:24px;border-bottom:3px solid #E95A0C}
+          h1{color:#E95A0C;font-size:28px;margin-bottom:8px;font-weight:800}
+          .sub{color:#6b7280;font-size:14px}
+          .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:32px}
+          .card{background:#f9fafb;border-radius:12px;padding:20px;border-left:4px solid #E95A0C}
+          .card-label{font-size:12px;color:#6b7280;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px}
+          .card-value{font-size:32px;font-weight:800;color:#1f2937}
+          .section{margin-bottom:32px}
+          .section-title{font-size:18px;font-weight:700;color:#1f2937;margin-bottom:16px;display:flex;align-items:center;gap:8px}
+          .section-title::before{content:'';width:4px;height:20px;background:#E95A0C;border-radius:2px}
+          table{width:100%;border-collapse:collapse}
+          th{background:#f9fafb;padding:12px;text-align:left;font-size:12px;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #e5e7eb}
+          .estado-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:24px}
+          .estado-card{background:#f9fafb;border-radius:8px;padding:16px;text-align:center}
+          .estado-num{font-size:28px;font-weight:800;margin-bottom:4px}
+          .estado-label{font-size:12px;color:#6b7280}
+          .aprobado{color:#10b981;border-top:3px solid #10b981}
+          .pendiente{color:#f59e0b;border-top:3px solid #f59e0b}
+          .rechazado{color:#ef4444;border-top:3px solid #ef4444}
+          .bar-container{background:#f3f4f6;border-radius:4px;height:12px;overflow:hidden;margin:4px 0}
+          .bar{height:100%;border-radius:4px;transition:width .3s}
+          .bar-aprobado{background:#10b981}
+          .bar-pendiente{background:#f59e0b}
+          .bar-rechazado{background:#ef4444}
+          .footer{text-align:center;color:#9ca3af;font-size:12px;margin-top:32px;padding-top:16px;border-top:1px solid #e5e7eb}
+          .badge{display:inline-block;padding:4px 12px;border-radius:12px;font-size:11px;font-weight:700}
+          @media print{body{padding:0}.wrap{box-shadow:none}}
+        </style></head><body><div class="wrap">
+        
+        <div class="header">
+          <h1>Reporte Mensual de Actividad</h1>
+          <p class="sub">${mesNombre} ${year} · Generado el ${new Date().toLocaleDateString('es-ES', {day:'2-digit',month:'2-digit',year:'numeric'})}</p>
+        </div>
+
+        <div class="grid">
+          <div class="card">
+            <div class="card-label">Eventos Totales</div>
+            <div class="card-value">${totalEvents}</div>
+          </div>
+          <div class="card">
+            <div class="card-label">Tasa Aprobación</div>
+            <div class="card-value">${tasaAprobacion}%</div>
+          </div>
+          <div class="card">
+            <div class="card-label">Usuarios Activos</div>
+            <div class="card-value">${activeUsers}</div>
+          </div>
+          <div class="card">
+            <div class="card-label">Nuevos Usuarios</div>
+            <div class="card-value">${usuariosNuevos}</div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-title">Distribución por Estado</div>
+          <div class="estado-grid">
+            <div class="estado-card aprobado">
+              <div class="estado-num">${aprobado}</div>
+              <div class="estado-label">Aprobados (${pctAprobado}%)</div>
+              <div class="bar-container"><div class="bar bar-aprobado" style="width:${pctAprobado}%"></div></div>
+            </div>
+            <div class="estado-card pendiente">
+              <div class="estado-num">${pendiente}</div>
+              <div class="estado-label">Pendientes (${pctPendiente}%)</div>
+              <div class="bar-container"><div class="bar bar-pendiente" style="width:${pctPendiente}%"></div></div>
+            </div>
+            <div class="estado-card rechazado">
+              <div class="estado-num">${rechazado}</div>
+              <div class="estado-label">Rechazados (${pctRechazado}%)</div>
+              <div class="bar-container"><div class="bar bar-rechazado" style="width:${pctRechazado}%"></div></div>
+            </div>
+          </div>
+        </div>
+
+        ${rankingFacultades.length > 0 ? `
+        <div class="section">
+          <div class="section-title">Ranking de Facultades</div>
+          <table>
+            <thead>
+              <tr>
+                <th style="width:40px">#</th>
+                <th>Facultad</th>
+                <th style="width:120px">Progreso</th>
+                <th style="width:80px;text-align:right">Eventos</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rankingRows}
+            </tbody>
+          </table>
+        </div>
+        ` : ''}
+
+        <div class="section">
+          <div class="section-title">Métricas Adicionales</div>
+          <table>
+            <tr>
+              <td style="padding:12px;border-bottom:1px solid #e5e7eb;color:#6b7280">Tiempo Promedio de Aprobación</td>
+              <td style="padding:12px;border-bottom:1px solid #e5e7eb;text-align:right;font-weight:700">${tiempoPromedio} horas</td>
+            </tr>
+            <tr>
+              <td style="padding:12px;border-bottom:1px solid #e5e7eb;color:#6b7280">Eventos Aprobados</td>
+              <td style="padding:12px;border-bottom:1px solid #e5e7eb;text-align:right;font-weight:700;color:#10b981">${aprobado}</td>
+            </tr>
+            <tr>
+              <td style="padding:12px;border-bottom:1px solid #e5e7eb;color:#6b7280">Eventos Pendientes</td>
+              <td style="padding:12px;border-bottom:1px solid #e5e7eb;text-align:right;font-weight:700;color:#f59e0b">${pendiente}</td>
+            </tr>
+            <tr>
+              <td style="padding:12px;color:#6b7280">Eventos Rechazados</td>
+              <td style="padding:12px;text-align:right;font-weight:700;color:#ef4444">${rechazado}</td>
+            </tr>
+          </table>
+        </div>
+
+        ${eventosDelMes.length > 0 ? `
+        <div class="section">
+          <div class="section-title">Eventos del Período (${eventosDelMes.length} eventos)</div>
+          <table>
+            <thead>
+              <tr>
+                <th>Evento</th>
+                <th style="width:120px;text-align:center">Estado</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${eventosRows}
+            </tbody>
+          </table>
+        </div>
+        ` : ''}
+
+        <div class="footer">
+          Panel de Administración UFT · Sistema de Gestión de Eventos
+        </div>
+        
+        </div></body></html>`;
+
+      if (Platform.OS === 'web') {
+        const w = window.open('', '_blank');
+        if (w) { 
+          w.document.write(html); 
+          w.document.close(); 
+          setTimeout(() => w.print(), 800); 
+        }
+        else showError('Permite ventanas emergentes para ver el reporte.');
+      } else {
+        const { uri } = await Print.printToFileAsync({ html });
+        await Sharing.shareAsync(uri, { mimeType: 'application/pdf', dialogTitle: 'Compartir Reporte' });
+      }
+    } catch (err) {
+      showError('Error al generar PDF: ' + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+  const generarReporteAnual = async (year) => {
+    setLoading(true);
+    try {
+      const token = await getTokenAsync();
+      if (!token) return;
+
+      // Obtener TODOS los eventos del año
+      const res = await axios.get(`${API_BASE_URL}/eventos`, {
+        headers: { Authorization: `Bearer ${token}` },
+        params: { year: year }
+      });
+      const todosEventos = Array.isArray(res.data) ? res.data : [];
+
+      // Filtrar solo los del año seleccionado
+      const eventosAnuales = todosEventos.filter(ev => {
+        if (!ev.fechaevento) return false;
+        return new Date(ev.fechaevento).getFullYear() === year;
+      });
+
+      // Contar por estado
+      const aprobados = eventosAnuales.filter(e => e.estado === 'aprobado').length;
+      const pendientes = eventosAnuales.filter(e => e.estado === 'pendiente').length;
+      const rechazados = eventosAnuales.filter(e => e.estado === 'rechazado').length;
+      const total = eventosAnuales.length;
+
+      // Obtener TODAS las facultades (sin límite)
+      const statsRes = await axios.get(`${API_BASE_URL}/dashboard/stats`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const todasFacultades = statsRes.data.eventosPorFacultad || [];
+
+      // Generar filas de facultades
+      const facultadesRows = todasFacultades.map((f, i) => {
+        const maxVal = todasFacultades[0]?.aprobados || 1;
+        const width = Math.round((f.aprobados / maxVal) * 100);
+        return `
+          <tr>
+            <td style="padding:10px;border-bottom:1px solid #e5e7eb;text-align:center;font-weight:700;color:${i < 3 ? '#E95A0C' : '#6b7280'}">${i + 1}</td>
+            <td style="padding:10px;border-bottom:1px solid #e5e7eb;font-weight:600;">${f.facultad}</td>
+            <td style="padding:10px;border-bottom:1px solid #e5e7eb;width:150px;">
+              <div style="background:#f3f4f6;border-radius:4px;height:10px;overflow:hidden;">
+                <div style="background:#E95A0C;height:100%;width:${width}%;border-radius:4px;"></div>
+              </div>
+            </td>
+            <td style="padding:10px;border-bottom:1px solid #e5e7eb;text-align:right;font-weight:700;color:#10b981">${f.aprobados}</td>
+            <td style="padding:10px;border-bottom:1px solid #e5e7eb;text-align:right;font-weight:700;color:#f59e0b">${f.pendientes}</td>
+            <td style="padding:10px;border-bottom:1px solid #e5e7eb;text-align:right;font-weight:700;color:#ef4444">${f.rechazados}</td>
+            <td style="padding:10px;border-bottom:1px solid #e5e7eb;text-align:right;font-weight:800">${f.total}</td>
+          </tr>
+        `;
+      }).join('');
+
+      // Generar filas de eventos (todos)
+      const eventosRows = eventosAnuales.map(ev => {
+        const estadoColors = {
+          aprobado: { bg: '#d1fae5', text: '#059669' },
+          pendiente: { bg: '#fef3c7', text: '#d97706' },
+          rechazado: { bg: '#fee2e2', text: '#dc2626' },
+        };
+        const estadoStyle = estadoColors[(ev.estado || '').toLowerCase()] || { bg: '#f3f4f6', text: '#6b7280' };
+        const fecha = ev.fechaevento?.split('T')[0] || '–';
+        
+        return `
+          <tr>
+            <td style="padding:10px;border-bottom:1px solid #e5e7eb;font-size:11px;color:#6b7280">${ev.idevento}</td>
+            <td style="padding:10px;border-bottom:1px solid #e5e7eb;">
+              <div style="font-weight:600;color:#1f2937;">${ev.nombreevento || 'Sin nombre'}</div>
+              <div style="font-size:11px;color:#6b7280;margin-top:2px;">${fecha} · ${ev.lugarevento || '–'}</div>
+            </td>
+            <td style="padding:10px;border-bottom:1px solid #e5e7eb;text-align:center;">
+              <span style="background:${estadoStyle.bg};color:${estadoStyle.text};padding:4px 12px;border-radius:12px;font-size:11px;font-weight:700;">
+                ${(ev.estado || 'N/A').charAt(0).toUpperCase() + (ev.estado || '').slice(1)}
+              </span>
+            </td>
+          </tr>
+        `;
+      }).join('');
+
+      const tasaAprobacion = total > 0 ? Math.round((aprobados / total) * 100) : 0;
+
+      const html = `<!DOCTYPE html><html><head><meta charset="utf-8">
+        <style>
+          *{margin:0;padding:0;box-sizing:border-box}
+          body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;padding:30px;background:#f9fafb;line-height:1.5}
+          .wrap{max-width:900px;margin:0 auto;background:#fff;border-radius:16px;padding:40px;box-shadow:0 4px 20px rgba(0,0,0,.08)}
+          .header{text-align:center;margin-bottom:32px;padding-bottom:24px;border-bottom:4px solid #E95A0C}
+          h1{color:#E95A0C;font-size:32px;margin-bottom:8px;font-weight:800}
+          .sub{color:#6b7280;font-size:14px}
+          .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:32px}
+          .card{background:#f9fafb;border-radius:12px;padding:18px;border-left:4px solid #E95A0C;text-align:center}
+          .card-label{font-size:11px;color:#6b7280;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px}
+          .card-value{font-size:28px;font-weight:800;color:#1f2937}
+          .section{margin-bottom:32px;page-break-inside:avoid}
+          .section-title{font-size:20px;font-weight:700;color:#1f2937;margin-bottom:16px;display:flex;align-items:center;gap:8px;padding-bottom:8px;border-bottom:2px solid #f3f4f6}
+          .section-title::before{content:'';width:5px;height:24px;background:#E95A0C;border-radius:2px}
+          table{width:100%;border-collapse:collapse;font-size:13px}
+          th{background:#f9fafb;padding:12px;text-align:left;font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #e5e7eb}
+          .estado-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:24px}
+          .estado-card{background:#f9fafb;border-radius:8px;padding:20px;text-align:center}
+          .estado-num{font-size:36px;font-weight:800;margin-bottom:4px}
+          .estado-label{font-size:12px;color:#6b7280}
+          .aprobado{color:#10b981;border-top:4px solid #10b981}
+          .pendiente{color:#f59e0b;border-top:4px solid #f59e0b}
+          .rechazado{color:#ef4444;border-top:4px solid #ef4444}
+          .footer{text-align:center;color:#9ca3af;font-size:12px;margin-top:32px;padding-top:16px;border-top:1px solid #e5e7eb}
+          .page-break{page-break-after:always}
+          @media print{body{padding:0}.wrap{box-shadow:none}}
+        </style></head><body><div class="wrap">
+        
+        <div class="header">
+          <h1>📊 Reporte Anual Completo ${year}</h1>
+          <p class="sub">Sistema de Gestión de Eventos · Generado el ${new Date().toLocaleDateString('es-ES', {day:'2-digit',month:'2-digit',year:'numeric'})}</p>
+        </div>
+
+        <div class="grid">
+          <div class="card">
+            <div class="card-label">Total Eventos</div>
+            <div class="card-value">${total}</div>
+          </div>
+          <div class="card" style="border-left-color:#10b981">
+            <div class="card-label">Aprobados</div>
+            <div class="card-value" style="color:#10b981">${aprobados}</div>
+          </div>
+          <div class="card" style="border-left-color:#f59e0b">
+            <div class="card-label">Pendientes</div>
+            <div class="card-value" style="color:#f59e0b">${pendientes}</div>
+          </div>
+          <div class="card" style="border-left-color:#3B82F6">
+            <div class="card-label">Tasa Aprobación</div>
+            <div class="card-value" style="color:#3B82F6">${tasaAprobacion}%</div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-title">📈 Distribución por Estado</div>
+          <div class="estado-grid">
+            <div class="estado-card aprobado">
+              <div class="estado-num">${aprobados}</div>
+              <div class="estado-label">Aprobados (${total > 0 ? Math.round((aprobados/total)*100) : 0}%)</div>
+            </div>
+            <div class="estado-card pendiente">
+              <div class="estado-num">${pendientes}</div>
+              <div class="estado-label">Pendientes (${total > 0 ? Math.round((pendientes/total)*100) : 0}%)</div>
+            </div>
+            <div class="estado-card rechazado">
+              <div class="estado-num">${rechazados}</div>
+              <div class="estado-label">Rechazados (${total > 0 ? Math.round((rechazados/total)*100) : 0}%)</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="section page-break">
+          <div class="section-title">🏛️ Ranking Completo de Facultades (${todasFacultades.length} facultades)</div>
+          <table>
+            <thead>
+              <tr>
+                <th style="width:40px">#</th>
+                <th>Facultad</th>
+                <th style="width:150px">Progreso</th>
+                <th style="width:80px;text-align:right;color:#10b981">Aprob.</th>
+                <th style="width:80px;text-align:right;color:#f59e0b">Pend.</th>
+                <th style="width:80px;text-align:right;color:#ef4444">Rech.</th>
+                <th style="width:80px;text-align:right">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${facultadesRows}
+            </tbody>
+          </table>
+        </div>
+
+        <div class="section page-break">
+          <div class="section-title">📋 Listado Completo de Eventos (${eventosAnuales.length} eventos)</div>
+          <table>
+            <thead>
+              <tr>
+                <th style="width:60px">ID</th>
+                <th>Evento</th>
+                <th style="width:120px;text-align:center">Estado</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${eventosRows}
+            </tbody>
+          </table>
+        </div>
+
+        <div class="footer">
+          <strong>Panel de Administración UFT</strong> · Sistema de Gestión de Eventos · Año ${year}
+        </div>
+        
+        </div></body></html>`;
+
+      if (Platform.OS === 'web') {
+        const w = window.open('', '_blank');
+        if (w) { 
+          w.document.write(html); 
+          w.document.close(); 
+          setTimeout(() => w.print(), 800); 
+        }
+        else showError('Permite ventanas emergentes para ver el reporte.');
+      } else {
+        const { uri } = await Print.printToFileAsync({ html });
+        await Sharing.shareAsync(uri, { mimeType: 'application/pdf', dialogTitle: 'Reporte Anual Completo' });
+      }
+    } catch (err) {
+      showError('Error al generar reporte: ' + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
   const estadoBadge = (estado) => {
     const map = {
       aprobado:  { bg: '#D1FAE5', text: '#059669' },
@@ -1009,6 +1166,21 @@ const generarReporteAnual = async (year) => {
                 {loading && <ActivityIndicator size="small" color="#F59E0B" />}
                 <Ionicons name="chevron-forward" size={18} color="#F59E0B" />
               </TouchableOpacity>
+
+              {/* 🆕 BOTÓN REPORTE POR EVENTO */}
+              <TouchableOpacity 
+                style={[styles.actionBtn, { backgroundColor: '#F3E8FF', borderColor: '#8B5CF6' }]} 
+                onPress={cargarEventosParaPicker}
+              >
+                <Ionicons name="list-circle-outline" size={22} color={COLORS.purple} />
+                <View style={{ flex: 1, marginLeft: 12 }}>
+                  <Text style={[styles.actionTitle, { color: COLORS.purple }]}>Reporte por Evento</Text>
+                  <Text style={styles.actionSub}>Selecciona 1 evento específico para ver todos sus detalles</Text>
+                </View>
+                {loading && <ActivityIndicator size="small" color={COLORS.purple} />}
+                <Ionicons name="chevron-forward" size={18} color={COLORS.purple} />
+              </TouchableOpacity>
+
               <TouchableOpacity style={[styles.actionBtn, { backgroundColor: COLORS.primaryLight }]} onPress={() => setShowSelector(true)}>
                 <Ionicons name="document-text-outline" size={22} color={COLORS.primary} />
                 <View style={{ flex: 1, marginLeft: 12 }}>
@@ -1033,7 +1205,7 @@ const generarReporteAnual = async (year) => {
         <View style={{ height: 40 }} />
       </ScrollView>
 
-      {/* ── MODAL SELECTOR PDF ── */}
+      {/* ── MODAL SELECTOR PDF MENSUAL ── */}
       {showSelector && (
         <View style={styles.overlay}>
           <View style={styles.modal}>
@@ -1084,6 +1256,60 @@ const generarReporteAnual = async (year) => {
                 }}
               >
                 <Text style={styles.modalBtnText}>Generar PDF</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      )}
+
+      {/* 🆕 MODAL SELECTOR DE EVENTO (REPORTE POR EVENTO) */}
+      {showEventPicker && (
+        <View style={styles.overlay}>
+          <View style={[styles.modal, { width: '90%', maxWidth: 420, maxHeight: '85%' }]}>
+            <Text style={styles.modalTitle}>Seleccionar Evento</Text>
+            <Text style={{ fontSize: 13, color: COLORS.textSecondary, marginBottom: 12, textAlign: 'center' }}>
+              Toca un evento para generar su reporte detallado
+            </Text>
+            
+            <ScrollView style={{ maxHeight: 400 }} nestedScrollEnabled>
+              {todosLosEventos.length === 0 ? (
+                <View style={styles.emptyChart}>
+                  <Ionicons name="calendar-outline" size={40} color={COLORS.textTertiary} />
+                  <Text style={styles.emptyText}>No hay eventos disponibles</Text>
+                </View>
+              ) : (
+                todosLosEventos.map((ev, i) => (
+                  <TouchableOpacity
+                    key={ev.idevento || i}
+                    style={[
+                      styles.dropItem, 
+                      { paddingVertical: 12, paddingHorizontal: 14 },
+                      i === todosLosEventos.length - 1 && { borderBottomWidth: 0 }
+                    ]}
+                    onPress={() => {
+                      setShowEventPicker(false);
+                      generarPDFporEvento(ev);
+                    }}
+                  >
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, width: '100%' }}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={[styles.dropText, { fontWeight: '700', marginBottom: 4, fontSize: 14 }]} numberOfLines={1}>
+                          {ev.nombreevento || 'Sin nombre'}
+                        </Text>
+                        <Text style={{ fontSize: 11, color: COLORS.textSecondary }} numberOfLines={1}>
+                          {ev.fechaevento ? new Date(ev.fechaevento).toLocaleDateString('es-ES') : 'Sin fecha'} · {ev.lugarevento || 'Sin lugar'}
+                        </Text>
+                      </View>
+                      {estadoBadge(ev.estado)}
+                    </View>
+                  </TouchableOpacity>
+                ))
+              )}
+            </ScrollView>
+
+            <View style={styles.modalBtns}>
+              <TouchableOpacity style={[styles.modalBtn, { backgroundColor: COLORS.secondary }]} onPress={() => setShowEventPicker(false)}>
+                <Text style={styles.modalBtnText}>Cancelar</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -1160,48 +1386,48 @@ const styles = StyleSheet.create({
   modalBtn: { flex: 1, paddingVertical: 12, borderRadius: 8, alignItems: 'center' },
   modalBtnText: { color: COLORS.white, fontWeight: '700', fontSize: 14 },
   rankRowNew: {
-  flexDirection: 'row',
-  alignItems: 'center',
-  paddingVertical: 10,
-  paddingHorizontal: 4,
-  borderBottomWidth: 1,
-  borderColor: COLORS.divider,
-  gap: 12,
-},
-rankBadgeNew: {
-  width: 30,
-  height: 30,
-  borderRadius: 15,
-  justifyContent: 'center',
-  alignItems: 'center',
-},
-rankNumNew: {
-  fontSize: 13,
-  fontWeight: '800',
-  color: COLORS.white,
-},
-rankLabelNew: {
-  fontSize: 13,
-  fontWeight: '600',
-  color: COLORS.textPrimary,
-  marginBottom: 4,
-},
-rankBarBg: {
-  height: 6,
-  backgroundColor: COLORS.divider,
-  borderRadius: 3,
-  overflow: 'hidden',
-},
-rankBarFill: {
-  height: '100%',
-  borderRadius: 3,
-},
-rankValueNew: {
-  fontSize: 15,
-  fontWeight: '800',
-  minWidth: 36,
-  textAlign: 'right',
-},
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 4,
+    borderBottomWidth: 1,
+    borderColor: COLORS.divider,
+    gap: 12,
+  },
+  rankBadgeNew: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  rankNumNew: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: COLORS.white,
+  },
+  rankLabelNew: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: COLORS.textPrimary,
+    marginBottom: 4,
+  },
+  rankBarBg: {
+    height: 6,
+    backgroundColor: COLORS.divider,
+    borderRadius: 3,
+    overflow: 'hidden',
+  },
+  rankBarFill: {
+    height: '100%',
+    borderRadius: 3,
+  },
+  rankValueNew: {
+    fontSize: 15,
+    fontWeight: '800',
+    minWidth: 36,
+    textAlign: 'right',
+  },
 });
 
 export default ReportesAvanzadosScreen;
