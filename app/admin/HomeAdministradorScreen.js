@@ -704,39 +704,17 @@ const HomeAdministradorScreen = () => {
       return;
     }
 
-    console.log('🔗 Paso 1: Obteniendo ID del usuario desde /profile...');
-    
-    // Primero obtener el perfil para saber el ID del usuario
-    const profileResponse = await axios.get(`${API_BASE_URL}/profile`, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    });
+    console.log('🔗 Desvinculando Telegram...');
 
-    const userId = profileResponse.data.id || profileResponse.data.idusuario;
-    console.log('✅ ID del usuario obtenido:', userId);
-
-    if (!userId) {
-      throw new Error('No se pudo obtener el ID del usuario');
-    }
-
-    console.log(`🔗 Paso 2: Actualizando usuario ${userId} con PUT /users/${userId}...`);
-
-    // Ahora hacer PUT al endpoint correcto con el ID
     const response = await axios.put(
-      `${API_BASE_URL}/users/${userId}`,
-      {
-        telegram_chat_id: null,
-        telegram_username: null
-      },
+      `${API_BASE_URL}/unlink-telegram`,
+      {}, // No enviamos body, el backend usa el token
       { 
-        headers: { 
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        } 
+        headers: { 'Authorization': `Bearer ${token}` } 
       }
     );
 
-    console.log('✅ Respuesta exitosa:', response.data);
-    
+    console.log('✅ Éxito:', response.data);
     setIsTelegramLinked(false);
     setTelegramUsername('');
     
@@ -747,21 +725,11 @@ const HomeAdministradorScreen = () => {
     }
 
   } catch (error) {
-    console.error('❌ Error al desvincular Telegram:', error);
-    console.error('📊 Status:', error.response?.status);
-    console.error('📦 Data:', error.response?.data);
-    
-    let errorMessage = 'No se pudo desvincular Telegram';
-    
-    if (error.response?.status === 404) {
-      errorMessage = 'El endpoint no existe';
-    } else if (error.response?.status === 401) {
-      errorMessage = 'Sesión expirada';
-    } else if (error.response?.data?.message) {
-      errorMessage = error.response.data.message;
-    }
-    
-    Alert.alert('Error', errorMessage);
+    console.error('❌ Error:', error.response?.data || error.message);
+    Alert.alert(
+      'Error', 
+      error.response?.data?.message || 'No se pudo desvincular Telegram'
+    );
   }
 }, []);
 
