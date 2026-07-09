@@ -696,7 +696,7 @@ const HomeAdministradorScreen = () => {
     }
   }, []);
 
-  const unlinkTelegram = useCallback(async () => {
+ const unlinkTelegram = useCallback(async () => {
   try {
     const token = await getTokenAsync();
     if (!token) {
@@ -706,7 +706,6 @@ const HomeAdministradorScreen = () => {
 
     console.log('🔗 Intentando desvincular Telegram usando /profile...');
 
-    // Usar el endpoint /profile que ya funciona para actualizar
     const response = await axios.put(
       `${API_BASE_URL}/profile`,
       {
