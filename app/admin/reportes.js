@@ -369,7 +369,7 @@ const cargarEventos = useCallback(async () => {
   const navegarADetalleEvento = (evento) => {
     setShowEventPicker(false);
     // Navegar a la pantalla de detalles del evento
-    router.push(`/admin/EventDetailUpdateScreen?eventId=${evento.idevento}`);
+    router.push(`/admin/EventDetalleImp?eventId=${evento.idevento}`);
   };
 
   const generarPDF = async (mesFormato) => {
