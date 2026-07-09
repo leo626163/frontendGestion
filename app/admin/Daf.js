@@ -699,7 +699,12 @@ const styles = StyleSheet.create({
   actionBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 },
   actionBadgeText: { fontSize: 10, fontWeight: '700', color: COLORS.white },
   actionDesc: { fontSize: 13, color: COLORS.textSecondary, lineHeight: 18 },
-
+ minimalDockLogoutButtonText: {
+    color: COLORS.white,
+    fontSize: 15,
+    fontWeight: '600',
+    marginLeft: 8,
+  },
   // Dock
   dock: {
     position: 'absolute', bottom: 0, left: 0, right: 0,
