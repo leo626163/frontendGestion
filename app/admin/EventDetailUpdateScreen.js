@@ -596,40 +596,8 @@ console.log('objetivos_pdi del backend:', eventData.objetivos_pdi);
   <View style={styles.sectionCard}>
     <Text style={styles.sectionTitle}>Layout del Evento</Text>
     {event.layout.url_imagen ? (
-      <>
-        <Image
-          source={{ 
-            uri: `${API_BASE_URL}/uploads/${event.layout.url_imagen}` 
-          }}
-          style={styles.layoutImage}
-          resizeMode="contain"
-          onError={(e) => {
-            console.log('❌ Error cargando imagen:', event.layout.url_imagen);
-          }}
-          onLoad={() => {
-            console.log('✅ Imagen cargada:', event.layout.url_imagen);
-          }}
-        />
-        {event.layout.nombre && (
-          <Text style={styles.layoutName}>{event.layout.nombre}</Text>
-        )}
-      </>
-    ) : (
-      <View style={styles.layoutPlaceholder}>
-        <Ionicons name="image-outline" size={50} color={COLORS.grayText} />
-        <Text style={styles.layoutPlaceholderText}>Sin imagen</Text>
-      </View>
-    )}
-  </View>
-)}
-
-{/* ✅ FASE 2: LAYOUT SELECCIONADO */}
-{event.idfase >= 2 && event.layout && (
-  <View style={styles.sectionCard}>
-    <Text style={styles.sectionTitle}>Layout del Evento</Text>
-    {event.layout.imagenUrl || event.layout.url_imagen ? (
       <Image
-        source={{ uri: event.layout.imagenUrl || `${API_BASE_URL}/uploads/${layout.url_imagen}` }}
+        source={{ uri: `${API_BASE_URL}/uploads/${event.layout.url_imagen}` }}
         style={styles.layoutImage}
         resizeMode="contain"
       />
