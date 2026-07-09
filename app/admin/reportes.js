@@ -343,29 +343,29 @@ const cargarEventos = useCallback(async () => {
     }
   };
 
-  // 🆕 CARGAR EVENTOS PARA EL PICKER (REPORTE POR EVENTO)
-  const cargarEventosParaPicker = async () => {
-    setLoading(true);
-    try {
-      const token = await getTokenAsync();
-      if (!token) return;
-      const res = await axios.get(`${API_BASE_URL}/eventos`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const lista = Array.isArray(res.data) ? res.data : [];
-      // Ordenar por fecha descendente para mostrar los más recientes primero
-      lista.sort((a, b) => new Date(b.fechaevento || 0) - new Date(a.fechaevento || 0));
-      setTodosLosEventos(lista);
-      setShowEventPicker(true);
-    } catch (err) {
-      console.error(err);
-      showError('Error al cargar eventos');
-    } finally {
-      setLoading(false);
-    }
-  };
+const cargarEventosParaPicker = async () => {
+  setLoading(true);
+  try {
+    const token = await getTokenAsync();
+    if (!token) return;
+    const res = await axios.get(`${API_BASE_URL}/eventos`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const lista = Array.isArray(res.data) ? res.data : [];
 
-  // 🆕 NAVEGAR A DETALLES DEL EVENTO (EN LUGAR DE GENERAR PDF)
+    const eventosFase2 = lista.filter(ev => ev.idfase === 2);
+
+    eventosFase2.sort((a, b) => new Date(b.fechaevento || 0) - new Date(a.fechaevento || 0));
+    setTodosLosEventos(eventosFase2);
+    setShowEventPicker(true);
+  } catch (err) {
+    console.error(err);
+    showError('Error al cargar eventos');
+  } finally {
+    setLoading(false);
+  }
+};
+
   const navegarADetalleEvento = (evento) => {
     setShowEventPicker(false);
     // Navegar a la pantalla de detalles del evento
