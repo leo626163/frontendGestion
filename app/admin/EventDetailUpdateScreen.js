@@ -592,32 +592,34 @@ console.log('objetivos_pdi del backend:', eventData.objetivos_pdi);
   </View>
 )}
 
-{/* ✅ FASE 2: AMBIENTES */}
-{event.idfase >= 2 && event.ambientes && event.ambientes.length > 0 && (
+{event.idfase >= 2 && event.layout && (
   <View style={styles.sectionCard}>
-    <Text style={styles.sectionTitle}>Ambientes</Text>
-    {event.ambientes.map((amb, index) => (
-      <View key={index} style={styles.environmentItem}>
-        <View style={styles.environmentHeader}>
-          <Ionicons name="business-outline" size={20} color={COLORS.secondary} />
-          <Text style={styles.environmentTitle}>{amb.nombre || `Ambiente ${index + 1}`}</Text>
-        </View>
-        <View style={styles.environmentDetails}>
-          {amb.requisito && (
-            <View style={styles.environmentDetailRow}>
-              <Ionicons name="checkmark-circle-outline" size={16} color={COLORS.grayText} />
-              <Text style={styles.environmentDetailText}>Requisito: {amb.requisito}</Text>
-            </View>
-          )}
-          {amb.observaciones && (
-            <View style={styles.environmentDetailRow}>
-              <Ionicons name="document-text-outline" size={16} color={COLORS.grayText} />
-              <Text style={styles.environmentDetailText}>Obs: {amb.observaciones}</Text>
-            </View>
-          )}
-        </View>
+    <Text style={styles.sectionTitle}>Layout del Evento</Text>
+    {event.layout.url_imagen ? (
+      <>
+        <Image
+          source={{ 
+            uri: `${API_BASE_URL}/uploads/${event.layout.url_imagen}` 
+          }}
+          style={styles.layoutImage}
+          resizeMode="contain"
+          onError={(e) => {
+            console.log('❌ Error cargando imagen:', event.layout.url_imagen);
+          }}
+          onLoad={() => {
+            console.log('✅ Imagen cargada:', event.layout.url_imagen);
+          }}
+        />
+        {event.layout.nombre && (
+          <Text style={styles.layoutName}>{event.layout.nombre}</Text>
+        )}
+      </>
+    ) : (
+      <View style={styles.layoutPlaceholder}>
+        <Ionicons name="image-outline" size={50} color={COLORS.grayText} />
+        <Text style={styles.layoutPlaceholderText}>Sin imagen</Text>
       </View>
-    ))}
+    )}
   </View>
 )}
 
