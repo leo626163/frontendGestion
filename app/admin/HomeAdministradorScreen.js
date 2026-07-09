@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import {
   StyleSheet, View, Text, ScrollView, TouchableOpacity,
   StatusBar, Alert, ActivityIndicator, Pressable, Animated,
-  useWindowDimensions, Platform, FlatList, TextInput, KeyboardAvoidingView
+  useWindowDimensions, Platform, FlatList, TextInput, KeyboardAvoidingView, Modal
 } from 'react-native';
 import { PieChart } from 'react-native-chart-kit';
 import Svg, { Line, Circle, Text as SvgText, Path, G, Rect } from 'react-native-svg';
@@ -10,12 +10,14 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
+import QRCode from 'react-qr-code';
 
 //const API_BASE_URL =  'https://evento.cidtec-uc.com';
 //const API_BASE_URL =  'https://unifrontend.onrender.com';
 const API_BASE_URL = 'https://backendgestion-production-e2aa.up.railway.app';
 const RASA_WEBHOOK_URL = 'https://unirasa.onrender.com/webhooks/rest/webhook';
 const TOKEN_KEY = 'adminAuthToken';
+const BOT_USERNAME = 'EventUniBot';
 
 const getTokenAsync = async () => {
   if (Platform.OS === 'web') {
@@ -320,7 +322,7 @@ const MinimalBottomDock = ({ onLogout, onActionPress, isExpanded, onToggleExpand
 };
 
 // ─── Header ───────────────────────────────────────────────────────────────────
-const MinimalHeader = ({ nombreUsuario, unreadCount, onNotificationPress, lastUpdated, onRefresh, refreshing }) => {
+const MinimalHeader = ({ nombreUsuario, unreadCount, onNotificationPress, lastUpdated, onRefresh, refreshing, onTelegramPress, isTelegramLinked }) => {
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Buenos días' : hour < 18 ? 'Buenas tardes' : 'Buenas noches';
   return (
@@ -331,6 +333,17 @@ const MinimalHeader = ({ nombreUsuario, unreadCount, onNotificationPress, lastUp
           <Text style={styles.headerName}>{nombreUsuario}</Text>
         </View>
         <View style={styles.headerActions}>
+          {/* Botón de Telegram */}
+          <TouchableOpacity style={styles.telegramBell} onPress={onTelegramPress}>
+            <Ionicons 
+              name="send" 
+              size={22} 
+              color={isTelegramLinked ? '#0088cc' : COLORS.textTertiary} 
+            />
+            {isTelegramLinked && (
+              <View style={styles.telegramLinkedDot} />
+            )}
+          </TouchableOpacity>
           {/* Refresh button */}
           <TouchableOpacity style={styles.headerIconBtn} onPress={onRefresh} disabled={refreshing}>
             {refreshing
@@ -637,6 +650,11 @@ const HomeAdministradorScreen = () => {
   const [cancelledEventsCount, setCancelledEventsCount] = useState('0');
   const [expiredEventsCount, setExpiredEventsCount] = useState('0');
 
+  // Estados de Telegram
+  const [showTelegramModal, setShowTelegramModal] = useState(false);
+  const [isTelegramLinked, setIsTelegramLinked] = useState(false);
+  const [telegramUsername, setTelegramUsername] = useState('');
+
   const unreadCount = notifications.filter(n => !n.read).length;
 
   const [dashboardStats, setDashboardStats] = useState([
@@ -648,6 +666,60 @@ const HomeAdministradorScreen = () => {
     { title: 'Estabilidad',      value: '–', icon: 'pulse-outline', color: COLORS.success, trend: null, description: 'Rendimiento del sistema' },
     { title: 'Rechazados'      , value: '–', icon: 'close-circle-outline', color: COLORS.accent, trend: null, description: 'Eventos rechazados' },
   ]);
+
+  // ── Funciones de Telegram ─────────────────────────────────────────────────
+  const checkTelegramStatus = useCallback(async () => {
+    try {
+      const token = await getTokenAsync();
+      if (!token) return;
+
+      const response = await axios.get(`${API_BASE_URL}/profile`, {
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+
+      console.log('📱 Perfil recibido:', response.data);
+      console.log('🔗 telegram_chat_id:', response.data.telegram_chat_id);
+      console.log('🔗 telegram_username:', response.data.telegram_username);
+
+      const chatId = response.data.telegram_chat_id;
+      const hasTelegram = chatId !== null && 
+                          chatId !== undefined && 
+                          chatId !== '' && 
+                          chatId !== 'null' &&
+                          chatId !== 'undefined';
+      
+      console.log('✅ Tiene Telegram vinculado:', hasTelegram);
+      setIsTelegramLinked(hasTelegram);
+      setTelegramUsername(response.data.telegram_username || '');
+    } catch (error) {
+      console.error('Error al verificar estado de Telegram:', error);
+    }
+  }, []);
+
+  const unlinkTelegram = useCallback(async () => {
+    try {
+      const token = await getTokenAsync();
+      if (!token) return;
+
+      await axios.put(
+        `${API_BASE_URL}/users/unlink-telegram`,
+        {},
+        { headers: { 'Authorization': `Bearer ${token}` } }
+      );
+
+      setIsTelegramLinked(false);
+      setTelegramUsername('');
+      
+      if (Platform.OS === 'web') {
+        window.alert('✓ Telegram desvinculado correctamente');
+      } else {
+        Alert.alert('✓ Éxito', 'Telegram desvinculado correctamente');
+      }
+    } catch (error) {
+      console.error('Error al desvincular Telegram:', error);
+      Alert.alert('Error', 'No se pudo desvincular Telegram');
+    }
+  }, []);
 
   const fetchDashboardData = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
@@ -781,9 +853,10 @@ const HomeAdministradorScreen = () => {
       if (!token) { router.replace('/'); return; }
       fetchDashboardData();
       fetchNotifications();
+      checkTelegramStatus();
     };
     validateSession();
-  }, [router, fetchDashboardData, fetchNotifications]);
+  }, [router, fetchDashboardData, fetchNotifications, checkTelegramStatus]);
 
   const { cardWidth: actionsCardWidth } = useMemo(() => {
     const availableWidth = windowWidth - 40;
@@ -859,6 +932,8 @@ const HomeAdministradorScreen = () => {
           lastUpdated={lastUpdated}
           onRefresh={() => { fetchDashboardData(true); fetchNotifications(); }}
           refreshing={refreshing}
+          onTelegramPress={() => setShowTelegramModal(true)}
+          isTelegramLinked={isTelegramLinked}
         />
 
         {/* ── ÚLTIMO EVENTO ── */}
@@ -1007,6 +1082,197 @@ const HomeAdministradorScreen = () => {
         </View>
       )}
 
+      {/* ── MODAL TELEGRAM ── */}
+      {showTelegramModal && (
+        <Modal
+          visible={showTelegramModal}
+          transparent={true}
+          animationType="slide"
+          onRequestClose={() => setShowTelegramModal(false)}
+        >
+          <View style={styles.telegramModalOverlay}>
+            <View style={styles.telegramModalContent}>
+              <View style={styles.telegramModalHeader}>
+                <View style={styles.telegramIconContainer}>
+                  <Ionicons name="send" size={48} color="#0088cc" />
+                </View>
+                <Text style={styles.telegramModalTitle}>
+                  {isTelegramLinked ? 'Telegram Vinculado ✓' : 'Vincular Telegram'}
+                </Text>
+                <TouchableOpacity 
+                  onPress={() => setShowTelegramModal(false)} 
+                  style={styles.telegramCloseButton}
+                >
+                  <Ionicons name="close-circle" size={28} color={COLORS.textSecondary} />
+                </TouchableOpacity>
+              </View>
+
+              <ScrollView 
+                style={styles.telegramModalScrollView}
+                showsVerticalScrollIndicator={true}
+                contentContainerStyle={styles.telegramModalScrollContent}
+              >
+                {isTelegramLinked ? (
+                  <>
+                    <View style={styles.telegramLinkedInfo}>
+                      <Ionicons name="checkmark-circle" size={60} color={COLORS.success} />
+                      <Text style={styles.telegramLinkedText}>
+                        Tu cuenta está vinculada con Telegram
+                      </Text>
+                      {telegramUsername && (
+                        <Text style={styles.telegramUsername}>
+                          @{telegramUsername}
+                        </Text>
+                      )}
+                    </View>
+
+                    <View style={styles.telegramBenefits}>
+                      <Text style={styles.telegramBenefitsTitle}>
+                        Recibirás notificaciones de:
+                      </Text>
+                      <View style={styles.telegramBenefitItem}>
+                        <Ionicons name="checkmark-circle" size={18} color={COLORS.success} />
+                        <Text style={styles.telegramBenefitText}>
+                          Aprobación de eventos
+                        </Text>
+                      </View>
+                      <View style={styles.telegramBenefitItem}>
+                        <Ionicons name="checkmark-circle" size={18} color={COLORS.success} />
+                        <Text style={styles.telegramBenefitText}>
+                          Rechazo de eventos (con motivo)
+                        </Text>
+                      </View>
+                      <View style={styles.telegramBenefitItem}>
+                        <Ionicons name="checkmark-circle" size={18} color={COLORS.success} />
+                        <Text style={styles.telegramBenefitText}>
+                          Recordatorios 3 días antes del evento
+                        </Text>
+                      </View>
+                    </View>
+
+                    <TouchableOpacity 
+                      style={styles.telegramUnlinkButton}
+                      onPress={unlinkTelegram}
+                    >
+                      <Ionicons name="link-outline" size={20} color={COLORS.accent} />
+                      <Text style={styles.telegramUnlinkText}>Desvincular Telegram</Text>
+                    </TouchableOpacity>
+                  </>
+                ) : (
+                  <>
+                    <View style={styles.telegramQRContainer}>
+                      <Text style={styles.telegramQRTitle}>
+                        Escanea para vincular
+                      </Text>
+                      <View style={styles.telegramQRCode}>
+                        <QRCode
+                          value={`https://t.me/${BOT_USERNAME}`}
+                          size={160}
+                          color="#000"
+                          backgroundColor="#fff"
+                        />
+                      </View>
+                      <Text style={styles.telegramQRSubtitle}>
+                        O toca el botón para abrir
+                      </Text>
+                    </View>
+
+                    <TouchableOpacity 
+                      style={styles.telegramOpenButton}
+                      onPress={() => {
+                        const url = `https://t.me/${BOT_USERNAME}`;
+                        if (Platform.OS === 'web') {
+                          window.open(url, '_blank');
+                        } else {
+                          import('expo-linking').then(({ default: Linking }) => {
+                            Linking.openURL(url).catch(() => {
+                              Alert.alert(
+                                'Telegram no instalado',
+                                'Instala Telegram para continuar',
+                                [
+                                  { text: 'Cancelar' },
+                                  { 
+                                    text: 'Instalar', 
+                                    onPress: () => Linking.openURL('https://telegram.org/dl')
+                                  }
+                                ]
+                              );
+                            });
+                          });
+                        }
+                      }}
+                    >
+                      <Ionicons name="send" size={20} color={COLORS.white} />
+                      <Text style={styles.telegramOpenButtonText}>
+                        Abrir Bot en Telegram
+                      </Text>
+                    </TouchableOpacity>
+
+                    <View style={styles.telegramSteps}>
+                      <Text style={styles.telegramStepsTitle}>
+                        Pasos a seguir:
+                      </Text>
+                      
+                      <View style={styles.telegramStep}>
+                        <View style={styles.telegramStepNumber}>
+                          <Text style={styles.telegramStepNumberText}>1</Text>
+                        </View>
+                        <Text style={styles.telegramStepText}>
+                          Abre el bot en Telegram (escanea o toca el botón)
+                        </Text>
+                      </View>
+
+                      <View style={styles.telegramStep}>
+                        <View style={styles.telegramStepNumber}>
+                          <Text style={styles.telegramStepNumberText}>2</Text>
+                        </View>
+                        <Text style={styles.telegramStepText}>
+                          Envía el comando <Text style={styles.telegramCommand}>/start</Text>
+                        </Text>
+                      </View>
+
+                      <View style={styles.telegramStep}>
+                        <View style={styles.telegramStepNumber}>
+                          <Text style={styles.telegramStepNumberText}>3</Text>
+                        </View>
+                        <Text style={styles.telegramStepText}>
+                          El bot te pedirá tu email institucional
+                        </Text>
+                      </View>
+
+                      <View style={styles.telegramStep}>
+                        <View style={styles.telegramStepNumber}>
+                          <Text style={styles.telegramStepNumberText}>4</Text>
+                        </View>
+                        <Text style={styles.telegramStepText}>
+                          Envía tu email y listo ✓
+                        </Text>
+                      </View>
+                    </View>
+
+                    <TouchableOpacity 
+                      style={styles.telegramRefreshButton}
+                      onPress={() => {
+                        checkTelegramStatus();
+                        Alert.alert(
+                          'Verificando...',
+                          'Si ya vinculaste en Telegram, presiona nuevamente para actualizar'
+                        );
+                      }}
+                    >
+                      <Ionicons name="refresh-outline" size={20} color={COLORS.white} />
+                      <Text style={styles.telegramRefreshText}>
+                        Ya vinculé mi cuenta
+                      </Text>
+                    </TouchableOpacity>
+                  </>
+                )}
+              </ScrollView>
+            </View>
+          </View>
+        </Modal>
+      )}
+
       {/* ── DOCK ── */}
       <MinimalBottomDock
         onLogout={handleLogout}
@@ -1022,21 +1288,20 @@ const HomeAdministradorScreen = () => {
         </TouchableOpacity>
       )}
 
-      // ── CHAT MODAL ── (REEMPLAZA CON ESTO)
-{isChatOpen && (
-  <View style={styles.chatOverlay}>
-    <View style={styles.chatModal}>
-      <View style={styles.chatHeader}>
-        <Text style={styles.chatTitle}>Chat General</Text>
-        <TouchableOpacity onPress={() => setIsChatOpen(false)}>
-          <Ionicons name="close" size={24} color={COLORS.textSecondary} />
-        </TouchableOpacity>
-      </View>
-      {/* ✅ Chat embebido directo */}
-      <ChatEmbed userId={nombreUsuario} userRole="admin" />
-    </View>
-  </View>
-)}
+      {/* ── CHAT MODAL ── */}
+      {isChatOpen && (
+        <View style={styles.chatOverlay}>
+          <View style={styles.chatModal}>
+            <View style={styles.chatHeader}>
+              <Text style={styles.chatTitle}>Chat General</Text>
+              <TouchableOpacity onPress={() => setIsChatOpen(false)}>
+                <Ionicons name="close" size={24} color={COLORS.textSecondary} />
+              </TouchableOpacity>
+            </View>
+            <ChatEmbed userId={nombreUsuario} userRole="admin" />
+          </View>
+        </View>
+      )}
     </View>
   );
 };
@@ -1067,6 +1332,231 @@ const styles = StyleSheet.create({
     borderWidth: 1.5, borderColor: COLORS.white,
   },
   notifBadgeText: { color: COLORS.white, fontSize: 10, fontWeight: '700' },
+
+  // Telegram
+  telegramBell: {
+    padding: 8,
+    borderRadius: 20,
+    backgroundColor: COLORS.background,
+    position: 'relative',
+  },
+  telegramLinkedDot: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: COLORS.success,
+    borderWidth: 1,
+    borderColor: COLORS.white,
+  },
+  telegramModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  telegramModalContent: {
+    backgroundColor: COLORS.surface,
+    borderRadius: 24,
+    width: '100%',
+    maxWidth: 500,
+    maxHeight: '80%',
+    overflow: 'hidden',
+  },
+  telegramModalHeader: {
+    alignItems: 'center',
+    padding: 24,
+    backgroundColor: '#E3F2FD',
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+    position: 'relative',
+  },
+  telegramIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: COLORS.white,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  telegramModalTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: COLORS.textPrimary,
+    textAlign: 'center',
+  },
+  telegramCloseButton: {
+    position: 'absolute',
+    top: 16,
+    right: 16,
+    padding: 4,
+  },
+  telegramModalScrollView: {
+    flex: 1,
+  },
+  telegramModalScrollContent: {
+    padding: 24,
+    paddingBottom: 30,
+  },
+  telegramLinkedInfo: {
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  telegramLinkedText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: COLORS.textPrimary,
+    marginTop: 12,
+    textAlign: 'center',
+  },
+  telegramUsername: {
+    fontSize: 14,
+    color: COLORS.textSecondary,
+    marginTop: 4,
+  },
+  telegramBenefits: {
+    backgroundColor: COLORS.background,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 24,
+  },
+  telegramBenefitsTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: COLORS.textPrimary,
+    marginBottom: 12,
+  },
+  telegramBenefitItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 8,
+  },
+  telegramBenefitText: {
+    fontSize: 14,
+    color: COLORS.textSecondary,
+  },
+  telegramUnlinkButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    padding: 14,
+    borderRadius: 12,
+    backgroundColor: COLORS.accent + '15',
+    borderWidth: 1,
+    borderColor: COLORS.accent,
+  },
+  telegramUnlinkText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: COLORS.accent,
+  },
+  telegramQRContainer: {
+    alignItems: 'center',
+    marginBottom: 24,
+    padding: 20,
+    backgroundColor: COLORS.background,
+    borderRadius: 16,
+  },
+  telegramQRTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: COLORS.textPrimary,
+    marginBottom: 16,
+  },
+  telegramQRCode: {
+    padding: 12,
+    backgroundColor: COLORS.white,
+    borderRadius: 12,
+    marginBottom: 12,
+    alignSelf: 'center',
+  },
+  telegramQRSubtitle: {
+    fontSize: 13,
+    color: COLORS.textSecondary,
+  },
+  telegramOpenButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    padding: 14,
+    borderRadius: 12,
+    backgroundColor: '#0088cc',
+    marginBottom: 20,
+  },
+  telegramOpenButtonText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: COLORS.white,
+  },
+  telegramSteps: {
+    backgroundColor: COLORS.background,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 20,
+  },
+  telegramStepsTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: COLORS.textPrimary,
+    marginBottom: 12,
+  },
+  telegramStep: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+    marginBottom: 12,
+  },
+  telegramStepNumber: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: COLORS.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    flexShrink: 0,
+  },
+  telegramStepNumberText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: COLORS.white,
+  },
+  telegramStepText: {
+    fontSize: 13,
+    color: COLORS.textSecondary,
+    flex: 1,
+    lineHeight: 18,
+  },
+  telegramCommand: {
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+    backgroundColor: COLORS.primary + '20',
+    paddingHorizontal: 4,
+    paddingVertical: 2,
+    borderRadius: 4,
+    fontWeight: '600',
+    color: COLORS.primary,
+  },
+  telegramRefreshButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    padding: 14,
+    borderRadius: 12,
+    backgroundColor: COLORS.primary,
+    marginTop: 16,
+  },
+  telegramRefreshText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: COLORS.white,
+  },
 
   // Último evento
   ultimoEventoCard: {
