@@ -704,10 +704,25 @@ const HomeAdministradorScreen = () => {
       return;
     }
 
-    console.log('🔗 Intentando desvincular Telegram usando /profile...');
+    console.log('🔗 Paso 1: Obteniendo ID del usuario desde /profile...');
+    
+    // Primero obtener el perfil para saber el ID del usuario
+    const profileResponse = await axios.get(`${API_BASE_URL}/profile`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
 
+    const userId = profileResponse.data.id || profileResponse.data.idusuario;
+    console.log('✅ ID del usuario obtenido:', userId);
+
+    if (!userId) {
+      throw new Error('No se pudo obtener el ID del usuario');
+    }
+
+    console.log(`🔗 Paso 2: Actualizando usuario ${userId} con PUT /users/${userId}...`);
+
+    // Ahora hacer PUT al endpoint correcto con el ID
     const response = await axios.put(
-      `${API_BASE_URL}/profile`,
+      `${API_BASE_URL}/users/${userId}`,
       {
         telegram_chat_id: null,
         telegram_username: null
@@ -739,9 +754,9 @@ const HomeAdministradorScreen = () => {
     let errorMessage = 'No se pudo desvincular Telegram';
     
     if (error.response?.status === 404) {
-      errorMessage = 'El endpoint no existe. Contacta al administrador';
+      errorMessage = 'El endpoint no existe';
     } else if (error.response?.status === 401) {
-      errorMessage = 'Sesión expirada. Por favor, inicia sesión nuevamente';
+      errorMessage = 'Sesión expirada';
     } else if (error.response?.data?.message) {
       errorMessage = error.response.data.message;
     }
