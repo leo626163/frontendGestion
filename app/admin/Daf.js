@@ -644,192 +644,195 @@ const Daf = () => {
         </View>
       )}
 
-      {/* ── MODAL TELEGRAM ── */}
-      {showTelegramModal && (
-        <Modal
-          visible={showTelegramModal}
-          transparent={true}
-          animationType="slide"
-          onRequestClose={() => setShowTelegramModal(false)}
+{showTelegramModal && (
+  <Modal
+    visible={showTelegramModal}
+    transparent={true}
+    animationType="slide"
+    onRequestClose={() => setShowTelegramModal(false)}
+  >
+    <View style={styles.telegramModalOverlay}>
+      <View style={styles.telegramModalContent}>
+        <View style={styles.telegramModalHeader}>
+          <View style={styles.telegramIconContainer}>
+            <Ionicons name="send" size={48} color="#0088cc" />
+          </View>
+          <Text style={styles.telegramModalTitle}>
+            {isTelegramLinked ? 'Telegram Vinculado ✓' : 'Vincular Telegram'}
+          </Text>
+          <TouchableOpacity 
+            onPress={() => setShowTelegramModal(false)} 
+            style={styles.telegramCloseButton}
+          >
+            <Ionicons name="close-circle" size={28} color={COLORS.textSecondary} />
+          </TouchableOpacity>
+        </View>
+
+        <ScrollView 
+          style={styles.telegramModalScrollView}
+          showsVerticalScrollIndicator={true}
+          contentContainerStyle={styles.telegramModalScrollContent}
         >
-          <View style={styles.telegramModalOverlay}>
-            <View style={styles.telegramModalContent}>
-              <View style={styles.telegramModalHeader}>
-                <View style={styles.telegramIconContainer}>
-                  <Ionicons name="send" size={48} color="#0088cc" />
-                </View>
-                <Text style={styles.telegramModalTitle}>
-                  {isTelegramLinked ? 'Telegram Vinculado ✓' : 'Vincular Telegram'}
+          {isTelegramLinked ? (
+            <>
+              <View style={styles.telegramLinkedInfo}>
+                <Ionicons name="checkmark-circle" size={60} color={COLORS.success} />
+                <Text style={styles.telegramLinkedText}>
+                  Tu cuenta está vinculada con Telegram
                 </Text>
-                <TouchableOpacity 
-                  onPress={() => setShowTelegramModal(false)} 
-                  style={styles.telegramCloseButton}
-                >
-                  <Ionicons name="close-circle" size={28} color={COLORS.textSecondary} />
-                </TouchableOpacity>
-              </View>
-
-              <View style={styles.telegramModalBody}>
-                {isTelegramLinked ? (
-                  <>
-                    <View style={styles.telegramLinkedInfo}>
-                      <Ionicons name="checkmark-circle" size={60} color={COLORS.success} />
-                      <Text style={styles.telegramLinkedText}>
-                        Tu cuenta está vinculada con Telegram
-                      </Text>
-                      {telegramUsername && (
-                        <Text style={styles.telegramUsername}>
-                          @{telegramUsername}
-                        </Text>
-                      )}
-                    </View>
-
-                    <View style={styles.telegramBenefits}>
-                      <Text style={styles.telegramBenefitsTitle}>
-                        Recibirás notificaciones de:
-                      </Text>
-                      <View style={styles.telegramBenefitItem}>
-                        <Ionicons name="checkmark-circle" size={18} color={COLORS.success} />
-                        <Text style={styles.telegramBenefitText}>
-                          Aprobación de eventos
-                        </Text>
-                      </View>
-                      <View style={styles.telegramBenefitItem}>
-                        <Ionicons name="checkmark-circle" size={18} color={COLORS.success} />
-                        <Text style={styles.telegramBenefitText}>
-                          Rechazo de eventos (con motivo)
-                        </Text>
-                      </View>
-                      <View style={styles.telegramBenefitItem}>
-                        <Ionicons name="checkmark-circle" size={18} color={COLORS.success} />
-                        <Text style={styles.telegramBenefitText}>
-                          Recordatorios 3 días antes del evento
-                        </Text>
-                      </View>
-                    </View>
-
-                    <TouchableOpacity 
-                      style={styles.telegramUnlinkButton}
-                      onPress={unlinkTelegram}
-                    >
-                      <Ionicons name="link-outline" size={20} color={COLORS.accent} />
-                      <Text style={styles.telegramUnlinkText}>Desvincular Telegram</Text>
-                    </TouchableOpacity>
-                  </>
-                ) : (
-                  <>
-                    <View style={styles.telegramQRContainer}>
-                      <Text style={styles.telegramQRTitle}>
-                        Escanea para vincular
-                      </Text>
-                      <View style={styles.telegramQRCode}>
-                        <QRCode
-                          value={`https://t.me/${BOT_USERNAME}`}
-                          size={180}
-                          color="#000"
-                          backgroundColor="#fff"
-                        />
-                      </View>
-                      <Text style={styles.telegramQRSubtitle}>
-                        O toca el botón para abrir
-                      </Text>
-                    </View>
-
-                    <TouchableOpacity 
-                      style={styles.telegramOpenButton}
-                      onPress={() => {
-                        const url = `https://t.me/${BOT_USERNAME}`;
-                        if (Platform.OS === 'web') {
-                          window.open(url, '_blank');
-                        } else {
-                          import('expo-linking').then(({ default: Linking }) => {
-                            Linking.openURL(url).catch(() => {
-                              Alert.alert(
-                                'Telegram no instalado',
-                                'Instala Telegram para continuar',
-                                [
-                                  { text: 'Cancelar' },
-                                  { 
-                                    text: 'Instalar', 
-                                    onPress: () => Linking.openURL('https://telegram.org/dl')
-                                  }
-                                ]
-                              );
-                            });
-                          });
-                        }
-                      }}
-                    >
-                      <Ionicons name="send" size={20} color={COLORS.white} />
-                      <Text style={styles.telegramOpenButtonText}>
-                        Abrir Bot en Telegram
-                      </Text>
-                    </TouchableOpacity>
-
-                    <View style={styles.telegramSteps}>
-                      <Text style={styles.telegramStepsTitle}>
-                        Pasos a seguir:
-                      </Text>
-                      
-                      <View style={styles.telegramStep}>
-                        <View style={styles.telegramStepNumber}>
-                          <Text style={styles.telegramStepNumberText}>1</Text>
-                        </View>
-                        <Text style={styles.telegramStepText}>
-                          Abre el bot en Telegram (escanea o toca el botón)
-                        </Text>
-                      </View>
-
-                      <View style={styles.telegramStep}>
-                        <View style={styles.telegramStepNumber}>
-                          <Text style={styles.telegramStepNumberText}>2</Text>
-                        </View>
-                        <Text style={styles.telegramStepText}>
-                          Envía el comando <Text style={styles.telegramCommand}>/start</Text>
-                        </Text>
-                      </View>
-
-                      <View style={styles.telegramStep}>
-                        <View style={styles.telegramStepNumber}>
-                          <Text style={styles.telegramStepNumberText}>3</Text>
-                        </View>
-                        <Text style={styles.telegramStepText}>
-                          El bot te pedirá tu email institucional
-                        </Text>
-                      </View>
-
-                      <View style={styles.telegramStep}>
-                        <View style={styles.telegramStepNumber}>
-                          <Text style={styles.telegramStepNumberText}>4</Text>
-                        </View>
-                        <Text style={styles.telegramStepText}>
-                          Envía tu email y listo ✓
-                        </Text>
-                      </View>
-                    </View>
-
-                    <TouchableOpacity 
-                      style={styles.telegramRefreshButton}
-                      onPress={() => {
-                        checkTelegramStatus();
-                        Alert.alert(
-                          'Verificando...',
-                          'Si ya vinculaste en Telegram, presiona nuevamente para actualizar'
-                        );
-                      }}
-                    >
-                      <Ionicons name="refresh-outline" size={20} color={COLORS.white} />
-                      <Text style={styles.telegramRefreshText}>
-                        Ya vinculé mi cuenta
-                      </Text>
-                    </TouchableOpacity>
-                  </>
+                {telegramUsername && (
+                  <Text style={styles.telegramUsername}>
+                    @{telegramUsername}
+                  </Text>
                 )}
               </View>
-            </View>
-          </View>
-        </Modal>
-      )}
+
+              <View style={styles.telegramBenefits}>
+                <Text style={styles.telegramBenefitsTitle}>
+                  Recibirás notificaciones de:
+                </Text>
+                <View style={styles.telegramBenefitItem}>
+                  <Ionicons name="checkmark-circle" size={18} color={COLORS.success} />
+                  <Text style={styles.telegramBenefitText}>
+                    Aprobación de eventos
+                  </Text>
+                </View>
+                <View style={styles.telegramBenefitItem}>
+                  <Ionicons name="checkmark-circle" size={18} color={COLORS.success} />
+                  <Text style={styles.telegramBenefitText}>
+                    Rechazo de eventos (con motivo)
+                  </Text>
+                </View>
+                <View style={styles.telegramBenefitItem}>
+                  <Ionicons name="checkmark-circle" size={18} color={COLORS.success} />
+                  <Text style={styles.telegramBenefitText}>
+                    Recordatorios 3 días antes del evento
+                  </Text>
+                </View>
+              </View>
+
+              <TouchableOpacity 
+                style={styles.telegramUnlinkButton}
+                onPress={unlinkTelegram}
+              >
+                <Ionicons name="link-outline" size={20} color={COLORS.accent} />
+                <Text style={styles.telegramUnlinkText}>Desvincular Telegram</Text>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <>
+              <View style={styles.telegramQRContainer}>
+                <Text style={styles.telegramQRTitle}>
+                  Escanea para vincular
+                </Text>
+                <View style={styles.telegramQRCode}>
+                  <QRCode
+                    value={`https://t.me/${BOT_USERNAME}`}
+                    size={160}
+                    color="#000"
+                    backgroundColor="#fff"
+                  />
+                </View>
+                <Text style={styles.telegramQRSubtitle}>
+                  O toca el botón para abrir
+                </Text>
+              </View>
+
+              <TouchableOpacity 
+                style={styles.telegramOpenButton}
+                onPress={() => {
+                  const url = `https://t.me/${BOT_USERNAME}`;
+                  if (Platform.OS === 'web') {
+                    window.open(url, '_blank');
+                  } else {
+                    import('expo-linking').then(({ default: Linking }) => {
+                      Linking.openURL(url).catch(() => {
+                        Alert.alert(
+                          'Telegram no instalado',
+                          'Instala Telegram para continuar',
+                          [
+                            { text: 'Cancelar' },
+                            { 
+                              text: 'Instalar', 
+                              onPress: () => Linking.openURL('https://telegram.org/dl')
+                            }
+                          ]
+                        );
+                      });
+                    });
+                  }
+                }}
+              >
+                <Ionicons name="send" size={20} color={COLORS.white} />
+                <Text style={styles.telegramOpenButtonText}>
+                  Abrir Bot en Telegram
+                </Text>
+              </TouchableOpacity>
+
+              <View style={styles.telegramSteps}>
+                <Text style={styles.telegramStepsTitle}>
+                  Pasos a seguir:
+                </Text>
+                
+                <View style={styles.telegramStep}>
+                  <View style={styles.telegramStepNumber}>
+                    <Text style={styles.telegramStepNumberText}>1</Text>
+                  </View>
+                  <Text style={styles.telegramStepText}>
+                    Abre el bot en Telegram (escanea o toca el botón)
+                  </Text>
+                </View>
+
+                <View style={styles.telegramStep}>
+                  <View style={styles.telegramStepNumber}>
+                    <Text style={styles.telegramStepNumberText}>2</Text>
+                  </View>
+                  <Text style={styles.telegramStepText}>
+                    Envía el comando <Text style={styles.telegramCommand}>/start</Text>
+                  </Text>
+                </View>
+
+                <View style={styles.telegramStep}>
+                  <View style={styles.telegramStepNumber}>
+                    <Text style={styles.telegramStepNumberText}>3</Text>
+                  </View>
+                  <Text style={styles.telegramStepText}>
+                    El bot te pedirá tu email institucional
+                  </Text>
+                </View>
+
+                <View style={styles.telegramStep}>
+                  <View style={styles.telegramStepNumber}>
+                    <Text style={styles.telegramStepNumberText}>4</Text>
+                  </View>
+                  <Text style={styles.telegramStepText}>
+                    Envía tu email y listo ✓
+                  </Text>
+                </View>
+              </View>
+
+              <TouchableOpacity 
+                style={styles.telegramRefreshButton}
+                onPress={() => {
+                  checkTelegramStatus();
+                  Alert.alert(
+                    'Verificando...',
+                    'Si ya vinculaste en Telegram, presiona nuevamente para actualizar'
+                  );
+                }}
+              >
+                <Ionicons name="refresh-outline" size={20} color={COLORS.white} />
+                <Text style={styles.telegramRefreshText}>
+                  Ya vinculé mi cuenta
+                </Text>
+              </TouchableOpacity>
+            </>
+          )}
+        </ScrollView>
+      </View>
+    </View>
+  </Modal>
+)}
 
       {/* ── DOCK ── */}
       <MinimalBottomDock
@@ -899,7 +902,7 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     width: '100%',
     maxWidth: 500,
-    maxHeight: '85%',
+    maxHeight: '80%',
     overflow: 'hidden',
   },
   telegramModalHeader: {
@@ -931,9 +934,7 @@ const styles = StyleSheet.create({
     right: 16,
     padding: 4,
   },
-  telegramModalBody: {
-    padding: 24,
-  },
+  
   telegramLinkedInfo: {
     alignItems: 'center',
     marginBottom: 24,
@@ -1001,12 +1002,7 @@ const styles = StyleSheet.create({
     color: COLORS.textPrimary,
     marginBottom: 16,
   },
-  telegramQRCode: {
-    padding: 12,
-    backgroundColor: COLORS.white,
-    borderRadius: 12,
-    marginBottom: 12,
-  },
+  
   telegramQRSubtitle: {
     fontSize: 13,
     color: COLORS.textSecondary,
@@ -1088,6 +1084,22 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: COLORS.white,
   },
+  telegramModalScrollView: {
+  flex: 1,
+},
+telegramModalScrollContent: {
+  paddingBottom: 20, // Espacio extra al final
+},
+telegramModalBody: {
+  padding: 24,
+},
+telegramQRCode: {
+  padding: 12,
+  backgroundColor: COLORS.white,
+  borderRadius: 12,
+  marginBottom: 12,
+  alignSelf: 'center', // Centrado
+},
 
   // Section
   section: { width: '100%', paddingHorizontal: 20, marginTop: 28 },
