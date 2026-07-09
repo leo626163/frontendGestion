@@ -183,10 +183,10 @@ const MinimalBottomDock = ({ onLogout, onActionPress, isExpanded, onToggleExpand
               </TouchableOpacity>
             ))}
           </View>
-          <TouchableOpacity onPress={onLogout} style={styles.dockLogout}>
-            <Ionicons name="log-out-outline" size={20} color={COLORS.white} />
-            <Text style={styles.dockLogoutText}>Cerrar Sesión</Text>
-          </TouchableOpacity>
+           <TouchableOpacity onPress={onLogout} style={styles.minimalDockLogoutButton}>
+                      <Ionicons name="log-out-outline" size={20} color={COLORS.white} />
+                      <Text style={styles.minimalDockLogoutButtonText}>Cerrar Sesión</Text>
+                    </TouchableOpacity>
         </View>
       )}
     </Animated.View>
@@ -329,9 +329,7 @@ const Daf = () => {
           };
         });
 
-      // Separamos los eventos futuros (hoy o después) de los pasados
       const upcomingEvents = allPhase2.filter(e => {
-        // Si no tiene fecha, lo mostramos igual (no lo ocultamos)
         if (!e.rawDate) return true;
         return e.rawDate >= today;
       });
@@ -392,11 +390,54 @@ const Daf = () => {
     else Alert.alert('En Desarrollo', 'Esta característica estará disponible próximamente.');
   };
 
-  const handleLogout = async () => {
-    Alert.alert('Confirmar Cierre de Sesión', '¿Está seguro que desea cerrar la sesión?', [
-      { text: 'Cancelar', style: 'cancel' },
-      { text: 'Cerrar Sesión', style: 'destructive', onPress: async () => { await deleteTokenAsync(); router.replace('/'); } },
-    ], { cancelable: true });
+   const handleLogout = async () => {
+    const performLogout = async () => {
+      try {
+        await deleteTokenAsync();
+        
+        // Limpiar estado local
+        setDashboardStats([
+          { title: 'Usuarios Activos', value: '—', icon: 'people-outline', color: COLORS.primary },
+          { title: 'Eventos Totales', value: '—', icon: 'calendar-outline', color: COLORS.info },
+          { title: 'Contenidos Pendientes', value: '—', icon: 'document-text-outline', color: COLORS.warning },
+          { title: 'Estabilidad Sistema', value: '—', icon: 'pulse-outline', color: COLORS.success },
+        ]);
+        setHistoricalData([]);
+        setUserProfile({
+          nombre: '',
+          apellidopat: '',
+          apellidomat: '',
+          facultad: null,
+          loading: false,
+        });
+  
+        // Redirigir al login
+        router.replace('/');
+      } catch (error) {
+        console.error('Error al cerrar sesión:', error);
+        router.replace('/'); // Forzar redirección incluso con error
+      }
+    };
+  
+    if (Platform.OS === 'web') {
+      if (window.confirm('¿Está seguro que desea cerrar la sesión actual?')) {
+        await performLogout();
+      }
+    } else {
+      Alert.alert(
+        'Confirmar Cierre de Sesión',
+        '¿Está seguro que desea cerrar la sesión actual?',
+        [
+          { text: 'Cancelar', style: 'cancel' },
+          { 
+            text: 'Cerrar Sesión', 
+            style: 'destructive', 
+            onPress: performLogout 
+          },
+        ],
+        { cancelable: true }
+      );
+    }
   };
 
   const adminActions = [
