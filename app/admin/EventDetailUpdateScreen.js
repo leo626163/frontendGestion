@@ -196,12 +196,17 @@ console.log('objetivos_pdi del backend:', eventData.objetivos_pdi);
   date: formatDate(eventData.fechaevento),
   time: formatTime(eventData.horaevento),
   location: eventData.lugarevento || 'Ubicación no especificada',
-  organizer: eventData.responsable_evento || 'Organizador no especificado',
-  attendees: eventData.participantes_esperados || 'No especificado',
   status: (eventData.estado || 'pendiente').toLowerCase(),
   imageUrl: eventData.imagenUrl || null,
   idfase: eventData.idfase || 1,
   fases: eventData.fases || [],
+   responsable: eventData.responsable_evento || eventData.responsable || null,
+  actividadesPrevias: eventData.actividadesPrevias || [],
+  actividadesDurante: eventData.actividadesDurante || [],
+  actividadesPost: eventData.actividadesPost || [],
+  serviciosContratados: eventData.serviciosContratados || [],
+  ambientes: eventData.ambientes || [],
+  layout: eventData.layout || (eventData.idlayout ? { idlayout: eventData.idlayout } : null),
   
   Clasificacion: eventData.Clasificacion || null,
   subcategoria: eventData.subcategoria || null,
@@ -440,16 +445,205 @@ console.log('objetivos_pdi del backend:', eventData.objetivos_pdi);
             <Ionicons name="location-outline" size={20} color={COLORS.primary} style={styles.detailIcon} />
             <Text style={styles.detailText}>Ubicación: {event.location}</Text>
           </View>
-          <View style={styles.detailRow}>
-            <Ionicons name="business-outline" size={20} color={COLORS.primary} style={styles.detailIcon} />
-            <Text style={styles.detailText}>Organizador: {event.organizer}</Text>
+         
+        </View>
+            {/* ✅ FASE 2: RESPONSABLE DEL EVENTO */}
+{event.idfase >= 2 && event.responsable && (
+  <View style={styles.sectionCard}>
+    <Text style={styles.sectionTitle}>Responsable del Evento</Text>
+    <View style={styles.detailRow}>
+      <Ionicons name="person-outline" size={20} color={COLORS.primary} style={styles.detailIcon} />
+      <Text style={styles.detailText}>{event.responsable}</Text>
+    </View>
+  </View>
+)}
+
+{/* ✅ FASE 2: ACTIVIDADES PREVIAS */}
+{event.idfase >= 2 && event.actividadesPrevias && event.actividadesPrevias.length > 0 && (
+  <View style={styles.sectionCard}>
+    <Text style={styles.sectionTitle}>Actividades Previas</Text>
+    {event.actividadesPrevias.map((act, index) => (
+      <View key={index} style={styles.activityItem}>
+        <View style={styles.activityHeader}>
+          <Ionicons name="list-circle-outline" size={20} color={COLORS.primary} />
+          <Text style={styles.activityTitle}>{act.nombreActividad || `Actividad ${index + 1}`}</Text>
+        </View>
+        <View style={styles.activityDetails}>
+          <View style={styles.activityDetailRow}>
+            <Ionicons name="person-outline" size={16} color={COLORS.grayText} />
+            <Text style={styles.activityDetailText}>Responsable: {act.responsable || 'No especificado'}</Text>
           </View>
-          <View style={styles.detailRow}>
-            <Ionicons name="people-outline" size={20} color={COLORS.primary} style={styles.detailIcon} />
-            <Text style={styles.detailText}>Asistentes: {event.attendees}</Text>
+          <View style={styles.activityDetailRow}>
+            <Ionicons name="calendar-outline" size={16} color={COLORS.grayText} />
+            <Text style={styles.activityDetailText}>
+              Inicio: {formatDate(act.fechaInicio)}
+            </Text>
+          </View>
+          <View style={styles.activityDetailRow}>
+            <Ionicons name="calendar-outline" size={16} color={COLORS.grayText} />
+            <Text style={styles.activityDetailText}>
+              Fin: {formatDate(act.fechaFin)}
+            </Text>
           </View>
         </View>
+      </View>
+    ))}
+  </View>
+)}
 
+{/* ✅ FASE 2: ACTIVIDADES DURANTE EL EVENTO */}
+{event.idfase >= 2 && event.actividadesDurante && event.actividadesDurante.length > 0 && (
+  <View style={styles.sectionCard}>
+    <Text style={styles.sectionTitle}>Actividades Durante el Evento</Text>
+    {event.actividadesDurante.map((act, index) => (
+      <View key={index} style={styles.activityItem}>
+        <View style={styles.activityHeader}>
+          <Ionicons name="play-circle-outline" size={20} color={COLORS.success} />
+          <Text style={styles.activityTitle}>{act.nombreActividad || `Actividad ${index + 1}`}</Text>
+        </View>
+        <View style={styles.activityDetails}>
+          <View style={styles.activityDetailRow}>
+            <Ionicons name="person-outline" size={16} color={COLORS.grayText} />
+            <Text style={styles.activityDetailText}>Responsable: {act.responsable || 'No especificado'}</Text>
+          </View>
+          <View style={styles.activityDetailRow}>
+            <Ionicons name="calendar-outline" size={16} color={COLORS.grayText} />
+            <Text style={styles.activityDetailText}>
+              Inicio: {formatDate(act.fechaInicio)}
+            </Text>
+          </View>
+          <View style={styles.activityDetailRow}>
+            <Ionicons name="calendar-outline" size={16} color={COLORS.grayText} />
+            <Text style={styles.activityDetailText}>
+              Fin: {formatDate(act.fechaFin)}
+            </Text>
+          </View>
+        </View>
+      </View>
+    ))}
+  </View>
+)}
+
+{/* ✅ FASE 2: ACTIVIDADES POST-EVENTO */}
+{event.idfase >= 2 && event.actividadesPost && event.actividadesPost.length > 0 && (
+  <View style={styles.sectionCard}>
+    <Text style={styles.sectionTitle}>Actividades Después del Evento</Text>
+    {event.actividadesPost.map((act, index) => (
+      <View key={index} style={styles.activityItem}>
+        <View style={styles.activityHeader}>
+          <Ionicons name="checkmark-done-outline" size={20} color={COLORS.info} />
+          <Text style={styles.activityTitle}>{act.nombreActividad || `Actividad ${index + 1}`}</Text>
+        </View>
+        <View style={styles.activityDetails}>
+          <View style={styles.activityDetailRow}>
+            <Ionicons name="person-outline" size={16} color={COLORS.grayText} />
+            <Text style={styles.activityDetailText}>Responsable: {act.responsable || 'No especificado'}</Text>
+          </View>
+          <View style={styles.activityDetailRow}>
+            <Ionicons name="calendar-outline" size={16} color={COLORS.grayText} />
+            <Text style={styles.activityDetailText}>
+              Inicio: {formatDate(act.fechaInicio)}
+            </Text>
+          </View>
+          <View style={styles.activityDetailRow}>
+            <Ionicons name="calendar-outline" size={16} color={COLORS.grayText} />
+            <Text style={styles.activityDetailText}>
+              Fin: {formatDate(act.fechaFin)}
+            </Text>
+          </View>
+        </View>
+      </View>
+    ))}
+  </View>
+)}
+
+{/* ✅ FASE 2: SERVICIOS CONTRATADOS */}
+{event.idfase >= 2 && event.serviciosContratados && event.serviciosContratados.length > 0 && (
+  <View style={styles.sectionCard}>
+    <Text style={styles.sectionTitle}>Servicios Contratados</Text>
+    {event.serviciosContratados.map((serv, index) => (
+      <View key={index} style={styles.serviceItem}>
+        <View style={styles.serviceHeader}>
+          <Ionicons name="build-outline" size={20} color={COLORS.purple} />
+          <Text style={styles.serviceTitle}>{serv.nombreServicio || `Servicio ${index + 1}`}</Text>
+        </View>
+        <View style={styles.serviceDetails}>
+          {serv.caracteristica && (
+            <View style={styles.serviceDetailRow}>
+              <Ionicons name="list-outline" size={16} color={COLORS.grayText} />
+              <Text style={styles.serviceDetailText}>Características: {serv.caracteristica}</Text>
+            </View>
+          )}
+          <View style={styles.serviceDetailRow}>
+            <Ionicons name="calendar-outline" size={16} color={COLORS.grayText} />
+            <Text style={styles.serviceDetailText}>
+              Fecha Entrega: {formatDate(serv.fechaInicio)}
+            </Text>
+          </View>
+          {serv.observaciones && (
+            <View style={styles.serviceDetailRow}>
+              <Ionicons name="document-text-outline" size={16} color={COLORS.grayText} />
+              <Text style={styles.serviceDetailText}>Obs: {serv.observaciones}</Text>
+            </View>
+          )}
+        </View>
+      </View>
+    ))}
+  </View>
+)}
+
+{/* ✅ FASE 2: AMBIENTES */}
+{event.idfase >= 2 && event.ambientes && event.ambientes.length > 0 && (
+  <View style={styles.sectionCard}>
+    <Text style={styles.sectionTitle}>Ambientes</Text>
+    {event.ambientes.map((amb, index) => (
+      <View key={index} style={styles.environmentItem}>
+        <View style={styles.environmentHeader}>
+          <Ionicons name="business-outline" size={20} color={COLORS.secondary} />
+          <Text style={styles.environmentTitle}>{amb.nombre || `Ambiente ${index + 1}`}</Text>
+        </View>
+        <View style={styles.environmentDetails}>
+          {amb.requisito && (
+            <View style={styles.environmentDetailRow}>
+              <Ionicons name="checkmark-circle-outline" size={16} color={COLORS.grayText} />
+              <Text style={styles.environmentDetailText}>Requisito: {amb.requisito}</Text>
+            </View>
+          )}
+          {amb.observaciones && (
+            <View style={styles.environmentDetailRow}>
+              <Ionicons name="document-text-outline" size={16} color={COLORS.grayText} />
+              <Text style={styles.environmentDetailText}>Obs: {amb.observaciones}</Text>
+            </View>
+          )}
+        </View>
+      </View>
+    ))}
+  </View>
+)}
+
+{/* ✅ FASE 2: LAYOUT SELECCIONADO */}
+{event.idfase >= 2 && event.layout && (
+  <View style={styles.sectionCard}>
+    <Text style={styles.sectionTitle}>Layout del Evento</Text>
+    {event.layout.imagenUrl || event.layout.url_imagen ? (
+      <Image
+        source={{ uri: event.layout.imagenUrl || `${API_BASE_URL}/uploads/${event.layout.url_imagen}` }}
+        style={styles.layoutImage}
+        resizeMode="contain"
+      />
+    ) : (
+      <View style={styles.layoutPlaceholder}>
+        <Ionicons name="image-outline" size={50} color={COLORS.grayText} />
+        <Text style={styles.layoutPlaceholderText}>
+          {event.layout.nombre || `Layout ID: ${event.layout.idlayout}`}
+        </Text>
+      </View>
+    )}
+    {event.layout.nombre && (
+      <Text style={styles.layoutName}>{event.layout.nombre}</Text>
+    )}
+  </View>
+)}
         {/* Creador */}
         {event.creador && (
           <View style={styles.sectionCard}>
@@ -819,6 +1013,145 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     marginBottom: 12,
   },
+  // Estilos para actividades
+activityItem: {
+  backgroundColor: COLORS.grayLight,
+  borderRadius: 12,
+  padding: 15,
+  marginBottom: 12,
+},
+activityHeader: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  marginBottom: 10,
+  paddingBottom: 8,
+  borderBottomWidth: 1,
+  borderBottomColor: COLORS.border,
+},
+activityTitle: {
+  fontSize: 16,
+  fontWeight: '600',
+  color: COLORS.darkText,
+  marginLeft: 10,
+  flex: 1,
+},
+activityDetails: {
+  paddingLeft: 5,
+},
+activityDetailRow: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  marginBottom: 6,
+},
+activityDetailText: {
+  fontSize: 14,
+  color: COLORS.grayText,
+  marginLeft: 8,
+  flex: 1,
+},
+
+// Estilos para servicios
+serviceItem: {
+  backgroundColor: COLORS.grayLight,
+  borderRadius: 12,
+  padding: 15,
+  marginBottom: 12,
+},
+serviceHeader: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  marginBottom: 10,
+  paddingBottom: 8,
+  borderBottomWidth: 1,
+  borderBottomColor: COLORS.border,
+},
+serviceTitle: {
+  fontSize: 16,
+  fontWeight: '600',
+  color: COLORS.darkText,
+  marginLeft: 10,
+  flex: 1,
+},
+serviceDetails: {
+  paddingLeft: 5,
+},
+serviceDetailRow: {
+  flexDirection: 'row',
+  alignItems: 'flex-start',
+  marginBottom: 6,
+},
+serviceDetailText: {
+  fontSize: 14,
+  color: COLORS.grayText,
+  marginLeft: 8,
+  flex: 1,
+},
+
+// Estilos para ambientes
+environmentItem: {
+  backgroundColor: COLORS.grayLight,
+  borderRadius: 12,
+  padding: 15,
+  marginBottom: 12,
+},
+environmentHeader: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  marginBottom: 10,
+  paddingBottom: 8,
+  borderBottomWidth: 1,
+  borderBottomColor: COLORS.border,
+},
+environmentTitle: {
+  fontSize: 16,
+  fontWeight: '600',
+  color: COLORS.darkText,
+  marginLeft: 10,
+  flex: 1,
+},
+environmentDetails: {
+  paddingLeft: 5,
+},
+environmentDetailRow: {
+  flexDirection: 'row',
+  alignItems: 'flex-start',
+  marginBottom: 6,
+},
+environmentDetailText: {
+  fontSize: 14,
+  color: COLORS.grayText,
+  marginLeft: 8,
+  flex: 1,
+},
+
+// Estilos para layout
+layoutImage: {
+  width: '100%',
+  height: 250,
+  borderRadius: 12,
+  backgroundColor: COLORS.grayLight,
+  marginBottom: 10,
+},
+layoutPlaceholder: {
+  alignItems: 'center',
+  justifyContent: 'center',
+  paddingVertical: 30,
+  backgroundColor: COLORS.grayLight,
+  borderRadius: 12,
+  marginBottom: 10,
+},
+layoutPlaceholderText: {
+  fontSize: 14,
+  color: COLORS.grayText,
+  marginTop: 10,
+  textAlign: 'center',
+},
+layoutName: {
+  fontSize: 15,
+  fontWeight: '600',
+  color: COLORS.darkText,
+  textAlign: 'center',
+},
   listIcon: {
     marginRight: 12,
     marginTop: 4,

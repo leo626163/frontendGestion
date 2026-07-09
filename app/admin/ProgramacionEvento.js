@@ -16,14 +16,6 @@ import * as SecureStore from 'expo-secure-store';
 const API_BASE_URL = 'https://backendgestion-production-e2aa.up.railway.app';
 const TOKEN_KEY = 'adminAuthToken';
 
-// ═══════════════════════════════════════════════════════════════════════════
-// ✅ FUNCIONES DE FECHA CORREGIDAS (Zona Horaria Local)
-// ═══════════════════════════════════════════════════════════════════════════
-
-/**
- * Parsea una fecha respetando la zona horaria LOCAL del usuario.
- * Evita el problema donde "2024-01-15" se convierte en "2024-01-14" en UTC-X.
- */
 const parseDateLocal = (dateInput) => {
   if (!dateInput) return new Date();
   if (dateInput instanceof Date) {
