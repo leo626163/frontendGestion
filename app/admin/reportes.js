@@ -157,7 +157,10 @@ const ReportesAvanzadosScreen = () => {
   const [selectedMonth, setSelectedMonth]     = useState(new Date().getMonth() + 1);
   const [showYearPicker, setShowYearPicker]   = useState(false);
   const [showMonthPicker, setShowMonthPicker] = useState(false);
-
+  const [showEventSelector, setShowEventSelector] = useState(false);
+  const [eventosDelMesSeleccionado, setEventosDelMesSeleccionado] = useState([]);
+  const [eventosSeleccionados, setEventosSeleccionados] = useState([]);
+  const [mesParaReporte, setMesParaReporte] = useState(null);
   const years  = Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i);
   const months = MONTH_NAMES_FULL.map((name, i) => ({ value: i + 1, name }));
 
@@ -299,6 +302,40 @@ const cargarEventos = useCallback(async () => {
       showError('Error al exportar: ' + err.message);
     }
   };
+  const cargarEventosDelMes = async (mesFormato) => {
+  setLoading(true);
+  try {
+    const token = await getTokenAsync();
+    if (!token) return;
+
+    const [yearStr, monthStr] = mesFormato.split('-');
+    const yearNum = parseInt(yearStr);
+    const monthNum = parseInt(monthStr);
+    
+    const res = await axios.get(`${API_BASE_URL}/eventos`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const todosEventos = Array.isArray(res.data) ? res.data : [];
+    
+    // Filtrar eventos del mes seleccionado
+    const eventosFiltrados = todosEventos.filter(ev => {
+      if (!ev.fechaevento) return false;
+      const fechaEvento = new Date(ev.fechaevento);
+      return fechaEvento.getFullYear() === yearNum && 
+             (fechaEvento.getMonth() + 1) === monthNum;
+    });
+    
+    setEventosDelMesSeleccionado(eventosFiltrados);
+    setEventosSeleccionados(eventosFiltrados.map(e => e.idevento)); // Seleccionar todos por defecto
+    setMesParaReporte(mesFormato);
+    setShowEventSelector(true);
+  } catch (err) {
+    console.error(err);
+    showError('Error al cargar eventos del mes');
+  } finally {
+    setLoading(false);
+  }
+};
 const generarPDF = async (mesFormato) => {
   setLoading(true);
   try {
@@ -312,63 +349,41 @@ const generarPDF = async (mesFormato) => {
     const mesNombre = MONTH_NAMES_FULL[parseInt(monthNum) - 1];
 
 let eventosDelMes = [];
-try {
+if (eventosIds && Array.isArray(eventosIds)) {
+      // Usar solo los eventos seleccionados
+      const res = await axios.get(`${API_BASE_URL}/eventos`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const todosEventos = Array.isArray(res.data) ? res.data : [];
+      eventosDelMes = todosEventos.filter(ev => eventosIds.includes(ev.idevento));
+    } else {
   const res = await axios.get(`${API_BASE_URL}/eventos`, {
     headers: { Authorization: `Bearer ${token}` },
     params: { mes: mesFormato } // Filtrar por mes
   });
   const todosEventos = Array.isArray(res.data) ? res.data : [];
   
-  // ✅ FILTRO: Calcular fecha límite (mes del reporte + 1 mes)
   const [yearStr, monthStr] = mesFormato.split('-');
   const yearNum = parseInt(yearStr);
   const monthNum2 = parseInt(monthStr);
-  
-  // Crear fecha límite: último día del mes del reporte + 1 mes adicional
   const fechaLimite = new Date(yearNum, monthNum2, 0); // último día del mes
   fechaLimite.setMonth(fechaLimite.getMonth() + 1); // +1 mes
   
-  // Fecha actual para comparación
-  const hoy = new Date();
   
   eventosDelMes = todosEventos.filter(ev => {
-    if (!ev.fechaevento) return false;
-    
-    const fechaEvento = new Date(ev.fechaevento);
-    const fechaCreacion = ev.created_at ? new Date(ev.created_at) : fechaEvento;
-    
-    // ✅ FILTRO 1: Excluir eventos del año pasado (año diferente al del reporte)
-    const añoEvento = fechaEvento.getFullYear();
-    if (añoEvento !== yearNum) {
-      console.log(`❌ Excluido (año ${añoEvento} ≠ ${yearNum}): ${ev.nombreevento}`);
-      return false;
-    }
-    
-    // ✅ FILTRO 2: Excluir eventos con más de 1 mes entre creación y fecha del evento
-    const diffMs = fechaEvento.getTime() - fechaCreacion.getTime();
-    const diffDias = diffMs / (1000 * 60 * 60 * 24);
-    const unMesEnDias = 30;
-    
-    if (diffDias > unMesEnDias) {
-      console.log(`❌ Excluido (>${unMesEnDias} días): ${ev.nombreevento} - ${diffDias.toFixed(0)} días`);
-      return false;
-    }
-    
-    // ✅ FILTRO 3: Excluir eventos con fecha muy lejana (más de 1 mes después del mes del reporte)
-    if (fechaEvento > fechaLimite) {
-      console.log(`❌ Excluido (fecha lejana): ${ev.nombreevento}`);
-      return false;
-    }
-    
-    return true;
-  });
+        if (!ev.fechaevento) return false;
+        const fechaEvento = new Date(ev.fechaevento);
+        const fechaCreacion = ev.created_at ? new Date(ev.created_at) : fechaEvento;
+        const añoEvento = fechaEvento.getFullYear();
+        if (añoEvento !== yearNum) return false;
+        const diffMs = fechaEvento.getTime() - fechaCreacion.getTime();
+        const diffDias = diffMs / (1000 * 60 * 60 * 24);
+        if (diffDias > 30) return false;
+        if (fechaEvento > fechaLimite) return false;
+        return true;
+      });
   
-  console.log(`✅ Eventos filtrados: ${eventosDelMes.length} de ${todosEventos.length}`);
-} catch (err) {
-  console.error('Error al obtener eventos del mes:', err);
-  eventosDelMes = [];
-}
-
+    }
     const aprobado       = reporte.aprobado  || 0;
     const pendiente      = reporte.pendiente || 0;
     const rechazado      = reporte.rechazado || 0;
@@ -988,7 +1003,7 @@ const generarReporteAnual = async (year) => {
               >
                 <Ionicons name="document-lock-outline" size={22} color="#F59E0B" />
                 <View style={{ flex: 1, marginLeft: 12 }}>
-                  <Text style={[styles.actionTitle, { color: '#F59E0B' }]}>📊 Reporte Anual Completo {new Date().getFullYear()}</Text>
+                  <Text style={[styles.actionTitle, { color: '#F59E0B' }]}>Reporte Anual Completo {new Date().getFullYear()}</Text>
                   <Text style={styles.actionSub}>PDF con TODOS los eventos y facultades del año</Text>
                 </View>
                 {loading && <ActivityIndicator size="small" color="#F59E0B" />}
