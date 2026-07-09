@@ -14,17 +14,9 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
+import * as Print from 'expo-print';
+import * as Sharing from 'expo-sharing';
 
-let determinedApiBaseUrl;
-/*if (Platform.OS === 'android') {
-  determinedApiBaseUrl = 'http://192.168.0.167:3001/api';
-} else if (Platform.OS === 'ios') {
-  determinedApiBaseUrl = 'http://192.168.0.167:3001/api';
-} else {
-  determinedApiBaseUrl = 'http://localhost:3001/api';
-}*/
-//const API_BASE_URL =  'https://evento.cidtec-uc.com';
-//const API_BASE_URL =  'https://unifrontend.onrender.com';
 const API_BASE_URL = 'https://backendgestion-production-e2aa.up.railway.app';
 const TOKEN_KEY = 'adminAuthToken';
 
@@ -81,6 +73,7 @@ const COLORS = {
   cardShadow: '#000000',
   notificationUnread: '#e6f0ff',
   notificationRead: '#ffffff',
+  border: '#e2e8f0',
 };
 
 const formatDate = (dateString) => {
@@ -116,43 +109,43 @@ const EventDetailScreen = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [user, setUser] = useState(null);
-const getCurrentPhaseFromFases = useCallback((fases) => {
-  // Si no hay fases, asumimos fase 1 (Planeación)
-  if (!Array.isArray(fases) || fases.length === 0) {
-    return {
-      number: 1,
-      label: 'Planeación',
-      key: 'phase1',
-      color: COLORS.info,
-      icon: 'document-text-outline',
+
+  const getCurrentPhaseFromFases = useCallback((fases) => {
+    if (!Array.isArray(fases) || fases.length === 0) {
+      return {
+        number: 1,
+        label: 'Planeación',
+        key: 'phase1',
+        color: COLORS.info,
+        icon: 'document-text-outline',
+      };
+    }
+
+    const faseToShow = fases[0];
+
+    const phaseConfig = {
+      1: { label: 'Planeación', icon: 'document-text-outline', color: COLORS.info },
+      2: { label: 'Revisión y aprobación', icon: 'clipboard-outline', color: COLORS.secondary },
+      3: { label: 'Programación del evento', icon: 'calendar-outline', color: COLORS.success },
+      4: { label: 'Ejecución', icon: 'play-circle-outline', color: COLORS.purple },
+      5: { label: 'Cierre y evaluación', icon: 'checkmark-done-outline', color: COLORS.grayText },
     };
-  }
 
-  const faseToShow = fases[0];
+    const config = phaseConfig[faseToShow.nrofase] || {
+      label: `Fase ${faseToShow.nrofase}`,
+      icon: 'help-circle-outline',
+      color: COLORS.grayText,
+    };
 
-  // Mapeo de fases conocidas
-  const phaseConfig = {
-    1: { label: 'Planeación', icon: 'document-text-outline', color: COLORS.info },
-    2: { label: 'Revisión y aprobación', icon: 'clipboard-outline', color: COLORS.secondary },
-    3: { label: 'Programación del evento', icon: 'calendar-outline', color: COLORS.success },
-    4: { label: 'Ejecución', icon: 'play-circle-outline', color: COLORS.purple },
-    5: { label: 'Cierre y evaluación', icon: 'checkmark-done-outline', color: COLORS.grayText },
-  };
+    return {
+      number: faseToShow.nrofase,
+      label: config.label,
+      key: `phase${faseToShow.nrofase}`,
+      color: config.color,
+      icon: config.icon,
+    };
+  }, []);
 
-  const config = phaseConfig[faseToShow.nrofase] || {
-    label: `Fase ${faseToShow.nrofase}`,
-    icon: 'help-circle-outline',
-    color: COLORS.grayText,
-  };
-
-  return {
-    number: faseToShow.nrofase,
-    label: config.label,
-    key: `phase${faseToShow.nrofase}`,
-    color: config.color,
-    icon: config.icon,
-  };
-}, []);
   const fetchEventDetails = useCallback(async () => {
     let processedEventId = Array.isArray(eventId) ? eventId[0] : eventId;
     if (typeof processedEventId === 'string' && processedEventId.startsWith('event-')) {
@@ -175,75 +168,73 @@ const getCurrentPhaseFromFases = useCallback((fases) => {
         router.replace('/LoginAdmin');
         return;
       }
-      const [eventResponse, userResponse] = await Promise.all([
-        await axios.get(`${API_BASE_URL}/eventos/${numericId}`, {
+      const [eventResponse] = await Promise.all([
+        axios.get(`${API_BASE_URL}/eventos/${numericId}`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
         fetchUserDetails(token)
       ]);
 
       const eventData = eventResponse.data;
-      console.log('Respuesta completa del backend:', eventData);
-console.log('ObjetivosPDI del backend:', eventData.ObjetivosPDI);
-console.log('objetivos_pdi del backend:', eventData.objetivos_pdi);
+
       if (!eventData || typeof eventData !== 'object' || Object.keys(eventData).length === 0) {
         throw new Error('Datos de evento vacíos o inválidos del servidor.');
       }
 
       const transformedEvent = {
-  id: eventData.idevento || null,
-  title: eventData.nombreevento || 'Sin título',
-  date: formatDate(eventData.fechaevento),
-  time: formatTime(eventData.horaevento),
-  location: eventData.lugarevento || 'Ubicación no especificada',
-  status: (eventData.estado || 'pendiente').toLowerCase(),
-  imageUrl: eventData.imagenUrl || null,
-  idfase: eventData.idfase || 1,
-  fases: eventData.fases || [],
-   responsable: eventData.responsable_evento || eventData.responsable || null,
-  actividadesPrevias: eventData.actividadesPrevias || [],
-  actividadesDurante: eventData.actividadesDurante || [],
-  actividadesPost: eventData.actividadesPost || [],
-  serviciosContratados: eventData.serviciosContratados || [],
-  ambientes: eventData.ambientes || [],
-  layout: eventData.layout || (eventData.idlayout ? { idlayout: eventData.idlayout } : null),
-  
-  Clasificacion: eventData.Clasificacion || null,
-  subcategoria: eventData.subcategoria || null,
-  tiposEvento: eventData.TiposDeEvento || [],
-  
-  objetivos: eventData.Objetivos || [],
-  objetivosPDI: Array.isArray(eventData.ObjetivosPDI) 
-    ? eventData.ObjetivosPDI 
-    : typeof eventData.objetivos_pdi === 'string'
-      ? JSON.parse(eventData.objetivos_pdi || '[]')
-      : [],
-  
-  segmentos: eventData.segmentos || [],
-  argumentacion: eventData.argumentacion || 'Sin argumentación',
-  
- resultados: (eventData.Resultados && eventData.Resultados.length > 0)
-  ? eventData.Resultados[0]
-  : {
-      participacion_esperada: null,
-      satisfaccion_esperada: null,
-      otros_resultados: null,
-      satisfaccion_real: null
-    },
-  recursos: eventData.Recursos || [],
-  comite: eventData.Comite || [],
-  presupuesto: eventData.Presupuesto || null,
-  egresos: eventData.Egresos || [], 
-  ingresos: eventData.Ingresos || [],
-  tags: eventData.tags || [],
-  
-  creador: eventData.creador ? {
-    nombre: `${eventData.creador.nombre} ${eventData.creador.apellidopat} ${eventData.creador.apellidomat}`,
-    email: eventData.creador.email,
-    role: eventData.creador.role
-  } : null
-};
-     
+        id: eventData.idevento || null,
+        title: eventData.nombreevento || 'Sin título',
+        date: formatDate(eventData.fechaevento),
+        time: formatTime(eventData.horaevento),
+        location: eventData.lugarevento || 'Ubicación no especificada',
+        status: (eventData.estado || 'pendiente').toLowerCase(),
+        imageUrl: eventData.imagenUrl || null,
+        idfase: eventData.idfase || 1,
+        fases: eventData.fases || [],
+        responsable: eventData.responsable_evento || eventData.responsable || null,
+        actividadesPrevias: eventData.actividadesPrevias || [],
+        actividadesDurante: eventData.actividadesDurante || [],
+        actividadesPost: eventData.actividadesPost || [],
+        serviciosContratados: eventData.serviciosContratados || [],
+        ambientes: eventData.ambientes || [],
+        layout: eventData.layout || (eventData.idlayout ? { idlayout: eventData.idlayout } : null),
+
+        Clasificacion: eventData.Clasificacion || null,
+        subcategoria: eventData.subcategoria || null,
+        tiposEvento: eventData.TiposDeEvento || [],
+
+        objetivos: eventData.Objetivos || [],
+        objetivosPDI: Array.isArray(eventData.ObjetivosPDI)
+          ? eventData.ObjetivosPDI
+          : typeof eventData.objetivos_pdi === 'string'
+            ? JSON.parse(eventData.objetivos_pdi || '[]')
+            : [],
+
+        segmentos: eventData.segmentos || [],
+        argumentacion: eventData.argumentacion || 'Sin argumentación',
+
+        resultados: (eventData.Resultados && eventData.Resultados.length > 0)
+          ? eventData.Resultados[0]
+          : {
+              participacion_esperada: null,
+              satisfaccion_esperada: null,
+              otros_resultados: null,
+              satisfaccion_real: null
+            },
+        recursos: eventData.Recursos || [],
+        comite: eventData.Comite || [],
+        presupuesto: eventData.Presupuesto || null,
+        egresos: eventData.Egresos || [],
+        ingresos: eventData.Ingresos || [],
+        tags: eventData.tags || [],
+
+        creador: eventData.creador ? {
+          nombre: `${eventData.creador.nombre} ${eventData.creador.apellidopat} ${eventData.creador.apellidomat}`,
+          email: eventData.creador.email,
+          role: eventData.creador.role
+        } : null
+      };
+
       if (!transformedEvent.id) {
         throw new Error('El evento no tiene un ID válido.');
       }
@@ -263,8 +254,6 @@ console.log('objetivos_pdi del backend:', eventData.objetivos_pdi);
     } finally {
       setLoading(false);
     }
-
-
   }, [eventId, router]);
 
   const fetchUserDetails = async (token) => {
@@ -281,12 +270,6 @@ console.log('objetivos_pdi del backend:', eventData.objetivos_pdi);
   };
 
   useEffect(() => {
-     if (event) {
-    console.log('🔍 Evento completo:', event);
-    console.log('🔍 Fases:', event.fases);
-    console.log('🔍 Primera fase:', event.fases?.[0]);
-    console.log('🔍 nrofase:', event.fases?.[0]?.nrofase);
-  }
     if (eventId) {
       fetchEventDetails();
     } else {
@@ -348,6 +331,189 @@ console.log('objetivos_pdi del backend:', eventData.objetivos_pdi);
     );
   };
 
+  const buildEventHtml = () => {
+    const actividadesHtml = (titulo, lista) => {
+      if (!lista || lista.length === 0) return '';
+      return `
+        <div class="section">
+          <div class="section-title">${titulo}</div>
+          <ul>
+            ${lista.map(a => `
+              <li>
+                <strong>${a.nombreActividad || 'Actividad'}</strong><br/>
+                Responsable: ${a.responsable || 'No especificado'}<br/>
+                Inicio: ${formatDate(a.fechaInicio)} — Fin: ${formatDate(a.fechaFin)}
+              </li>
+            `).join('')}
+          </ul>
+        </div>`;
+    };
+
+    const serviciosHtml = event.serviciosContratados?.length > 0 ? `
+      <div class="section">
+        <div class="section-title">Servicios Contratados</div>
+        <ul>
+          ${event.serviciosContratados.map(s => `
+            <li>
+              <strong>${s.nombreServicio || 'Servicio'}</strong><br/>
+              ${s.caracteristica ? `Características: ${s.caracteristica}<br/>` : ''}
+              Fecha Entrega: ${formatDate(s.fechaInicio)}
+              ${s.observaciones ? `<br/>Obs: ${s.observaciones}` : ''}
+            </li>
+          `).join('')}
+        </ul>
+      </div>` : '';
+
+    const layoutHtml = event.layout ? `
+      <div class="section">
+        <div class="section-title">Layout del Evento</div>
+        <div>${event.layout.nombre || `Layout ID: ${event.layout.idlayout}`}</div>
+      </div>` : '';
+
+    const segmentosHtml = (() => {
+      if (!event.objetivos || !event.objetivos.some(o => o.segmentos?.length > 0)) return '';
+      const allSegments = event.objetivos
+        .filter(o => Array.isArray(o.segmentos))
+        .flatMap(o => o.segmentos);
+      const uniqueMap = new Map();
+      allSegments.forEach(seg => {
+        const key = seg.idsegmento || seg.nombre_segmento || JSON.stringify(seg);
+        if (!uniqueMap.has(key)) uniqueMap.set(key, seg);
+      });
+      const unique = Array.from(uniqueMap.values());
+      return `
+        <div class="section">
+          <div class="section-title">Segmentos Objetivo</div>
+          ${unique.map(seg => `
+            <div><strong>${seg.nombre_segmento || 'Segmento'}</strong>: ${seg.texto_personalizado || ''}</div>
+          `).join('')}
+        </div>`;
+    })();
+
+    return `
+      <html>
+        <head>
+          <meta charset="UTF-8">
+          <style>
+            @page { margin: 1cm; }
+            body { font-family: Arial, sans-serif; padding: 1.5cm; line-height: 1.6; color: #333; }
+            h1 { color: #E95A0C; margin-bottom: 0.5cm; border-bottom: 2px solid #E95A0C; padding-bottom: 0.3cm; }
+            .section { margin-bottom: 1cm; }
+            .section-title { font-size: 16px; font-weight: bold; color: #1e293b; margin-bottom: 0.3cm; padding-bottom: 0.2cm; border-bottom: 1px solid #ddd; }
+            .detail-row { margin-bottom: 0.2cm; }
+            .label { font-weight: bold; color: #2980b9; }
+            ul { padding-left: 1cm; margin: 0.2cm 0; }
+            li { margin-bottom: 0.3cm; }
+            .budget { font-weight: bold; }
+            .positive { color: #27ae60; }
+            .negative { color: #e74c3c; }
+          </style>
+        </head>
+        <body>
+          <h1>${event.title}</h1>
+          <div class="section">
+            <div class="section-title">Datos Generales</div>
+            <div class="detail-row"><span class="label">Fecha:</span> ${event.date}</div>
+            <div class="detail-row"><span class="label">Hora:</span> ${event.time}</div>
+            <div class="detail-row"><span class="label">Ubicación:</span> ${event.location}</div>
+            <div class="detail-row"><span class="label">Estado:</span> ${event.status}</div>
+            ${event.responsable ? `<div class="detail-row"><span class="label">Responsable:</span> ${event.responsable}</div>` : ''}
+          </div>
+          ${event.creador ? `
+          <div class="section">
+            <div class="section-title">Propuesto por</div>
+            <div>${event.creador.nombre}</div>
+            <div>Rol: ${event.creador.role}</div>
+            <div>Email: ${event.creador.email}</div>
+          </div>` : ''}
+          ${event.Clasificacion ? `
+          <div class="section">
+            <div class="section-title">Clasificación Estratégica</div>
+            <div>${event.Clasificacion.nombreClasificacion} - ${event.Clasificacion.nombresubcategoria}</div>
+          </div>` : ''}
+          ${event.tiposEvento?.length > 0 ? `
+          <div class="section">
+            <div class="section-title">Tipos de Evento</div>
+            <ul>${event.tiposEvento.map(t => `<li>${t.nombretipo || 'Tipo desconocido'}</li>`).join('')}</ul>
+          </div>` : ''}
+          ${segmentosHtml}
+          ${event.objetivosPDI?.length > 0 ? `
+          <div class="section">
+            <div class="section-title">Objetivos del PDI Institucional</div>
+            <ul>${event.objetivosPDI.map((p, i) => `<li>${i + 1}. ${p}</li>`).join('')}</ul>
+          </div>` : ''}
+          ${actividadesHtml('Actividades Previas', event.actividadesPrevias)}
+          ${actividadesHtml('Actividades Durante el Evento', event.actividadesDurante)}
+          ${actividadesHtml('Actividades Después del Evento', event.actividadesPost)}
+          ${serviciosHtml}
+          ${layoutHtml}
+          ${event.resultados ? `
+          <div class="section">
+            <div class="section-title">Resultados Esperados</div>
+            ${event.resultados.participacion_esperada ? `<div class="detail-row">Participación: ${event.resultados.participacion_esperada}</div>` : ''}
+            ${event.resultados.satisfaccion_esperada ? `<div class="detail-row">Satisfacción: ${event.resultados.satisfaccion_esperada}</div>` : ''}
+            ${event.resultados.otros_resultados ? `<div class="detail-row">Otros: ${event.resultados.otros_resultados}</div>` : ''}
+          </div>` : ''}
+          ${event.comite?.length > 0 ? `
+          <div class="section">
+            <div class="section-title">Comité del Evento</div>
+            <ul>${event.comite.map(m => `<li>${[m.nombre, m.apellidopat, m.apellidomat].filter(Boolean).join(' ')} (${m.role}) - ${m.email}</li>`).join('')}</ul>
+          </div>` : ''}
+          ${event.presupuesto ? `
+          <div class="section">
+            <div class="section-title">Presupuesto</div>
+            <div class="detail-row">Total Egresos: Bs ${(event.presupuesto.total_egresos || 0).toFixed(2)}</div>
+            <div class="detail-row">Total Ingresos: Bs ${(event.presupuesto.total_ingresos || 0).toFixed(2)}</div>
+            <div class="detail-row budget ${(event.presupuesto.balance || 0) >= 0 ? 'positive' : 'negative'}">
+              Balance: Bs ${(event.presupuesto.balance || 0).toFixed(2)}
+            </div>
+          </div>` : ''}
+        </body>
+      </html>
+    `;
+  };
+
+  const generateEventPDF = async () => {
+    if (!event) {
+      Alert.alert('Error', 'No hay datos del evento para imprimir.');
+      return;
+    }
+
+    const htmlContent = buildEventHtml();
+
+    if (Platform.OS === 'web') {
+      const printWindow = window.open('', '_blank');
+      printWindow.document.write(`
+        ${htmlContent}
+        <script>
+          setTimeout(() => { window.print(); window.close(); }, 500);
+        </script>
+      `);
+      printWindow.document.close();
+      return;
+    }
+
+    try {
+      const result = await Print.printToFileAsync({ html: htmlContent });
+      if (!result?.uri) {
+        throw new Error('No se generó el PDF.');
+      }
+
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(result.uri, {
+          UTI: '.pdf',
+          mimeType: 'application/pdf',
+          dialogTitle: 'Imprimir o guardar evento',
+        });
+      } else {
+        Alert.alert('PDF generado', 'El archivo PDF se guardó en tu dispositivo.');
+      }
+    } catch (error) {
+      console.error('Error al generar PDF:', error);
+      Alert.alert('Error', 'No se pudo generar el PDF: ' + (error.message || 'Error desconocido'));
+    }
+  };
+
   if (loading) {
     return (
       <View style={styles.centered}>
@@ -401,20 +567,21 @@ console.log('objetivos_pdi del backend:', eventData.objetivos_pdi);
 
         <View style={styles.card}>
           <Text style={styles.eventTitle}>{event.title}</Text>
-          
-        {event && (() => {
-        const phaseInfo = getCurrentPhaseFromFases([{ nrofase: event.idfase }]);
-        return (
-          <View style={[styles.phaseBadge, { backgroundColor: phaseInfo.color }]}>
-            <Ionicons name={phaseInfo.icon} size={16} color={COLORS.white} />
-            <Text style={styles.phaseBadgeText}>
-              Fase {phaseInfo.number}: {phaseInfo.label}
-            </Text>
-          </View>
-        );
-      })()}
+
+          {event && (() => {
+            const phaseInfo = getCurrentPhaseFromFases([{ nrofase: event.idfase }]);
+            return (
+              <View style={[styles.phaseBadge, { backgroundColor: phaseInfo.color }]}>
+                <Ionicons name={phaseInfo.icon} size={16} color={COLORS.white} />
+                <Text style={styles.phaseBadgeText}>
+                  Fase {phaseInfo.number}: {phaseInfo.label}
+                </Text>
+              </View>
+            );
+          })()}
         </View>
- <View style={styles.sectionCard}>
+
+        <View style={styles.sectionCard}>
           <View style={styles.detailRow}>
             <Ionicons
               name={event.status === 'aprobado' ? 'checkmark-circle-outline' : 'time-outline'}
@@ -430,6 +597,7 @@ console.log('objetivos_pdi del backend:', eventData.objetivos_pdi);
             </Text>
           </View>
         </View>
+
         {/* Datos Generales */}
         <View style={styles.sectionCard}>
           <Text style={styles.sectionTitle}>Datos Generales</Text>
@@ -445,175 +613,163 @@ console.log('objetivos_pdi del backend:', eventData.objetivos_pdi);
             <Ionicons name="location-outline" size={20} color={COLORS.primary} style={styles.detailIcon} />
             <Text style={styles.detailText}>Ubicación: {event.location}</Text>
           </View>
-         
         </View>
-            {/* ✅ FASE 2: RESPONSABLE DEL EVENTO */}
-{event.idfase >= 2 && event.responsable && (
-  <View style={styles.sectionCard}>
-    <Text style={styles.sectionTitle}>Responsable del Evento</Text>
-    <View style={styles.detailRow}>
-      <Ionicons name="person-outline" size={20} color={COLORS.primary} style={styles.detailIcon} />
-      <Text style={styles.detailText}>{event.responsable}</Text>
-    </View>
-  </View>
-)}
 
-{/* ✅ FASE 2: ACTIVIDADES PREVIAS */}
-{event.idfase >= 2 && event.actividadesPrevias && event.actividadesPrevias.length > 0 && (
-  <View style={styles.sectionCard}>
-    <Text style={styles.sectionTitle}>Actividades Previas</Text>
-    {event.actividadesPrevias.map((act, index) => (
-      <View key={index} style={styles.activityItem}>
-        <View style={styles.activityHeader}>
-          <Ionicons name="list-circle-outline" size={20} color={COLORS.primary} />
-          <Text style={styles.activityTitle}>{act.nombreActividad || `Actividad ${index + 1}`}</Text>
-        </View>
-        <View style={styles.activityDetails}>
-          <View style={styles.activityDetailRow}>
-            <Ionicons name="person-outline" size={16} color={COLORS.grayText} />
-            <Text style={styles.activityDetailText}>Responsable: {act.responsable || 'No especificado'}</Text>
-          </View>
-          <View style={styles.activityDetailRow}>
-            <Ionicons name="calendar-outline" size={16} color={COLORS.grayText} />
-            <Text style={styles.activityDetailText}>
-              Inicio: {formatDate(act.fechaInicio)}
-            </Text>
-          </View>
-          <View style={styles.activityDetailRow}>
-            <Ionicons name="calendar-outline" size={16} color={COLORS.grayText} />
-            <Text style={styles.activityDetailText}>
-              Fin: {formatDate(act.fechaFin)}
-            </Text>
-          </View>
-        </View>
-      </View>
-    ))}
-  </View>
-)}
-
-{/* ✅ FASE 2: ACTIVIDADES DURANTE EL EVENTO */}
-{event.idfase >= 2 && event.actividadesDurante && event.actividadesDurante.length > 0 && (
-  <View style={styles.sectionCard}>
-    <Text style={styles.sectionTitle}>Actividades Durante el Evento</Text>
-    {event.actividadesDurante.map((act, index) => (
-      <View key={index} style={styles.activityItem}>
-        <View style={styles.activityHeader}>
-          <Ionicons name="play-circle-outline" size={20} color={COLORS.success} />
-          <Text style={styles.activityTitle}>{act.nombreActividad || `Actividad ${index + 1}`}</Text>
-        </View>
-        <View style={styles.activityDetails}>
-          <View style={styles.activityDetailRow}>
-            <Ionicons name="person-outline" size={16} color={COLORS.grayText} />
-            <Text style={styles.activityDetailText}>Responsable: {act.responsable || 'No especificado'}</Text>
-          </View>
-          <View style={styles.activityDetailRow}>
-            <Ionicons name="calendar-outline" size={16} color={COLORS.grayText} />
-            <Text style={styles.activityDetailText}>
-              Inicio: {formatDate(act.fechaInicio)}
-            </Text>
-          </View>
-          <View style={styles.activityDetailRow}>
-            <Ionicons name="calendar-outline" size={16} color={COLORS.grayText} />
-            <Text style={styles.activityDetailText}>
-              Fin: {formatDate(act.fechaFin)}
-            </Text>
-          </View>
-        </View>
-      </View>
-    ))}
-  </View>
-)}
-
-{/* ✅ FASE 2: ACTIVIDADES POST-EVENTO */}
-{event.idfase >= 2 && event.actividadesPost && event.actividadesPost.length > 0 && (
-  <View style={styles.sectionCard}>
-    <Text style={styles.sectionTitle}>Actividades Después del Evento</Text>
-    {event.actividadesPost.map((act, index) => (
-      <View key={index} style={styles.activityItem}>
-        <View style={styles.activityHeader}>
-          <Ionicons name="checkmark-done-outline" size={20} color={COLORS.info} />
-          <Text style={styles.activityTitle}>{act.nombreActividad || `Actividad ${index + 1}`}</Text>
-        </View>
-        <View style={styles.activityDetails}>
-          <View style={styles.activityDetailRow}>
-            <Ionicons name="person-outline" size={16} color={COLORS.grayText} />
-            <Text style={styles.activityDetailText}>Responsable: {act.responsable || 'No especificado'}</Text>
-          </View>
-          <View style={styles.activityDetailRow}>
-            <Ionicons name="calendar-outline" size={16} color={COLORS.grayText} />
-            <Text style={styles.activityDetailText}>
-              Inicio: {formatDate(act.fechaInicio)}
-            </Text>
-          </View>
-          <View style={styles.activityDetailRow}>
-            <Ionicons name="calendar-outline" size={16} color={COLORS.grayText} />
-            <Text style={styles.activityDetailText}>
-              Fin: {formatDate(act.fechaFin)}
-            </Text>
-          </View>
-        </View>
-      </View>
-    ))}
-  </View>
-)}
-
-{/* ✅ FASE 2: SERVICIOS CONTRATADOS */}
-{event.idfase >= 2 && event.serviciosContratados && event.serviciosContratados.length > 0 && (
-  <View style={styles.sectionCard}>
-    <Text style={styles.sectionTitle}>Servicios Contratados</Text>
-    {event.serviciosContratados.map((serv, index) => (
-      <View key={index} style={styles.serviceItem}>
-        <View style={styles.serviceHeader}>
-          <Ionicons name="build-outline" size={20} color={COLORS.purple} />
-          <Text style={styles.serviceTitle}>{serv.nombreServicio || `Servicio ${index + 1}`}</Text>
-        </View>
-        <View style={styles.serviceDetails}>
-          {serv.caracteristica && (
-            <View style={styles.serviceDetailRow}>
-              <Ionicons name="list-outline" size={16} color={COLORS.grayText} />
-              <Text style={styles.serviceDetailText}>Características: {serv.caracteristica}</Text>
+        {/* FASE 2: RESPONSABLE DEL EVENTO */}
+        {event.idfase >= 2 && event.responsable && (
+          <View style={styles.sectionCard}>
+            <Text style={styles.sectionTitle}>Responsable del Evento</Text>
+            <View style={styles.detailRow}>
+              <Ionicons name="person-outline" size={20} color={COLORS.primary} style={styles.detailIcon} />
+              <Text style={styles.detailText}>{event.responsable}</Text>
             </View>
-          )}
-          <View style={styles.serviceDetailRow}>
-            <Ionicons name="calendar-outline" size={16} color={COLORS.grayText} />
-            <Text style={styles.serviceDetailText}>
-              Fecha Entrega: {formatDate(serv.fechaInicio)}
-            </Text>
           </View>
-          {serv.observaciones && (
-            <View style={styles.serviceDetailRow}>
-              <Ionicons name="document-text-outline" size={16} color={COLORS.grayText} />
-              <Text style={styles.serviceDetailText}>Obs: {serv.observaciones}</Text>
-            </View>
-          )}
-        </View>
-      </View>
-    ))}
-  </View>
-)}
+        )}
 
-{event.idfase >= 2 && event.layout && (
-  <View style={styles.sectionCard}>
-    <Text style={styles.sectionTitle}>Layout del Evento</Text>
-    {event.layout.url_imagen ? (
-      <Image
-        source={{ uri: `${API_BASE_URL}/uploads/${event.layout.url_imagen}` }}
-        style={styles.layoutImage}
-        resizeMode="contain"
-        />
-      ) : (
-      <View style={styles.layoutPlaceholder}>
-        <Ionicons name="image-outline" size={50} color={COLORS.grayText} />
-        <Text style={styles.layoutPlaceholderText}>
-          {event.layout.nombre || `Layout ID: ${event.layout.idlayout}`}
-        </Text>
-      </View>
-    )}
-    {event.layout.nombre && (
-      <Text style={styles.layoutName}>{event.layout.nombre}</Text>
-    )}
-  </View>
-)}
+        {/* FASE 2: ACTIVIDADES PREVIAS */}
+        {event.idfase >= 2 && event.actividadesPrevias && event.actividadesPrevias.length > 0 && (
+          <View style={styles.sectionCard}>
+            <Text style={styles.sectionTitle}>Actividades Previas</Text>
+            {event.actividadesPrevias.map((act, index) => (
+              <View key={index} style={styles.activityItem}>
+                <View style={styles.activityHeader}>
+                  <Ionicons name="list-circle-outline" size={20} color={COLORS.primary} />
+                  <Text style={styles.activityTitle}>{act.nombre || `Actividad ${index + 1}`}</Text>
+                </View>
+                <View style={styles.activityDetails}>
+                  <View style={styles.activityDetailRow}>
+                    <Ionicons name="person-outline" size={16} color={COLORS.grayText} />
+                    <Text style={styles.activityDetailText}>Responsable: {act.responsable || 'No especificado'}</Text>
+                  </View>
+                  <View style={styles.activityDetailRow}>
+                    <Ionicons name="calendar-outline" size={16} color={COLORS.grayText} />
+                    <Text style={styles.activityDetailText}>Inicio: {formatDate(act.fecha_inicio)}</Text>
+                  </View>
+                  <View style={styles.activityDetailRow}>
+                    <Ionicons name="calendar-outline" size={16} color={COLORS.grayText} />
+                    <Text style={styles.activityDetailText}>Fin: {formatDate(act.fecha_fin)}</Text>
+                  </View>
+                </View>
+              </View>
+            ))}
+          </View>
+        )}
+
+        {/* FASE 2: ACTIVIDADES DURANTE EL EVENTO */}
+        {event.idfase >= 2 && event.actividadesDurante && event.actividadesDurante.length > 0 && (
+          <View style={styles.sectionCard}>
+            <Text style={styles.sectionTitle}>Actividades Durante el Evento</Text>
+            {event.actividadesDurante.map((act, index) => (
+              <View key={index} style={styles.activityItem}>
+                <View style={styles.activityHeader}>
+                  <Ionicons name="play-circle-outline" size={20} color={COLORS.success} />
+                  <Text style={styles.activityTitle}>{act.nombre || `Actividad ${index + 1}`}</Text>
+                </View>
+                <View style={styles.activityDetails}>
+                  <View style={styles.activityDetailRow}>
+                    <Ionicons name="person-outline" size={16} color={COLORS.grayText} />
+                    <Text style={styles.activityDetailText}>Responsable: {act.responsable || 'No especificado'}</Text>
+                  </View>
+                  <View style={styles.activityDetailRow}>
+                    <Ionicons name="calendar-outline" size={16} color={COLORS.grayText} />
+                    <Text style={styles.activityDetailText}>Inicio: {formatDate(act.fecha_inicio)}</Text>
+                  </View>
+                  <View style={styles.activityDetailRow}>
+                    <Ionicons name="calendar-outline" size={16} color={COLORS.grayText} />
+                    <Text style={styles.activityDetailText}>Fin: {formatDate(act.fecha_fin)}</Text>
+                  </View>
+                </View>
+              </View>
+            ))}
+          </View>
+        )}
+
+        {/* FASE 2: ACTIVIDADES POST-EVENTO */}
+        {event.idfase >= 2 && event.actividadesPost && event.actividadesPost.length > 0 && (
+          <View style={styles.sectionCard}>
+            <Text style={styles.sectionTitle}>Actividades Después del Evento</Text>
+            {event.actividadesPost.map((act, index) => (
+              <View key={index} style={styles.activityItem}>
+                <View style={styles.activityHeader}>
+                  <Ionicons name="checkmark-done-outline" size={20} color={COLORS.info} />
+                  <Text style={styles.activityTitle}>{act.nombre || `Actividad ${index + 1}`}</Text>
+                </View>
+                <View style={styles.activityDetails}>
+                  <View style={styles.activityDetailRow}>
+                    <Ionicons name="person-outline" size={16} color={COLORS.grayText} />
+                    <Text style={styles.activityDetailText}>Responsable: {act.responsable || 'No especificado'}</Text>
+                  </View>
+                  <View style={styles.activityDetailRow}>
+                    <Ionicons name="calendar-outline" size={16} color={COLORS.grayText} />
+                    <Text style={styles.activityDetailText}>Inicio: {formatDate(act.fecha_inicio)}</Text>
+                  </View>
+                  <View style={styles.activityDetailRow}>
+                    <Ionicons name="calendar-outline" size={16} color={COLORS.grayText} />
+                    <Text style={styles.activityDetailText}>Fin: {formatDate(act.fecha_fin)}</Text>
+                  </View>
+                </View>
+              </View>
+            ))}
+          </View>
+        )}
+
+        {/* FASE 2: SERVICIOS CONTRATADOS */}
+        {event.idfase >= 2 && event.serviciosContratados && event.serviciosContratados.length > 0 && (
+          <View style={styles.sectionCard}>
+            <Text style={styles.sectionTitle}>Servicios Contratados</Text>
+            {event.serviciosContratados.map((serv, index) => (
+              <View key={index} style={styles.serviceItem}>
+                <View style={styles.serviceHeader}>
+                  <Ionicons name="build-outline" size={20} color={COLORS.purple} />
+                  <Text style={styles.serviceTitle}>{serv.nombreServicio || `Servicio ${index + 1}`}</Text>
+                </View>
+                <View style={styles.serviceDetails}>
+                  {serv.caracteristica && (
+                    <View style={styles.serviceDetailRow}>
+                      <Ionicons name="list-outline" size={16} color={COLORS.grayText} />
+                      <Text style={styles.serviceDetailText}>Características: {serv.caracteristica}</Text>
+                    </View>
+                  )}
+                  <View style={styles.serviceDetailRow}>
+                    <Ionicons name="calendar-outline" size={16} color={COLORS.grayText} />
+                    <Text style={styles.serviceDetailText}>Fecha Entrega: {formatDate(serv.fechaInicio)}</Text>
+                  </View>
+                  {serv.observaciones && (
+                    <View style={styles.serviceDetailRow}>
+                      <Ionicons name="document-text-outline" size={16} color={COLORS.grayText} />
+                      <Text style={styles.serviceDetailText}>Obs: {serv.observaciones}</Text>
+                    </View>
+                  )}
+                </View>
+              </View>
+            ))}
+          </View>
+        )}
+
+        {/* FASE 2: LAYOUT */}
+        {event.idfase >= 2 && event.layout && (
+          <View style={styles.sectionCard}>
+            <Text style={styles.sectionTitle}>Layout del Evento</Text>
+            {event.layout.url_imagen ? (
+              <Image
+                source={{ uri: `${API_BASE_URL}/uploads/${event.layout.url_imagen}` }}
+                style={styles.layoutImage}
+                resizeMode="contain"
+              />
+            ) : (
+              <View style={styles.layoutPlaceholder}>
+                <Ionicons name="image-outline" size={50} color={COLORS.grayText} />
+                <Text style={styles.layoutPlaceholderText}>
+                  {event.layout.nombre || `Layout ID: ${event.layout.idlayout}`}
+                </Text>
+              </View>
+            )}
+            {event.layout.nombre && (
+              <Text style={styles.layoutName}>{event.layout.nombre}</Text>
+            )}
+          </View>
+        )}
+
         {/* Creador */}
         {event.creador && (
           <View style={styles.sectionCard}>
@@ -649,46 +805,43 @@ console.log('objetivos_pdi del backend:', eventData.objetivos_pdi);
           </View>
         )}
 
+        {/* Segmentos Objetivo */}
         {event.objetivos && event.objetivos.some(obj => obj.segmentos && obj.segmentos.length > 0) && (
-  <View style={styles.sectionCard}>
-    <Text style={styles.sectionTitle}>Segmentos Objetivo</Text>
-    {(() => {
-      // 1️⃣ Extraer todos los segmentos de todos los objetivos
-      const allSegments = event.objetivos
-        .filter(obj => obj.segmentos && Array.isArray(obj.segmentos))
-        .flatMap(obj => obj.segmentos);
-      
-      // 2️⃣ Eliminar duplicados usando Map (por idsegmento)
-      const uniqueSegmentsMap = new Map();
-      allSegments.forEach(seg => {
-        const key = seg.idsegmento || seg.nombre_segmento || JSON.stringify(seg);
-        if (!uniqueSegmentsMap.has(key)) {
-          uniqueSegmentsMap.set(key, seg);
-        }
-      });
-      
-      // 3️⃣ Convertir a array para renderizar
-      const uniqueSegments = Array.from(uniqueSegmentsMap.values());
-      
-      // 4️⃣ Renderizar segmentos únicos
-      return uniqueSegments.map((seg, index) => (
-        <View key={`seg-unique-${seg.idsegmento || index}`} style={styles.segmentItem}>
-          <View style={styles.segmentHeader}>
-            <Ionicons name="person-outline" size={16} color={COLORS.primary} style={styles.segmentIcon} />
-            <Text style={styles.segmentName}>
-              {seg.nombre_segmento || `Segmento ID ${seg.idsegmento}`}
-            </Text>
+          <View style={styles.sectionCard}>
+            <Text style={styles.sectionTitle}>Segmentos Objetivo</Text>
+            {(() => {
+              const allSegments = event.objetivos
+                .filter(obj => obj.segmentos && Array.isArray(obj.segmentos))
+                .flatMap(obj => obj.segmentos);
+
+              const uniqueSegmentsMap = new Map();
+              allSegments.forEach(seg => {
+                const key = seg.idsegmento || seg.nombre_segmento || JSON.stringify(seg);
+                if (!uniqueSegmentsMap.has(key)) {
+                  uniqueSegmentsMap.set(key, seg);
+                }
+              });
+
+              const uniqueSegments = Array.from(uniqueSegmentsMap.values());
+
+              return uniqueSegments.map((seg, index) => (
+                <View key={`seg-unique-${seg.idsegmento || index}`} style={styles.segmentItem}>
+                  <View style={styles.segmentHeader}>
+                    <Ionicons name="person-outline" size={16} color={COLORS.primary} style={styles.segmentIcon} />
+                    <Text style={styles.segmentName}>
+                      {seg.nombre_segmento || `Segmento ID ${seg.idsegmento}`}
+                    </Text>
+                  </View>
+                  {seg.texto_personalizado && (
+                    <Text style={styles.segmentDescription}>
+                      {seg.texto_personalizado}
+                    </Text>
+                  )}
+                </View>
+              ));
+            })()}
           </View>
-          {seg.texto_personalizado && (
-            <Text style={styles.segmentDescription}>
-              {seg.texto_personalizado}
-            </Text>
-          )}
-        </View>
-      ));
-    })()}
-  </View>
-)}
+        )}
 
         {/* Objetivos PDI Institucional */}
         {event.objetivosPDI && event.objetivosPDI.length > 0 && (
@@ -704,8 +857,6 @@ console.log('objetivos_pdi del backend:', eventData.objetivos_pdi);
             ))}
           </View>
         )}
-
-       
 
         {/* Resultados Esperados */}
         {event.resultados && (
@@ -742,8 +893,7 @@ console.log('objetivos_pdi del backend:', eventData.objetivos_pdi);
         {event.recursos && event.recursos.length > 0 && (
           <View style={styles.sectionCard}>
             <Text style={styles.sectionTitle}>Recursos Solicitados</Text>
-            
-            {/* Tecnológicos */}
+
             {event.recursos.filter(r => r.recurso_tipo === 'tecnologico').length > 0 && (
               <View style={styles.resourceCategory}>
                 <Text style={styles.resourceCategoryTitle}>Tecnológicos</Text>
@@ -760,8 +910,7 @@ console.log('objetivos_pdi del backend:', eventData.objetivos_pdi);
                 }
               </View>
             )}
-            
-            {/* Mobiliario */}
+
             {event.recursos.filter(r => r.recurso_tipo === 'mobiliario').length > 0 && (
               <View style={styles.resourceCategory}>
                 <Text style={styles.resourceCategoryTitle}>Mobiliario</Text>
@@ -778,8 +927,7 @@ console.log('objetivos_pdi del backend:', eventData.objetivos_pdi);
                 }
               </View>
             )}
-            
-            {/* Vajilla */}
+
             {event.recursos.filter(r => r.recurso_tipo === 'vajilla').length > 0 && (
               <View style={styles.resourceCategory}>
                 <Text style={styles.resourceCategoryTitle}>Vajilla</Text>
@@ -818,144 +966,148 @@ console.log('objetivos_pdi del backend:', eventData.objetivos_pdi);
           </View>
         )}
 
+        {/* Presupuesto */}
         {event.presupuesto && (
-  <View style={styles.sectionCard}>
-    <Text style={styles.sectionTitle}>Presupuesto del Evento</Text>
-    
-    {/* EGRESOS */}
-    {event.egresos && event.egresos.length > 0 && (
-      <View style={styles.budgetSubsection}>
-        <View style={styles.budgetHeader}>
-          <Ionicons name="arrow-down-circle" size={20} color={COLORS.logout} />
-          <Text style={styles.budgetSubtitle}>Egresos</Text>
-        </View>
-        
-        {/* Header de tabla */}
-        <View style={styles.budgetTableHeader}>
-          <Text style={[styles.budgetCell, styles.budgetCellDesc]}>Descripción</Text>
-          <Text style={[styles.budgetCell, styles.budgetCellNum]}>Cant.</Text>
-          <Text style={[styles.budgetCell, styles.budgetCellNum]}>Precio</Text>
-          <Text style={[styles.budgetCell, styles.budgetCellNum]}>Total</Text>
-        </View>
-        
-        {/* Filas de egresos */}
-        {event.egresos.map((egreso, index) => (
-          <View key={egreso.idegreso || index} style={styles.budgetTableRow}>
-            <Text style={[styles.budgetCell, styles.budgetCellDesc]}>{egreso.descripcion}</Text>
-            <Text style={[styles.budgetCell, styles.budgetCellNum]}>{egreso.cantidad}</Text>
-            <Text style={[styles.budgetCell, styles.budgetCellNum]}>Bs {parseFloat(egreso.precio_unitario).toFixed(2)}</Text>
-            <Text style={[styles.budgetCell, styles.budgetCellNum, styles.budgetCellTotal]}>
-              Bs {parseFloat(egreso.total).toFixed(2)}
-            </Text>
+          <View style={styles.sectionCard}>
+            <Text style={styles.sectionTitle}>Presupuesto del Evento</Text>
+
+            {event.egresos && event.egresos.length > 0 && (
+              <View style={styles.budgetSubsection}>
+                <View style={styles.budgetHeader}>
+                  <Ionicons name="arrow-down-circle" size={20} color={COLORS.logout} />
+                  <Text style={styles.budgetSubtitle}>Egresos</Text>
+                </View>
+
+                <View style={styles.budgetTableHeader}>
+                  <Text style={[styles.budgetCell, styles.budgetCellDesc]}>Descripción</Text>
+                  <Text style={[styles.budgetCell, styles.budgetCellNum]}>Cant.</Text>
+                  <Text style={[styles.budgetCell, styles.budgetCellNum]}>Precio</Text>
+                  <Text style={[styles.budgetCell, styles.budgetCellNum]}>Total</Text>
+                </View>
+
+                {event.egresos.map((egreso, index) => (
+                  <View key={egreso.idegreso || index} style={styles.budgetTableRow}>
+                    <Text style={[styles.budgetCell, styles.budgetCellDesc]}>{egreso.descripcion}</Text>
+                    <Text style={[styles.budgetCell, styles.budgetCellNum]}>{egreso.cantidad}</Text>
+                    <Text style={[styles.budgetCell, styles.budgetCellNum]}>Bs {parseFloat(egreso.precio_unitario).toFixed(2)}</Text>
+                    <Text style={[styles.budgetCell, styles.budgetCellNum, styles.budgetCellTotal]}>
+                      Bs {parseFloat(egreso.total).toFixed(2)}
+                    </Text>
+                  </View>
+                ))}
+
+                <View style={styles.budgetTotalRow}>
+                  <Text style={[styles.budgetTotalLabel, { flex: 3 }]}>TOTAL EGRESOS:</Text>
+                  <Text style={styles.budgetTotalValue}>Bs {(event.presupuesto.total_egresos || 0).toFixed(2)}</Text>
+                </View>
+              </View>
+            )}
+
+            {event.ingresos && event.ingresos.length > 0 && (
+              <View style={styles.budgetSubsection}>
+                <View style={styles.budgetHeader}>
+                  <Ionicons name="arrow-up-circle" size={20} color={COLORS.success} />
+                  <Text style={styles.budgetSubtitle}>Ingresos</Text>
+                </View>
+
+                <View style={styles.budgetTableHeader}>
+                  <Text style={[styles.budgetCell, styles.budgetCellDesc]}>Descripción</Text>
+                  <Text style={[styles.budgetCell, styles.budgetCellNum]}>Cant.</Text>
+                  <Text style={[styles.budgetCell, styles.budgetCellNum]}>Precio</Text>
+                  <Text style={[styles.budgetCell, styles.budgetCellNum]}>Total</Text>
+                </View>
+
+                {event.ingresos.map((ingreso, index) => (
+                  <View key={ingreso.idingreso || index} style={styles.budgetTableRow}>
+                    <Text style={[styles.budgetCell, styles.budgetCellDesc]}>{ingreso.descripcion}</Text>
+                    <Text style={[styles.budgetCell, styles.budgetCellNum]}>{ingreso.cantidad}</Text>
+                    <Text style={[styles.budgetCell, styles.budgetCellNum]}>Bs {parseFloat(ingreso.precio_unitario).toFixed(2)}</Text>
+                    <Text style={[styles.budgetCell, styles.budgetCellNum, styles.budgetCellTotal]}>
+                      Bs {parseFloat(ingreso.total).toFixed(2)}
+                    </Text>
+                  </View>
+                ))}
+
+                <View style={styles.budgetTotalRow}>
+                  <Text style={[styles.budgetTotalLabel, { flex: 3 }]}>TOTAL INGRESOS:</Text>
+                  <Text style={[styles.budgetTotalValue, { color: COLORS.success }]}>
+                    Bs {(event.presupuesto.total_ingresos || 0).toFixed(2)}
+                  </Text>
+                </View>
+              </View>
+            )}
+
+            <View style={styles.balanceFinal}>
+              <Text style={styles.balanceFinalLabel}>BALANCE ECONÓMICO:</Text>
+              <Text style={[
+                styles.balanceFinalValue,
+                { color: (event.presupuesto.balance || 0) >= 0 ? COLORS.success : COLORS.logout }
+              ]}>
+                Bs {(event.presupuesto.balance || 0).toFixed(2)}
+              </Text>
+            </View>
           </View>
-        ))}
-        
-        {/* Total Egresos */}
-        <View style={styles.budgetTotalRow}>
-          <Text style={[styles.budgetTotalLabel, { flex: 3 }]}>TOTAL EGRESOS:</Text>
-          <Text style={styles.budgetTotalValue}>Bs {(event.presupuesto.total_egresos || 0).toFixed(2)}</Text>
-        </View>
-      </View>
-    )}
-    
-    {/* INGRESOS */}
-    {event.ingresos && event.ingresos.length > 0 && (
-      <View style={styles.budgetSubsection}>
-        <View style={styles.budgetHeader}>
-          <Ionicons name="arrow-up-circle" size={20} color={COLORS.success} />
-          <Text style={styles.budgetSubtitle}>Ingresos</Text>
-        </View>
-        
-        {/* Header de tabla */}
-        <View style={styles.budgetTableHeader}>
-          <Text style={[styles.budgetCell, styles.budgetCellDesc]}>Descripción</Text>
-          <Text style={[styles.budgetCell, styles.budgetCellNum]}>Cant.</Text>
-          <Text style={[styles.budgetCell, styles.budgetCellNum]}>Precio</Text>
-          <Text style={[styles.budgetCell, styles.budgetCellNum]}>Total</Text>
-        </View>
-        
-        {/* Filas de ingresos */}
-        {event.ingresos.map((ingreso, index) => (
-          <View key={ingreso.idingreso || index} style={styles.budgetTableRow}>
-            <Text style={[styles.budgetCell, styles.budgetCellDesc]}>{ingreso.descripcion}</Text>
-            <Text style={[styles.budgetCell, styles.budgetCellNum]}>{ingreso.cantidad}</Text>
-            <Text style={[styles.budgetCell, styles.budgetCellNum]}>Bs {parseFloat(ingreso.precio_unitario).toFixed(2)}</Text>
-            <Text style={[styles.budgetCell, styles.budgetCellNum, styles.budgetCellTotal]}>
-              Bs {parseFloat(ingreso.total).toFixed(2)}
-            </Text>
-          </View>
-        ))}
-        
-        {/* Total Ingresos */}
-        <View style={styles.budgetTotalRow}>
-          <Text style={[styles.budgetTotalLabel, { flex: 3 }]}>TOTAL INGRESOS:</Text>
-          <Text style={[styles.budgetTotalValue, { color: COLORS.success }]}>
-            Bs {(event.presupuesto.total_ingresos || 0).toFixed(2)}
-          </Text>
-        </View>
-      </View>
-    )}
-    
-    {/* BALANCE FINAL */}
-    <View style={styles.balanceFinal}>
-      <Text style={styles.balanceFinalLabel}>BALANCE ECONÓMICO:</Text>
-      <Text style={[
-        styles.balanceFinalValue,
-        { color: (event.presupuesto.balance || 0) >= 0 ? COLORS.success : COLORS.logout }
-      ]}>
-        Bs {(event.presupuesto.balance || 0).toFixed(2)}
-      </Text>
-    </View>
-  </View>
-)}
+        )}
 
         <View style={styles.actionButtonsContainer}>
-  {/* 1. IR A PROGRAMACIÓN (SOLO para académicos, oculto para admin) */}
-  {user?.role !== 'admin' && event.status === 'aprobado' && event.idfase === 1 && (
-    <TouchableOpacity
-      style={styles.nextStepButton}
-      onPress={() => router.push(`/admin/ProgramacionEvento?idevento=${event.id}`)}
-    >
-      <Ionicons name="calendar-outline" size={20} color={COLORS.white} />
-      <Text style={styles.nextStepButtonText}>Ir a Programación del Evento</Text>
-    </TouchableOpacity>
-  )}
+          {/* IMPRIMIR EVENTO (visible siempre que el evento esté aprobado) */}
+          {event.status === 'aprobado' && (
+            <TouchableOpacity
+              style={styles.nextStepButton}
+              onPress={generateEventPDF}
+            >
+              <Ionicons name="print-outline" size={20} color={COLORS.white} />
+              <Text style={styles.nextStepButtonText}>Imprimir Evento</Text>
+            </TouchableOpacity>
+          )}
 
-  {/* 2. APROBAR / RECHAZAR (SOLO para administradores si el evento está pendiente) */}
-  {user?.role === 'admin' && event.status === 'pendiente' && (
-    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 10 }}>
-      <TouchableOpacity
-        style={[styles.editButton, { backgroundColor: COLORS.success, flex: 1, marginRight: 8 }]}
-        onPress={handleApproveEvent}
-      >
-        <Ionicons name="checkmark-circle-outline" size={20} color={COLORS.white} />
-        <Text style={styles.editButtonText}>Aprobar</Text>
-      </TouchableOpacity>
-      <TouchableOpacity
-        style={[styles.editButton, { backgroundColor: COLORS.logout, flex: 1, marginLeft: 8 }]}
-        onPress={handleRejectEvent}
-      >
-        <Ionicons name="close-circle-outline" size={20} color={COLORS.white} />
-        <Text style={styles.editButtonText}>Rechazar</Text>
-      </TouchableOpacity>
-    </View>
-  )}
+          {/* IR A PROGRAMACIÓN (académicos, evento aprobado en fase 1) */}
+          {user?.role !== 'admin' && event.status === 'aprobado' && event.idfase === 1 && (
+            <TouchableOpacity
+              style={styles.nextStepButton}
+              onPress={() => router.push(`/admin/ProgramacionEvento?idevento=${event.id}`)}
+            >
+              <Ionicons name="calendar-outline" size={20} color={COLORS.white} />
+              <Text style={styles.nextStepButtonText}>Ir a Programación del Evento</Text>
+            </TouchableOpacity>
+          )}
 
-  {/* 3. EDITAR EVENTO (SOLO para académicos si el evento está pendiente) - UN SOLO BOTÓN */}
-  {event.status === 'pendiente' && user?.role !== 'admin' && (
-    <TouchableOpacity
-      style={styles.editButton}
-      onPress={() => router.push(`/admin/EventDetailScreen?eventId=${event.id}`)}
-    >
-      <Ionicons name="create-outline" size={20} color={COLORS.white} />
-      <Text style={styles.editButtonText}>Editar Evento</Text>
-    </TouchableOpacity>
-  )}
-</View>
+          {/* APROBAR / RECHAZAR (admin, evento pendiente) */}
+          {user?.role === 'admin' && event.status === 'pendiente' && (
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 10 }}>
+              <TouchableOpacity
+                style={[styles.editButton, { backgroundColor: COLORS.success, flex: 1, marginRight: 8 }]}
+                onPress={handleApproveEvent}
+              >
+                <Ionicons name="checkmark-circle-outline" size={20} color={COLORS.white} />
+                <Text style={styles.editButtonText}>Aprobar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.editButton, { backgroundColor: COLORS.logout, flex: 1, marginLeft: 8 }]}
+                onPress={handleRejectEvent}
+              >
+                <Ionicons name="close-circle-outline" size={20} color={COLORS.white} />
+                <Text style={styles.editButtonText}>Rechazar</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* EDITAR EVENTO (académicos, evento pendiente) */}
+          {event.status === 'pendiente' && user?.role !== 'admin' && (
+            <TouchableOpacity
+              style={styles.editButton}
+              onPress={() => router.push(`/admin/EventDetailScreen?eventId=${event.id}`)}
+            >
+              <Ionicons name="create-outline" size={20} color={COLORS.white} />
+              <Text style={styles.editButtonText}>Editar Evento</Text>
+            </TouchableOpacity>
+          )}
+        </View>
       </ScrollView>
     </View>
   );
 };
+
 EventDetailScreen.options = {
   headerShown: false,
 };
@@ -983,145 +1135,103 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     marginBottom: 12,
   },
-  // Estilos para actividades
-activityItem: {
-  backgroundColor: COLORS.grayLight,
-  borderRadius: 12,
-  padding: 15,
-  marginBottom: 12,
-},
-activityHeader: {
-  flexDirection: 'row',
-  alignItems: 'center',
-  marginBottom: 10,
-  paddingBottom: 8,
-  borderBottomWidth: 1,
-  borderBottomColor: COLORS.border,
-},
-activityTitle: {
-  fontSize: 16,
-  fontWeight: '600',
-  color: COLORS.darkText,
-  marginLeft: 10,
-  flex: 1,
-},
-activityDetails: {
-  paddingLeft: 5,
-},
-activityDetailRow: {
-  flexDirection: 'row',
-  alignItems: 'center',
-  marginBottom: 6,
-},
-activityDetailText: {
-  fontSize: 14,
-  color: COLORS.grayText,
-  marginLeft: 8,
-  flex: 1,
-},
-
-// Estilos para servicios
-serviceItem: {
-  backgroundColor: COLORS.grayLight,
-  borderRadius: 12,
-  padding: 15,
-  marginBottom: 12,
-},
-serviceHeader: {
-  flexDirection: 'row',
-  alignItems: 'center',
-  marginBottom: 10,
-  paddingBottom: 8,
-  borderBottomWidth: 1,
-  borderBottomColor: COLORS.border,
-},
-serviceTitle: {
-  fontSize: 16,
-  fontWeight: '600',
-  color: COLORS.darkText,
-  marginLeft: 10,
-  flex: 1,
-},
-serviceDetails: {
-  paddingLeft: 5,
-},
-serviceDetailRow: {
-  flexDirection: 'row',
-  alignItems: 'flex-start',
-  marginBottom: 6,
-},
-serviceDetailText: {
-  fontSize: 14,
-  color: COLORS.grayText,
-  marginLeft: 8,
-  flex: 1,
-},
-
-// Estilos para ambientes
-environmentItem: {
-  backgroundColor: COLORS.grayLight,
-  borderRadius: 12,
-  padding: 15,
-  marginBottom: 12,
-},
-environmentHeader: {
-  flexDirection: 'row',
-  alignItems: 'center',
-  marginBottom: 10,
-  paddingBottom: 8,
-  borderBottomWidth: 1,
-  borderBottomColor: COLORS.border,
-},
-environmentTitle: {
-  fontSize: 16,
-  fontWeight: '600',
-  color: COLORS.darkText,
-  marginLeft: 10,
-  flex: 1,
-},
-environmentDetails: {
-  paddingLeft: 5,
-},
-environmentDetailRow: {
-  flexDirection: 'row',
-  alignItems: 'flex-start',
-  marginBottom: 6,
-},
-environmentDetailText: {
-  fontSize: 14,
-  color: COLORS.grayText,
-  marginLeft: 8,
-  flex: 1,
-},
-
-// Estilos para layout
-layoutImage: {
-  width: '100%',
-  height: 250,
-  borderRadius: 12,
-  backgroundColor: COLORS.grayLight,
-  marginBottom: 10,
-},
-layoutPlaceholder: {
-  alignItems: 'center',
-  justifyContent: 'center',
-  paddingVertical: 30,
-  backgroundColor: COLORS.grayLight,
-  borderRadius: 12,
-  marginBottom: 10,
-},
-layoutPlaceholderText: {
-  fontSize: 14,
-  color: COLORS.grayText,
-  marginTop: 10,
-  textAlign: 'center',
-},
-layoutName: {
-  fontSize: 15,
-  fontWeight: '600',
-  color: COLORS.darkText,
-  textAlign: 'center',
-},
+  activityItem: {
+    backgroundColor: COLORS.grayLight,
+    borderRadius: 12,
+    padding: 15,
+    marginBottom: 12,
+  },
+  activityHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  activityTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: COLORS.darkText,
+    marginLeft: 10,
+    flex: 1,
+  },
+  activityDetails: {
+    paddingLeft: 5,
+  },
+  activityDetailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  activityDetailText: {
+    fontSize: 14,
+    color: COLORS.grayText,
+    marginLeft: 8,
+    flex: 1,
+  },
+  serviceItem: {
+    backgroundColor: COLORS.grayLight,
+    borderRadius: 12,
+    padding: 15,
+    marginBottom: 12,
+  },
+  serviceHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  serviceTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: COLORS.darkText,
+    marginLeft: 10,
+    flex: 1,
+  },
+  serviceDetails: {
+    paddingLeft: 5,
+  },
+  serviceDetailRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 6,
+  },
+  serviceDetailText: {
+    fontSize: 14,
+    color: COLORS.grayText,
+    marginLeft: 8,
+    flex: 1,
+  },
+  layoutImage: {
+    width: '100%',
+    height: 250,
+    borderRadius: 12,
+    backgroundColor: COLORS.grayLight,
+    marginBottom: 10,
+  },
+  layoutPlaceholder: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 30,
+    backgroundColor: COLORS.grayLight,
+    borderRadius: 12,
+    marginBottom: 10,
+  },
+  layoutPlaceholderText: {
+    fontSize: 14,
+    color: COLORS.grayText,
+    marginTop: 10,
+    textAlign: 'center',
+  },
+  layoutName: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: COLORS.darkText,
+    textAlign: 'center',
+  },
   listIcon: {
     marginRight: 12,
     marginTop: 4,
@@ -1211,45 +1321,33 @@ layoutName: {
     fontWeight: '600',
     marginLeft: 6,
   },
- container: {
+  container: {
     flex: 1,
     backgroundColor: COLORS.background,
   },
   screenContainer: {
-  flex: 1,
-  backgroundColor: COLORS.background,
-},
-header: {
-  backgroundColor: COLORS.primary, // Naranja #E95A0C
-  flexDirection: 'row',
-  justifyContent: 'space-between',
-  alignItems: 'center',
-  paddingHorizontal: 20,
-  paddingTop: Platform.OS === 'ios' ? 50 : 20, // Para evitar el notch en iOS
-  paddingBottom: 15,
-},
-headerTitle: {
-  color: COLORS.white,
-  fontSize: 18,
-  fontWeight: 'bold',
-},
-  phaseIndicator: {
-  flexDirection: 'row',
-  alignItems: 'center',
-  backgroundColor: COLORS.secondary, // Azul profesional (#2980b9)
-  paddingHorizontal: 14,
-  paddingVertical: 6,
-  borderRadius: 20,
-  alignSelf: 'flex-start',
-  marginBottom: 15,
-  marginTop: 5,
-},
-phaseIndicatorText: {
-  color: COLORS.white,
-  fontSize: 14,
-  fontWeight: '600',
-},
- 
+    flex: 1,
+    backgroundColor: COLORS.background,
+  },
+  header: {
+    backgroundColor: COLORS.primary,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingTop: Platform.OS === 'ios' ? 50 : 20,
+    paddingBottom: 15,
+  },
+  headerTitle: {
+    color: COLORS.white,
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  contentContainer: {
+    padding: 16,
+    paddingBottom: 40,
+    flexGrow: 1,
+  },
   centered: {
     flex: 1,
     justifyContent: 'center',
@@ -1290,18 +1388,6 @@ phaseIndicatorText: {
   backButtonText: {
     color: COLORS.darkText,
     fontSize: 16,
-  },
-  creatorContainer: {
-    marginTop: 15,
-    padding: 15,
-    backgroundColor: COLORS.grayLight,
-    borderRadius: 8,
-  },
-  creatorLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: COLORS.darkText,
-    marginBottom: 5,
   },
   creatorName: {
     fontSize: 16,
@@ -1348,12 +1434,6 @@ phaseIndicatorText: {
     color: COLORS.darkText,
     marginBottom: 10,
   },
-  eventDescription: {
-    fontSize: 16,
-    color: COLORS.grayText,
-    lineHeight: 24,
-    marginBottom: 20,
-  },
   detailRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1367,46 +1447,11 @@ phaseIndicatorText: {
     color: COLORS.darkText,
     flex: 1,
   },
-  section: {
-    marginTop: 20,
-    marginBottom: 15,
-  },
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
     color: COLORS.darkText,
     marginBottom: 8,
-  },
-  objectiveText: {
-    fontSize: 14,
-    color: COLORS.grayText,
-    marginBottom: 4,
-    paddingLeft: 10,
-  },
-  resultText: {
-    fontSize: 14,
-    color: COLORS.grayText,
-    marginBottom: 4,
-    paddingLeft: 10,
-  },
-  tagsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginTop: 15,
-    marginBottom: 20,
-  },
-  tag: {
-    backgroundColor: COLORS.grayLight,
-    borderRadius: 15,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    marginRight: 8,
-    marginBottom: 8,
-  },
-  tagText: {
-    fontSize: 13,
-    color: COLORS.grayText,
-    fontWeight: '500',
   },
   actionButtonsContainer: {
     marginTop: 20,
@@ -1444,7 +1489,7 @@ phaseIndicatorText: {
     fontWeight: 'bold',
     marginLeft: 10,
   },
-    budgetSubsection: {
+  budgetSubsection: {
     marginBottom: 20,
     paddingBottom: 15,
     borderBottomWidth: 1,
