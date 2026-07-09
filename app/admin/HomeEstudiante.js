@@ -259,31 +259,32 @@ const HomeEstudianteScreen = () => {
    console.log('🔍 FECHA ACTUAL:', hoy.toISOString());
 
     const eventosFuturos = fase2.filter(e => {
-      const fechaStr = e.date || e.fechaevento || e.fecha_inicio;
-       console.log(`\n📅 Evento: "${e.nombreevento || e.title}"`);
-      console.log('   Fecha raw:', fechaStr);
+  const fechaStr = e.date || e.fechaevento || e.fecha_inicio;
+  console.log(`\n📅 Evento: "${e.nombreevento || e.title}"`);
+  console.log('   Fecha raw:', fechaStr);
 
-      if (!fechaStr || fechaStr === '–'){
-        console.log('   → ✅ SIN FECHA - Se muestra');
-         return true;
-      }
-      
-      const fechaEvento = new Date(fechaStr);
-      console.log('   Fecha parseada:', fechaEvento.toISOString());
-      console.log('   Es válida:', !isNaN(fechaEvento.getTime()));
-      
-      
-      if (isNaN(fechaEvento.getTime())) {
-        console.log('   → ✅ FECHA INVÁLIDA - Se muestra');
-        return true;
-      }
-      fechaEvento.setHours(0, 0, 0, 0);
-      const esFuturo = fechaEvento >= hoy;
-      
-      console.log('   Fecha evento (normalizada):', fechaEvento.toISOString());
-      console.log('   ¿Es futuro?', esFuturo ? '✅ SÍ' : '❌ NO');
-      return esFuturo;
-    });
+  if (!fechaStr || fechaStr === '–') {
+    console.log('SIN FECHA - Se muestra');
+    return true;
+  }
+
+  const fechaEvento = new Date(fechaStr);
+  const esValida = !isNaN(fechaEvento.getTime());
+  console.log('Es válida:', esValida);
+
+  if (!esValida) {
+    console.log('FECHA INVÁLIDA - Se muestra');
+    return true;
+  }
+
+  console.log('Fecha parseada:', fechaEvento.toISOString());
+  fechaEvento.setHours(0, 0, 0, 0);
+  const esFuturo = fechaEvento >= hoy;
+
+  console.log('Fecha evento (normalizada):', fechaEvento.toISOString());
+  console.log('¿Es futuro?', esFuturo ? '✅ SÍ' : '❌ NO');
+  return esFuturo;
+});
 
     console.log(`📅 Eventos: ${raw.length} total → ${fase2.length} fase 2 → ${eventosFuturos.length} futuros`);
 
