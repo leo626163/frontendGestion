@@ -365,131 +365,11 @@ const cargarEventos = useCallback(async () => {
     }
   };
 
-  // 🆕 GENERAR PDF POR EVENTO INDIVIDUAL
-  const generarPDFporEvento = async (evento) => {
-    setLoading(true);
-    try {
-      const ev = evento;
-      const estadoColors = {
-        aprobado: { bg: '#d1fae5', text: '#059669', border: '#10b981' },
-        pendiente: { bg: '#fef3c7', text: '#d97706', border: '#f59e0b' },
-        rechazado: { bg: '#fee2e2', text: '#dc2626', border: '#ef4444' },
-      };
-      const estadoStyle = estadoColors[(ev.estado || '').toLowerCase()] || { bg: '#f3f4f6', text: '#6b7280', border: '#9ca3af' };
-      const estadoTexto = (ev.estado || 'N/A').charAt(0).toUpperCase() + (ev.estado || '').slice(1);
-      const fechaEventoStr = ev.fechaevento ? new Date(ev.fechaevento).toLocaleDateString('es-ES', {day:'2-digit',month:'long',year:'numeric'}) : 'Sin fecha definida';
-
-      const descripcion = ev.descripcion || ev.descripcionevento || '';
-      const observaciones = ev.observaciones || ev.comentarios || '';
-      const facultad = ev.facultad || ev.departamento || ev.facultadEvento || 'No especificada';
-      const asistentes = ev.asistentes ?? ev.cantidadasistentes ?? 'No registrado';
-
-      const html = `<!DOCTYPE html><html><head><meta charset="utf-8">
-        <style>
-          *{margin:0;padding:0;box-sizing:border-box}
-          body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;padding:40px;background:#f9fafb;line-height:1.6}
-          .wrap{max-width:800px;margin:0 auto;background:#fff;border-radius:16px;padding:40px;box-shadow:0 4px 20px rgba(0,0,0,.08)}
-          .header{text-align:center;margin-bottom:32px;padding-bottom:24px;border-bottom:3px solid #E95A0C}
-          h1{color:#E95A0C;font-size:28px;margin-bottom:8px;font-weight:800}
-          .sub{color:#6b7280;font-size:14px}
-          .section{margin-bottom:28px}
-          .section-title{font-size:18px;font-weight:700;color:#1f2937;margin-bottom:16px;display:flex;align-items:center;gap:8px;padding-bottom:8px;border-bottom:2px solid #f3f4f6}
-          .section-title::before{content:'';width:4px;height:20px;background:#E95A0C;border-radius:2px}
-          .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
-          .info-card{background:#f9fafb;border-radius:12px;padding:16px;border-left:4px solid #E95A0C}
-          .info-label{font-size:11px;color:#6b7280;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px;font-weight:700}
-          .info-value{font-size:15px;font-weight:600;color:#1f2937}
-          .estado-badge{display:inline-block;padding:8px 20px;border-radius:20px;font-size:14px;font-weight:800;border:2px solid ${estadoStyle.border};background:${estadoStyle.bg};color:${estadoStyle.text};letter-spacing:0.5px}
-          .desc{background:#f9fafb;border-radius:12px;padding:20px;font-size:14px;color:#374151;border:1px solid #e5e7eb;white-space:pre-wrap;line-height:1.7}
-          .footer{text-align:center;color:#9ca3af;font-size:12px;margin-top:32px;padding-top:16px;border-top:1px solid #e5e7eb}
-          @media print{body{padding:20px}.wrap{box-shadow:none;max-width:100%}}
-        </style></head><body><div class="wrap">
-        
-        <div class="header">
-          <h1>Reporte Detallado de Evento</h1>
-          <p class="sub">ID del Evento: <strong>${ev.idevento || 'N/A'}</strong> · Generado el ${new Date().toLocaleDateString('es-ES', {day:'2-digit',month:'2-digit',year:'numeric'})}</p>
-        </div>
-  
-        <div class="section">
-          <div class="section-title">Información General</div>
-          <div style="text-align:center;margin-bottom:24px;">
-            <h2 style="font-size:24px;color:#1f2937;margin-bottom:12px;">${ev.nombreevento || 'Sin nombre'}</h2>
-            <span class="estado-badge">${estadoTexto}</span>
-          </div>
-          <div class="grid">
-            <div class="info-card">
-              <div class="info-label">📅 Fecha del Evento</div>
-              <div class="info-value">${fechaEventoStr}</div>
-            </div>
-            <div class="info-card">
-              <div class="info-label">📍 Lugar</div>
-              <div class="info-value">${ev.lugarevento || 'No especificado'}</div>
-            </div>
-            <div class="info-card">
-              <div class="info-label">👤 Responsable</div>
-              <div class="info-value">${ev.responsable_evento || 'No asignado'}</div>
-            </div>
-            <div class="info-card">
-              <div class="info-label">🏢 Facultad / Departamento</div>
-              <div class="info-value">${facultad}</div>
-            </div>
-            <div class="info-card">
-              <div class="info-label">🕒 Hora de Inicio</div>
-              <div class="info-value">${ev.horainicio || '–'}</div>
-            </div>
-            <div class="info-card">
-              <div class="info-label">🕒 Hora de Fin</div>
-              <div class="info-value">${ev.horafin || '–'}</div>
-            </div>
-            <div class="info-card">
-              <div class="info-label">👥 Cantidad de Asistentes</div>
-              <div class="info-value">${asistentes}</div>
-            </div>
-            <div class="info-card">
-              <div class="info-label">📅 Fecha de Registro</div>
-              <div class="info-value">${ev.created_at ? new Date(ev.created_at).toLocaleDateString('es-ES') : '–'}</div>
-            </div>
-          </div>
-        </div>
-  
-        ${descripcion ? `
-        <div class="section">
-          <div class="section-title">📝 Descripción del Evento</div>
-          <div class="desc">${descripcion}</div>
-        </div>
-        ` : ''}
-  
-        ${observaciones ? `
-        <div class="section">
-          <div class="section-title">💬 Observaciones</div>
-          <div class="desc">${observaciones}</div>
-        </div>
-        ` : ''}
-  
-        <div class="footer">
-          Panel de Administración UFT · Sistema de Gestión de Eventos
-        </div>
-        
-        </div></body></html>`;
-  
-      if (Platform.OS === 'web') {
-        const w = window.open('', '_blank');
-        if (w) { 
-          w.document.write(html); 
-          w.document.close(); 
-          setTimeout(() => w.print(), 800); 
-        }
-        else showError('Permite ventanas emergentes para ver el reporte.');
-      } else {
-        const { uri } = await Print.printToFileAsync({ html });
-        await Sharing.shareAsync(uri, { mimeType: 'application/pdf', dialogTitle: `Reporte_${ev.nombreevento || ev.idevento}` });
-      }
-    } catch (err) {
-      console.error(err);
-      showError('Error al generar PDF: ' + err.message);
-    } finally {
-      setLoading(false);
-    }
+  // 🆕 NAVEGAR A DETALLES DEL EVENTO (EN LUGAR DE GENERAR PDF)
+  const navegarADetalleEvento = (evento) => {
+    setShowEventPicker(false);
+    // Navegar a la pantalla de detalles del evento
+    router.push(`/admin/EventDetailScreen?eventId=${evento.idevento}`);
   };
 
   const generarPDF = async (mesFormato) => {
@@ -1167,15 +1047,15 @@ const cargarEventos = useCallback(async () => {
                 <Ionicons name="chevron-forward" size={18} color="#F59E0B" />
               </TouchableOpacity>
 
-              {/* 🆕 BOTÓN REPORTE POR EVENTO */}
+              {/* 🆕 BOTÓN REPORTE POR EVENTO - AHORA NAVEGA A DETALLES */}
               <TouchableOpacity 
                 style={[styles.actionBtn, { backgroundColor: '#F3E8FF', borderColor: '#8B5CF6' }]} 
                 onPress={cargarEventosParaPicker}
               >
                 <Ionicons name="list-circle-outline" size={22} color={COLORS.purple} />
                 <View style={{ flex: 1, marginLeft: 12 }}>
-                  <Text style={[styles.actionTitle, { color: COLORS.purple }]}>Reporte por Evento</Text>
-                  <Text style={styles.actionSub}>Selecciona 1 evento específico para ver todos sus detalles</Text>
+                  <Text style={[styles.actionTitle, { color: COLORS.purple }]}>Ver Detalle de Evento</Text>
+                  <Text style={styles.actionSub}>Selecciona 1 evento para ver toda su información completa</Text>
                 </View>
                 {loading && <ActivityIndicator size="small" color={COLORS.purple} />}
                 <Ionicons name="chevron-forward" size={18} color={COLORS.purple} />
@@ -1262,13 +1142,13 @@ const cargarEventos = useCallback(async () => {
         </View>
       )}
 
-      {/* 🆕 MODAL SELECTOR DE EVENTO (REPORTE POR EVENTO) */}
+      {/* 🆕 MODAL SELECTOR DE EVENTO - AHORA NAVEGA A DETALLES */}
       {showEventPicker && (
         <View style={styles.overlay}>
           <View style={[styles.modal, { width: '90%', maxWidth: 420, maxHeight: '85%' }]}>
             <Text style={styles.modalTitle}>Seleccionar Evento</Text>
             <Text style={{ fontSize: 13, color: COLORS.textSecondary, marginBottom: 12, textAlign: 'center' }}>
-              Toca un evento para generar su reporte detallado
+              Toca un evento para ver todos sus detalles completos
             </Text>
             
             <ScrollView style={{ maxHeight: 400 }} nestedScrollEnabled>
@@ -1286,10 +1166,7 @@ const cargarEventos = useCallback(async () => {
                       { paddingVertical: 12, paddingHorizontal: 14 },
                       i === todosLosEventos.length - 1 && { borderBottomWidth: 0 }
                     ]}
-                    onPress={() => {
-                      setShowEventPicker(false);
-                      generarPDFporEvento(ev);
-                    }}
+                    onPress={() => navegarADetalleEvento(ev)}
                   >
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, width: '100%' }}>
                       <View style={{ flex: 1 }}>
