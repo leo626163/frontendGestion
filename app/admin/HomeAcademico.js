@@ -2076,7 +2076,7 @@ cardTrendText: {
     width: '100%',
   },
   minimalDockLogoutButtonText: {
-    color: COLORS.white,
+    color: COLORS.black,
     fontSize: 15,
     fontWeight: '600',
     marginLeft: 8,
