@@ -670,8 +670,7 @@ const styles = StyleSheet.create({
   dockToggleText: { color: COLORS.white, fontSize: 15, fontWeight: '600' },
   dockExpanded: {
     paddingHorizontal: 20, paddingBottom: 12, backgroundColor: COLORS.surface,
-    borderTopLeftRadius: 20, borderTopRightRadius: 20,
-    position: 'absolute', top: 0, left: 0, right: 0, paddingTop: 62,
+    borderTopLeftRadius: 20, borderTopRightRadius: 20
   },
   dockActions: { flexDirection: 'row', justifyContent: 'space-around', marginBottom: 14 },
   dockActionBtn: { alignItems: 'center', paddingVertical: 8, width: '30%' },
