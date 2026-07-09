@@ -627,7 +627,7 @@ console.log('objetivos_pdi del backend:', eventData.objetivos_pdi);
     <Text style={styles.sectionTitle}>Layout del Evento</Text>
     {event.layout.imagenUrl || event.layout.url_imagen ? (
       <Image
-        source={{ uri: event.layout.imagenUrl || `${API_BASE_URL}/uploads/${event.layout.url_imagen}` }}
+        source={{ uri: event.layout.imagenUrl || `${API_BASE_URL}/uploads/${layout.url_imagen}` }}
         style={styles.layoutImage}
         resizeMode="contain"
       />
