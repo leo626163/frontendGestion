@@ -600,8 +600,8 @@ console.log('objetivos_pdi del backend:', eventData.objetivos_pdi);
         source={{ uri: `${API_BASE_URL}/uploads/${event.layout.url_imagen}` }}
         style={styles.layoutImage}
         resizeMode="contain"
-      />
-    ) : (
+        />
+      ) : (
       <View style={styles.layoutPlaceholder}>
         <Ionicons name="image-outline" size={50} color={COLORS.grayText} />
         <Text style={styles.layoutPlaceholderText}>
