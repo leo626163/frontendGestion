@@ -61,7 +61,6 @@ const clearSession = async () => {
   } catch {}
 };
 
-// ─── Data mapper — backend → EventCard format ─────────────────────────────────
 const CATEGORY_COLORS = {
   taller: '#3B82F6', conferencia: '#EF4444', seminario: '#F59E0B',
   webinar: '#8B5CF6', capacitacion: '#EC4899', charla: '#10B981',
@@ -108,7 +107,7 @@ const mapEvento = (e) => {
   };
 };
 
-const EventCard = ({ event, onPress }) => (
+const EventCard = ({ event, onPress,onInscribir, yaInscrito }) => (
   <TouchableOpacity style={styles.eventCard} onPress={onPress} activeOpacity={0.85}>
     {/* Header row */}
     <View style={styles.eventHeader}>
@@ -147,18 +146,20 @@ const EventCard = ({ event, onPress }) => (
       )}
     </View>
 
-    {/* Footer */}
-    <View style={styles.eventFooter}>
+     <View style={styles.eventFooter}>
       <View style={styles.statusRow}>
         <View style={[styles.statusDot, { backgroundColor: event.statusColor }]} />
         <Text style={[styles.statusText, { color: event.statusColor }]}>{event.status}</Text>
       </View>
-      {event.modalidad && (
-        <View style={styles.modalidadBadge}>
-          <Ionicons name={event.modalidad === 'virtual' ? 'videocam-outline' : 'home-outline'} size={12} color={COLORS.primary} />
-          <Text style={styles.modalidadText}>{event.modalidad === 'virtual' ? 'Virtual' : 'Presencial'}</Text>
-        </View>
-      )}
+
+      <TouchableOpacity
+        style={[styles.inscribirBtn, yaInscrito && styles.inscribirBtnDisabled]}
+        onPress={(e) => { e.stopPropagation(); if (!yaInscrito) onInscribir(event.id); }}
+        disabled={yaInscrito}
+      >
+        <Ionicons name={yaInscrito ? 'checkmark-circle' : 'add-circle-outline'} size={16} color={COLORS.white} />
+        <Text style={styles.inscribirBtnText}>{yaInscrito ? 'Inscrito' : 'Inscribirme'}</Text>
+      </TouchableOpacity>
     </View>
   </TouchableOpacity>
 );
@@ -184,15 +185,30 @@ const HomeEstudianteScreen = () => {
   const [events, setEvents]       = useState([]);
   const [error, setError]         = useState(null);
   const [stats, setStats]         = useState({ total: 0, proximos: 0, completados: 0 });
-
+  const [inscritos, setInscritos] = useState(new Set());
+  const handleInscribir = async (eventId) => {
+  try {
+    const token = await getToken();
+    await axios.post(`${API_BASE_URL}/eventos/${eventId}/registrar`, {}, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    setInscritos(prev => new Set(prev).add(eventId));
+    Alert.alert('✅ Inscrito', 'Te has registrado exitosamente al evento.');
+  } catch (err) {
+    console.error('Error al inscribirse:', err);
+    const msg = err.response?.data?.message || 'No se pudo completar la inscripción.';
+    Alert.alert('Error', msg);
+  }
+};
   useEffect(() => {
     const init = async () => {
       const token = await getToken();
       if (!token) { redirectToLogin('Sesión expirada, inicia sesión nuevamente.'); return; }
 
-      const user = await getUserData();
-      if (!user) { redirectToLogin('No se encontró información de sesión.'); return; }
-      if (user.role !== 'student') { redirectToLogin(`Acceso no válido. Rol: ${user.role}`); return; }
+       const perfilFresco = await fetchUserProfile();
+        const user = perfilFresco || await getUserData();
+        if (!user) { redirectToLogin('No se encontró información de sesión.'); return; }
+        if (user.role !== 'student') { redirectToLogin(`Acceso no válido. Rol: ${user.role}`); return; }
 
       setUserData(user);
     };
@@ -215,11 +231,7 @@ const HomeEstudianteScreen = () => {
     let facultadId = user.facultad_id;
     let facultadNombre = user.facultad_nombre || user.facultad?.nombre;
 
-    if (!facultadId) {
-      console.log('⚠️ Usando facultad_id = 1 temporalmente');
-      facultadId = 1;
-      facultadNombre = 'Facultad de Ingenieria';
-    }
+    
 
     if (!facultadId) {
       setError('Tu perfil no tiene facultad asignada. Contacta al administrador.');
@@ -297,7 +309,30 @@ const HomeEstudianteScreen = () => {
     setLoading(false);
   }
 }, []);
+const fetchUserProfile = useCallback(async () => {
+  try {
+    const token = await getToken();
+    if (!token) return null;
 
+    const res = await axios.get(`${API_BASE_URL}/profile`, {
+      headers: { Authorization: `Bearer ${token}` },
+      timeout: 8000,
+    });
+
+    const perfil = res.data;
+    const actualizado = {
+      ...perfil,
+      facultad_id: perfil.facultad_id || perfil.academico?.facultad_id,
+      facultad_nombre: perfil.facultad || perfil.facultad?.nombre,
+    };
+
+    await saveUserData(actualizado);
+    return actualizado;
+  } catch (err) {
+    console.error('Error al cargar perfil:', err);
+    return null;
+  }
+}, []);
   useEffect(() => {
     if (userData) fetchEvents(userData);
   }, [userData]);
@@ -394,6 +429,8 @@ const HomeEstudianteScreen = () => {
                   key={ev.id?.toString()}
                   event={ev}
                   onPress={() => router.push(`/estudiante/eventos/${ev.id}`)}
+                  onInscribir={handleInscribir}
+                  yaInscrito={inscritos.has(ev.id)}
                 />
               ))}
             </View>
@@ -424,7 +461,6 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
   scroll: { flex: 1 },
 
-  // Header — orange card
   header: {
     backgroundColor: COLORS.primary,
     paddingHorizontal: 20,
@@ -446,7 +482,13 @@ const styles = StyleSheet.create({
   },
   statValue: { fontSize: 20, fontWeight: '800', color: COLORS.white },
   statLabel: { fontSize: 11, color: 'rgba(255,255,255,0.8)', marginTop: 2 },
-
+  inscribirBtn: {
+  flexDirection: 'row', alignItems: 'center', gap: 4,
+  backgroundColor: COLORS.primary,
+  paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8,
+},
+inscribirBtnDisabled: { backgroundColor: COLORS.success },
+inscribirBtnText: { color: COLORS.white, fontSize: 11, fontWeight: '600' },
   // Section
   section: { paddingHorizontal: 20, marginTop: 28 },
   sectionHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 },
