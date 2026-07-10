@@ -91,12 +91,7 @@ export default function App() {
           ) : (
             <Stack.Screen name="Home" component={HomeScreen} />
           )}
-          <Stack.Screen name="BackendTest" component={BackendTestScreen} options={{ headerShown: true, title: 'Pruebas Backend' }} />
-          <Stack.Screen
-            name="EventoChat"
-            component={EventoChatScreen}
-            options={{ headerShown: false }}  // El header ya está incluido en la pantalla
-          />
+          
         </Stack.Navigator>
       </NavigationContainer>
     </View>
