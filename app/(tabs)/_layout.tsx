@@ -48,13 +48,7 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => <TabBarIcon name="user" color={color} />,
         }}
       />
-      <Tabs.Screen
-        name="chatbot"
-        options={{
-          title: 'Chatbot',
-          tabBarIcon: ({ color }) => <Ionicons name="chatbubble" size={24} color={color} />,
-        }}
-      />
+     
     </Tabs>
     
   );
