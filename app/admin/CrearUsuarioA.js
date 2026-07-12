@@ -64,15 +64,15 @@ const CrearUsuarioA = () => {
   const [facultadSeleccionada, setFacultadSeleccionada] = useState(null);
   const [items] = useState([ 
     { label: 'Administrador', value: 'admin', icon: () => <Ionicons name="shield-checkmark" size={20} color="#e74c3c" /> },
-    { label: 'Admisiones', value: 'admisiones', icon: () => <Ionicons name="school" size={20} color="#3498db" /> },
+    //{ label: 'Admisiones', value: 'admisiones', icon: () => <Ionicons name="school" size={20} color="#3498db" /> },
     { label: 'Estudiante', value: 'student', icon: () => <Ionicons name="person" size={20} color="#2ecc71" /> },
-    { label: 'Docente', value: 'docente', icon: () => <Ionicons name="library" size={20} color="#1abc9c" /> },        
+    // { label: 'Docente', value: 'docente', icon: () => <Ionicons name="library" size={20} color="#1abc9c" /> },        
     { label: 'Director de Carrera', value: 'academico', icon: () => <Ionicons name="person-circle" size={20} color="#8e44ad" /> },
     { label: 'DAF', value: 'daf', icon: () => <Ionicons name="calculator" size={20} color="#9b59b6" /> },
-    { label: 'Comunicación', value: 'comunicacion', icon: () => <Ionicons name="megaphone" size={20} color="#e67e22" /> },
-    { label: 'TI', value: 'ti', icon: () => <Ionicons name="laptop" size={20} color="#34495e" /> },
-    { label: 'Recursos Humanos', value: 'recursos', icon: () => <Ionicons name="people" size={20} color="#f39c12" /> },    
-    { label: 'Servicios Estudiantiles', value: 'servicios', icon: () => <Ionicons name="help-circle" size={20} color="#16a085" /> },    
+   // { label: 'Comunicación', value: 'comunicacion', icon: () => <Ionicons name="megaphone" size={20} color="#e67e22" /> },
+   // { label: 'TI', value: 'ti', icon: () => <Ionicons name="laptop" size={20} color="#34495e" /> },
+   // { label: 'Recursos Humanos', value: 'recursos', icon: () => <Ionicons name="people" size={20} color="#f39c12" /> },    
+   // { label: 'Servicios Estudiantiles', value: 'servicios', icon: () => <Ionicons name="help-circle" size={20} color="#16a085" /> },    
   ]);
 
   const [openCarrera, setOpenCarrera] = useState(false);
