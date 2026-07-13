@@ -22,10 +22,8 @@ import DropDownPicker from 'react-native-dropdown-picker';
 
 const { width } = Dimensions.get('window');
 const isWeb = Platform.OS === 'web';
-//const API_BASE_URL =  'https://evento.cidtec-uc.com';
-//API_BASE_URL =  'https://frontendgestion-production-d088.up.railway.app';
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://backendgestion-production-e2aa.up.railway.app';
-//const API_BASE_URL =  'https://unifrontend.onrender.com';
+
 const CARRERA_A_FACULTAD = {
   '1':'1',  
   '2':'2',  
@@ -45,6 +43,15 @@ const CARRERA_A_FACULTAD = {
   '16':'5', 
   '17':'5', 
 };
+
+const NOMBRES_FACULTADES = {
+  '1': 'Facultad de Ingeniería',
+  '2': 'Facultad de Ciencias Económicas',
+  '3': 'Facultad de Ciencias de la Salud',
+  '4': 'Facultad de Diseño y Tecnología',
+  '5': 'Facultad de Ciencias Jurídicas',
+};
+
 const Toast = ({ visible, message }) => {
   if (!visible) return null;
   return (
@@ -56,23 +63,21 @@ const Toast = ({ visible, message }) => {
     </View>
   );
 };
+
 const CrearUsuarioA = () => {
   const router = useRouter();
   const [successMessage, setSuccessMessage] = useState(null);
   const [open, setOpen] = useState(false); 
   const [role, setRole] = useState(null); 
   const [facultadSeleccionada, setFacultadSeleccionada] = useState(null);
+  const [openFacultad, setOpenFacultad] = useState(false);
+  const [opcionesFacultad, setOpcionesFacultad] = useState([]);
+  
   const [items] = useState([ 
     { label: 'Administrador', value: 'admin', icon: () => <Ionicons name="shield-checkmark" size={20} color="#e74c3c" /> },
-    //{ label: 'Admisiones', value: 'admisiones', icon: () => <Ionicons name="school" size={20} color="#3498db" /> },
     { label: 'Estudiante', value: 'student', icon: () => <Ionicons name="person" size={20} color="#2ecc71" /> },
-    // { label: 'Docente', value: 'docente', icon: () => <Ionicons name="library" size={20} color="#1abc9c" /> },        
     { label: 'Director de Carrera', value: 'academico', icon: () => <Ionicons name="person-circle" size={20} color="#8e44ad" /> },
     { label: 'DAF', value: 'daf', icon: () => <Ionicons name="calculator" size={20} color="#9b59b6" /> },
-   // { label: 'Comunicación', value: 'comunicacion', icon: () => <Ionicons name="megaphone" size={20} color="#e67e22" /> },
-   // { label: 'TI', value: 'ti', icon: () => <Ionicons name="laptop" size={20} color="#34495e" /> },
-   // { label: 'Recursos Humanos', value: 'recursos', icon: () => <Ionicons name="people" size={20} color="#f39c12" /> },    
-   // { label: 'Servicios Estudiantiles', value: 'servicios', icon: () => <Ionicons name="help-circle" size={20} color="#16a085" /> },    
   ]);
 
   const [openCarrera, setOpenCarrera] = useState(false);
@@ -131,14 +136,60 @@ const CrearUsuarioA = () => {
   const roleNeedsCarreras = (selectedRole) => {
     return ['student', 'docente', 'academico'].includes(selectedRole);
   };
-useEffect(() => {
-  if (carreraSeleccionada) {
-    const facultadId = CARRERA_A_FACULTAD[carreraSeleccionada];
-    if (facultadId) {
-      setFacultadSeleccionada(facultadId);
+
+  // Fetch facultades desde la API
+  useEffect(() => {
+    const fetchFacultades = async () => {
+      try {
+        const token = await getToken();
+        if (!token) throw new Error('Token no encontrado.');
+        
+        const response = await axios.get(`${API_BASE_URL}/facultades`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          timeout: 30000
+        });
+        
+        if (response.data && Array.isArray(response.data)) {
+          const facultadesFormateadas = response.data.map(facultad => ({
+            label: facultad.nombre_facultad || 'Sin nombre',
+            value: facultad.facultad_id?.toString() || ''
+          })).filter(f => f.value && f.label);
+          setOpcionesFacultad(facultadesFormateadas);
+        } else {
+          setOpcionesFacultad([
+            { label: 'Facultad de Ingeniería', value: '1' },
+            { label: 'Facultad de Ciencias Económicas', value: '2' },
+            { label: 'Facultad de Ciencias de la Salud', value: '3' },
+            { label: 'Facultad de Diseño y Tecnología', value: '4' },
+            { label: 'Facultad de Ciencias Jurídicas', value: '5' },
+          ]);
+        }
+      } catch (error) {
+        console.error('Error al obtener las Facultades', error);
+        setOpcionesFacultad([
+          { label: 'Facultad de Ingeniería', value: '1' },
+          { label: 'Facultad de Ciencias Económicas', value: '2' },
+          { label: 'Facultad de Ciencias de la Salud', value: '3' },
+          { label: 'Facultad de Diseño y Tecnología', value: '4' },
+          { label: 'Facultad de Ciencias Jurídicas', value: '5' },
+        ]);
+      }
+    };
+    fetchFacultades();
+  }, []);
+
+  useEffect(() => {
+    if (carreraSeleccionada) {
+      const facultadId = CARRERA_A_FACULTAD[carreraSeleccionada];
+      if (facultadId) {
+        setFacultadSeleccionada(facultadId);
+        setOpenFacultad(false);
+      }
     }
-  }
-}, [carreraSeleccionada]);
+  }, [carreraSeleccionada]);
 
   const capitalizeFirstLetter = (text) => {
     return text
@@ -170,12 +221,13 @@ useEffect(() => {
     }
     if (role !== 'student' && role !== 'academico') {
       setCarreraSeleccionada(null);
+      setFacultadSeleccionada(null);
     }
     setOpenCarrera(false);
+    setOpenFacultad(false);
     setOpen(false);
   }, [role]);
 
-  // ✅ FIX 3: updateFormData con capitalización
   const updateFormData = (field, value) => {
     let formattedValue = value;
     if (['nombre', 'apellidopat', 'apellidomat'].includes(field)) {
@@ -231,6 +283,10 @@ useEffect(() => {
               newErrors.carrera = 'Debe seleccionar al menos una carrera donde enseñará.';
             }
           }
+          // Validación de facultad solo para estudiantes
+          if (role === 'student' && !facultadSeleccionada) {
+            newErrors.facultad = 'La facultad es requerida.';
+          }
         }
         break;
     }
@@ -256,6 +312,7 @@ useEffect(() => {
     console.log("=== DIAGNÓSTICO ===");
     console.log("Role seleccionado:", role);
     console.log("Carrera seleccionada:", carreraSeleccionada);
+    console.log("Facultad seleccionada:", facultadSeleccionada);
     console.log("Carreras docente:", carrerasDocente);
     
     try {
@@ -277,7 +334,7 @@ useEffect(() => {
         if (role === 'student' || role === 'academico') {
           if (carreraSeleccionada) {
             newUserPayload.idcarrera = parseInt(carreraSeleccionada);
-            newUserPayload.idfacultad = parseInt(CARRERA_A_FACULTAD[carreraSeleccionada]);
+            newUserPayload.idfacultad = parseInt(facultadSeleccionada || CARRERA_A_FACULTAD[carreraSeleccionada]);
           }
         } else if (role === 'docente') {
           if (carrerasDocente && carrerasDocente.length > 0) {
@@ -288,16 +345,18 @@ useEffect(() => {
      
       console.log("FRONTEND - Payload enviado:", JSON.stringify(newUserPayload, null, 2));
       
-      const response = await axios.post(`${API_BASE_URL}/auth/register`, newUserPayload, {
+      // Endpoint dinámico según el rol
+      const endpoint = role === 'student' ? '/auth/registerStudent' : '/auth/register';
+      const response = await axios.post(`${API_BASE_URL}${endpoint}`, newUserPayload, {
         headers: {
-          'Authorization': `Bearer ${token}`, // ✅ token ahora definido
+          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
         timeout: 30000
       });
 
       if (response.status === 201 || response.status === 200) {
-        setSuccessMessage('¡Usuario creado correctamente!');
+        setSuccessMessage(role === 'student' ? '¡Estudiante creado correctamente!' : '¡Usuario creado correctamente!');
           setTimeout(() => {
             setFormData({
               username: '', nombre: '', apellidopat: '',
@@ -305,6 +364,7 @@ useEffect(() => {
             });
             setRole(null);
             setCarreraSeleccionada(null);
+            setFacultadSeleccionada(null);
             setCarrerasDocente([]);
             setCurrentStep(1);
             setSuccessMessage(null);
@@ -340,7 +400,7 @@ useEffect(() => {
                   stepToRevert = Math.min(stepToRevert, 1);
                 } else if (['email', 'contrasenia'].includes(fieldPath)) {
                   stepToRevert = Math.min(stepToRevert, 2);
-                } else if (['role', 'carrera', 'idcarrera', 'carreras_ids'].some(f => fieldPath.includes(f))) {
+                } else if (['role', 'carrera', 'idcarrera', 'idfacultad', 'carreras_ids'].some(f => fieldPath.includes(f))) {
                   stepToRevert = Math.min(stepToRevert, 3);
                 }
               }
@@ -373,6 +433,7 @@ useEffect(() => {
   const closeAllDropdowns = () => {
     setOpen(false);
     setOpenCarrera(false);
+    setOpenFacultad(false);
   };
 
   const renderProgressBar = () => (
@@ -508,7 +569,10 @@ useEffect(() => {
           listMode={isWeb ? "FLATLIST" : "SCROLLVIEW"}
           textStyle={styles.dropdownText}
           placeholderStyle={styles.dropdownPlaceholder}
-          onOpen={() => setOpenCarrera(false)}
+          onOpen={() => {
+            setOpenCarrera(false);
+            setOpenFacultad(false);
+          }}
           searchable={false}
           showArrowIcon={true}
           showTickIcon={true}
@@ -527,6 +591,20 @@ useEffect(() => {
             <Text style={styles.required}> *</Text>
           </Text>
           
+          {/* Badge verde SOLO para Estudiante */}
+          {role === 'student' && (
+            <View style={styles.roleBadgeContainerStudent}>
+              <View style={styles.roleBadgeStudent}>
+                <Ionicons name="person" size={20} color="#2ecc71" />
+                <Text style={styles.roleBadgeTextStudent}>Rol: Estudiante</Text>
+              </View>
+              <Text style={styles.roleInfoTextStudent}>
+                Esta pantalla está diseñada exclusivamente para crear cuentas de estudiantes
+              </Text>
+            </View>
+          )}
+          
+          {/* Badge morado para Director de Carrera */}
           {role === 'academico' && (
             <View style={styles.roleBadgeContainer}>
               <View style={styles.roleBadge}>
@@ -539,7 +617,7 @@ useEffect(() => {
           
           <View style={[styles.dropdownContainer, { 
             marginBottom: openCarrera ? 280 : 20,
-            zIndex: role === 'academico' ? 2000 : 1500
+            zIndex: role === 'student' ? 2500 : role === 'academico' ? 2000 : 1500
           }]}>
             <DropDownPicker
               multiple={role === 'docente'}
@@ -557,17 +635,20 @@ useEffect(() => {
               }
               style={[styles.dropdown, role === 'academico' && styles.carreraDropdown, errors.carrera && styles.inputError]}
               dropDownContainerStyle={[styles.dropdownList, { 
-                zIndex: role === 'academico' ? 2000 : 1500, 
-                elevation: role === 'academico' ? 2000 : 1500,
+                zIndex: role === 'student' ? 2500 : role === 'academico' ? 2000 : 1500, 
+                elevation: role === 'student' ? 2500 : role === 'academico' ? 2000 : 1500,
                 maxHeight: 250,
               }]}
               listMode={isWeb ? "FLATLIST" : "SCROLLVIEW"}
               textStyle={styles.dropdownText}
               placeholderStyle={styles.dropdownPlaceholder}
               multipleText={role === 'docente' ? "%d carreras seleccionadas" : undefined}
-              onOpen={() => setOpen(false)}
-              searchable={role === 'academico'}
-              searchPlaceholder={role === 'academico' ? "Buscar carrera..." : undefined}
+              onOpen={() => {
+                setOpen(false);
+                setOpenFacultad(false);
+              }}
+              searchable={role === 'academico' || role === 'student'}
+              searchPlaceholder={role === 'academico' || role === 'student' ? "Buscar carrera..." : undefined}
               showArrowIcon={true}
               showTickIcon={true}
               itemSeparator={true}
@@ -578,11 +659,50 @@ useEffect(() => {
           
           <View style={styles.roleInfoContainer}>
             <Text style={styles.roleInfoText}>
-              {role === 'student' && '💡 El estudiante será asignado a esta carrera'}
+              {role === 'student' && '💡 Selecciona la carrera y la facultad se asignará automáticamente'}
               {role === 'academico' && '💡 Este usuario será el director de la carrera seleccionada'}
               {role === 'docente' && '💡 El docente podrá enseñar en las carreras seleccionadas'}
             </Text>
           </View>
+
+          {/* Dropdown de Facultad SOLO para Estudiante */}
+          {role === 'student' && (
+            <View style={[styles.conditionalContainer, { zIndex: 1000, marginTop: 25 }]}>
+              <Text style={styles.label}>
+                Facultad del Estudiante <Text style={styles.required}>*</Text>
+              </Text>
+              <View style={[styles.dropdownContainer, { marginTop: 5 }]}>
+                <DropDownPicker
+                  open={openFacultad}
+                  value={facultadSeleccionada}
+                  items={opcionesFacultad}
+                  setOpen={setOpenFacultad}
+                  setValue={setFacultadSeleccionada}
+                  placeholder="La facultad se asignará automáticamente"
+                  style={[styles.dropdown, errors.facultad && styles.inputError]}
+                  dropDownContainerStyle={styles.dropdownList}
+                  listMode="SCROLLVIEW"
+                  textStyle={styles.dropdownText}
+                  placeholderStyle={styles.dropdownPlaceholder}
+                  onOpen={() => setOpenCarrera(false)}
+                  disabled={!!carreraSeleccionada}
+                  disabledStyle={{ backgroundColor: '#f0f0f0' }}
+                  disabledTextStyle={{ color: '#666', fontWeight: '600' }}
+                  zIndex={1000}
+                  zIndexInverse={1000}
+                />
+              </View>
+              {errors.facultad && <Text style={styles.errorText}>{errors.facultad}</Text>}
+              {carreraSeleccionada && facultadSeleccionada && (
+                <View style={styles.autoSelectionBadge}>
+                  <Ionicons name="checkmark-circle" size={18} color="#27ae60" />
+                  <Text style={styles.autoSelectionText}>
+                    {NOMBRES_FACULTADES[facultadSeleccionada]} (asignada automáticamente)
+                  </Text>
+                </View>
+              )}
+            </View>
+          )}
         </View>
       )}
     </View>
@@ -596,7 +716,7 @@ useEffect(() => {
       >
         <Stack.Screen 
           options={{ 
-            title: 'Nuevo Usuario',
+            title: role === 'student' ? 'Nuevo Estudiante' : 'Nuevo Usuario',
             headerStyle: { backgroundColor: '#e95a0c' },
             headerTintColor: '#fff',
             headerTitleStyle: { fontWeight: 'bold' },
@@ -643,7 +763,7 @@ useEffect(() => {
               ) : (
                 <>
                   <Text style={styles.primaryButtonText}>
-                    {currentStep === totalSteps ? 'Crear Usuario' : 'Siguiente'}
+                    {currentStep === totalSteps ? (role === 'student' ? 'Crear Estudiante' : 'Crear Usuario') : 'Siguiente'}
                   </Text>
                   {currentStep < totalSteps && (
                     <Ionicons name="arrow-forward" size={20} color="#fff" />
@@ -674,7 +794,6 @@ const styles = StyleSheet.create({
   progressNumber: { fontSize: 16, fontWeight: 'bold', color: '#999' },
   progressNumberActive: { color: '#fff' },
   progressLine: { width: 50, height: 2, backgroundColor: '#e0e0e0', marginHorizontal: 5 },
-  confirmationText: { fontSize: 14, color: '#27ae60', marginTop: 5, fontStyle: 'italic' },
   progressLineActive: { backgroundColor: '#e95a0c' },
   stepTitle: { fontSize: 24, fontWeight: 'bold', color: '#333', textAlign: 'center' },
   stepContainer: { paddingVertical: 20, paddingBottom: 200 },
@@ -710,19 +829,12 @@ const styles = StyleSheet.create({
   dropdownList: { backgroundColor: '#fff', borderColor: '#ddd', borderWidth: 1, borderRadius: 12 },
   dropdownText: { fontSize: 16, color: '#333' },
   dropdownPlaceholder: { fontSize: 16, color: '#999' },
-  switchContainer: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    backgroundColor: '#fff', borderRadius: 12, padding: 20, marginTop: 20,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05, shadowRadius: 3.84, elevation: 2,
-  },
-  switchInfo: { flex: 1 },
-  switchLabel: { fontSize: 16, fontWeight: '600', color: '#333', marginBottom: 5 },
   roleInfoContainer: {
     backgroundColor: '#f8f9fa', borderRadius: 8, padding: 12,
     marginTop: 10, borderLeftWidth: 3, borderLeftColor: '#e95a0c',
   },
   roleInfoText: { fontSize: 14, color: '#666' },
+  // Badge morado para Director de Carrera
   roleBadgeContainer: {
     backgroundColor: '#f5f0ff', borderRadius: 12, padding: 15,
     marginBottom: 20, alignItems: 'center', borderLeftWidth: 4, borderLeftColor: '#8e44ad',
@@ -732,7 +844,23 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, marginBottom: 8,
   },
   roleBadgeText: { color: '#fff', fontSize: 16, fontWeight: '600', marginLeft: 8 },
-  switchDescription: { fontSize: 14, color: '#666' },
+  // Badge verde para Estudiante
+  roleBadgeContainerStudent: {
+    backgroundColor: '#e8f5e9', borderRadius: 12, padding: 15,
+    marginBottom: 20, alignItems: 'center', borderLeftWidth: 4, borderLeftColor: '#2ecc71',
+  },
+  roleBadgeStudent: {
+    flexDirection: 'row', alignItems: 'center', backgroundColor: '#2ecc71',
+    paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, marginBottom: 8,
+  },
+  roleBadgeTextStudent: { color: '#fff', fontSize: 16, fontWeight: '600', marginLeft: 8 },
+  roleInfoTextStudent: { fontSize: 14, color: '#27ae60', textAlign: 'center', marginTop: 5 },
+  // Badge de asignación automática
+  autoSelectionBadge: {
+    flexDirection: 'row', alignItems: 'center', backgroundColor: '#e8f8f5',
+    padding: 10, borderRadius: 8, marginTop: 10, borderLeftWidth: 3, borderLeftColor: '#27ae60',
+  },
+  autoSelectionText: { fontSize: 14, color: '#27ae60', marginLeft: 8, fontWeight: '500' },
   buttonContainer: {
     flexDirection: 'row', justifyContent: 'space-between',
     paddingTop: 30, paddingBottom: 20, gap: 15,
@@ -751,20 +879,18 @@ const styles = StyleSheet.create({
   fullWidthButton: { flex: 1 },
   buttonDisabled: { backgroundColor: '#f9bda3', shadowOpacity: 0.1 },
   primaryButtonText: { color: '#fff', fontSize: 16, fontWeight: 'bold', marginRight: 8 },
-  secondaryButtonText: { color: '#e95a0c', fontSize: 16, fontWeight: 'bold', marginLeft: 8 
-
-  },
+  secondaryButtonText: { color: '#e95a0c', fontSize: 16, fontWeight: 'bold', marginLeft: 8 },
   toastContainer: {
-  position: 'absolute', bottom: 60, left: 0, right: 0,
-  alignItems: 'center', zIndex: 9999, paddingHorizontal: 20,
+    position: 'absolute', bottom: 60, left: 0, right: 0,
+    alignItems: 'center', zIndex: 9999, paddingHorizontal: 20,
   },
-toastContent: {
-  backgroundColor: '#27ae60', flexDirection: 'row', alignItems: 'center',
-  paddingHorizontal: 24, paddingVertical: 16, borderRadius: 12,
-  shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
-  shadowOpacity: 0.3, shadowRadius: 6, elevation: 8, minWidth: 280,
-},
-toastText: { color: '#fff', fontSize: 16, fontWeight: '600', marginLeft: 12, textAlign: 'center' },
+  toastContent: {
+    backgroundColor: '#27ae60', flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: 24, paddingVertical: 16, borderRadius: 12,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3, shadowRadius: 6, elevation: 8, minWidth: 280,
+  },
+  toastText: { color: '#fff', fontSize: 16, fontWeight: '600', marginLeft: 12, textAlign: 'center' },
 });
 
 export default CrearUsuarioA;
