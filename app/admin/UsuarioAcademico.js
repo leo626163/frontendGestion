@@ -236,7 +236,7 @@ const UsuarioAcademico = () => {
       try {
         const token = await getTokenAsync();
         if (token) {
-          const response = await axios.get(`${API_BASE_URL}/me`, {
+          const response = await axios.get(`${API_BASE_URL}/users/me`, {
             headers: { 'Authorization': `Bearer ${token}` }
           });
           setCurrentUser(response.data);
