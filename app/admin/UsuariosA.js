@@ -241,7 +241,6 @@ const UsuarioA = () => {
   };
 
     const handleDisableUser = async (Id) => {
-    // 1. Confirmación adaptada para Web y Móvil de forma segura
     const isConfirmed = await new Promise((resolve) => {
       if (Platform.OS === 'web') {
         resolve(window.confirm("¿Estás seguro de que quieres deshabilitar este usuario?"));
@@ -257,7 +256,6 @@ const UsuarioA = () => {
       }
     });
 
-    // Si el usuario cancela, no hacemos nada
     if (!isConfirmed) return;
 
     console.log(`UsuariosA: Intentando deshabilitar usuario con ID: ${Id}`);
@@ -270,17 +268,16 @@ const UsuarioA = () => {
     }
 
     try {
-      // 2. Usamos PATCH para actualizar solo el campo 'habilitado' a false
-      await axios.patch(
+      await axios.put(
         `${API_BASE_URL}/users/${Id}`, 
-        { habilitado: false }, // <--- Aquí se envía el cambio
+        { habilitado: false }, 
         { headers: { 'Authorization': `Bearer ${localToken}` } }
       );
       
       const successMsg = "Usuario deshabilitado correctamente.";
       Platform.OS === 'web' ? window.alert(successMsg) : Alert.alert("Éxito", successMsg);
       
-      fetchUsers(); // Recargar la lista para reflejar el cambio
+      fetchUsers(); 
     } catch (error) {
       console.error(`UsuariosA: Error deshabilitando usuario ${Id}:`, error);
       const errorMsg = "No se pudo deshabilitar el usuario. Verifica el backend.";
