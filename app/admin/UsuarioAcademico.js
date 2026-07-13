@@ -202,53 +202,51 @@ const UsuarioAcademico = () => {
   }, [searchTerm, users, filterRole]);
 
   useEffect(() => {
-  const getCurrentUser = async () => {
-    try {
-      const token = await getTokenAsync();
-      if (token) {
-        // Decodificar el payload del JWT para obtener el idusuario
-        const base64Url = token.split('.')[1];
-        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-        const jsonPayload = decodeURIComponent(
-          atob(base64)
-            .split('')
-            .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
-            .join('')
-        );
-        const payload = JSON.parse(jsonPayload);
+    const getCurrentUser = async () => {
+      try {
+        const token = await getTokenAsync();
+        if (token) {
+          const base64Url = token.split('.')[1];
+          const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+          const jsonPayload = decodeURIComponent(
+            atob(base64)
+              .split('')
+              .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+              .join('')
+          );
+          const payload = JSON.parse(jsonPayload);
 
-        const userId = payload.idusuario;
-        console.log("🔍 Buscando usuario con ID:", userId);
+          const userId = payload.idusuario;
+          console.log("🔍 Buscando usuario con ID:", userId);
 
-        // Buscar al usuario en la lista ya cargada
-        if (users && users.length > 0) {
-          const currentUserData = users.find(u => u.idusuario === userId || u.id === userId);
-          
-          if (currentUserData) {
-            console.log("✅ Usuario encontrado:", currentUserData);
-            setCurrentUser({
-              id: currentUserData.idusuario || currentUserData.id,
-              username: currentUserData.username,
-              email: currentUserData.email,
-              role: currentUserData.role,
-              nombre: currentUserData.nombre,
-              apellidopat: currentUserData.apellidopat,
-              apellidomat: currentUserData.apellidomat,
-            });
+          if (users && users.length > 0) {
+            const currentUserData = users.find(u => u.idusuario === userId || u.id === userId);
+            
+            if (currentUserData) {
+              console.log("✅ Usuario encontrado:", currentUserData);
+              setCurrentUser({
+                id: currentUserData.idusuario || currentUserData.id,
+                username: currentUserData.username,
+                email: currentUserData.email,
+                role: currentUserData.role,
+                nombre: currentUserData.nombre,
+                apellidopat: currentUserData.apellidopat,
+                apellidomat: currentUserData.apellidomat,
+              });
+            } else {
+              console.warn("⚠️ No se encontró el usuario en la lista");
+            }
           } else {
-            console.warn("⚠️ No se encontró el usuario en la lista");
+            console.log("⏳ Esperando a que se carguen los usuarios...");
           }
-        } else {
-          console.log("⏳ Esperando a que se carguen los usuarios...");
         }
+      } catch (error) {
+        console.error("❌ Error al obtener usuario actual:", error);
       }
-    } catch (error) {
-      console.error("❌ Error al obtener usuario actual:", error);
-    }
-  };
-  
-  getCurrentUser();
-}, [users]); // ✅ Depender de 'users' para reintentar cuando se carguen
+    };
+    
+    getCurrentUser();
+  }, [users]);
 
   const handleAddUser = () => {
     router.push('/admin/CrearUsuarioA');
@@ -257,37 +255,6 @@ const UsuarioAcademico = () => {
   const handleViewUser = (user) => {
     setSelectedUser(user);
     setShowUserModal(true);
-  };
-
-  const handleDeleteUser = async (userId) => {
-    Alert.alert(
-      "Eliminar Usuario",
-      "¿Estás seguro de que quieres eliminar este usuario?",
-      [
-        { text: "Cancelar", style: "cancel" },
-        {
-          text: "Sí, Eliminar",
-          onPress: async () => {
-            let localTokenForDelete = await getTokenAsync();
-            if (!localTokenForDelete) {
-              Alert.alert('Error de Autenticación', 'Token no disponible.');
-              return;
-            }
-            try {
-              await axios.delete(`${API_BASE_URL}/users/${userId}`, {
-                headers: { 'Authorization': `Bearer ${localTokenForDelete}` }
-              });
-              Alert.alert("Usuario Eliminado", "El usuario ha sido eliminado.");
-              fetchUsers();
-            } catch (error) {
-              console.error(`Error deleting user ${userId}:`, error);
-              Alert.alert('Error', 'No se pudo eliminar el usuario.');
-            }
-          },
-          style: "destructive",
-        },
-      ]
-    );
   };
 
   const getRoleColor = (role) => {
@@ -388,20 +355,7 @@ const UsuarioAcademico = () => {
                 </View>
               </View>
 
-              <View style={styles.modalActions}>
-                {/* ✅ SOLO BOTÓN DE ELIMINAR, SIN EDITAR */}
-                <TouchableOpacity
-                  style={[styles.modalActionButton, styles.modalDeleteButton]}
-                  onPress={(e) => {
-                    e.stopPropagation();
-                    setShowUserModal(false);
-                    handleDeleteUser(selectedUser.id);
-                  }}
-                >
-                  <Ionicons name="trash" size={16} color="#fff" />
-                  <Text style={styles.modalActionButtonText}>Eliminar</Text>
-                </TouchableOpacity>
-              </View>
+              {/* ✅ ELIMINADO: Sección de acciones (eliminar) del modal */}
             </View>
           )}
         </View>
@@ -565,6 +519,7 @@ const UsuarioAcademico = () => {
                     </View>
 
                     <View style={styles.userActions}>
+                      {/* ✅ SOLO BOTÓN DE VER (Ojo) */}
                       <TouchableOpacity
                         onPress={() => handleViewUser(user)}
                         style={[styles.actionButton, styles.viewButton]}
@@ -572,16 +527,8 @@ const UsuarioAcademico = () => {
                       >
                         <Ionicons name="eye-outline" size={20} color={COLORS.info} />
                       </TouchableOpacity>
-
-                      {/* ✅ ELIMINADO: Botón de editar (lápiz) */}
-
-                      <TouchableOpacity
-                        onPress={() => handleDeleteUser(user.id)}
-                        style={[styles.actionButton, styles.deleteButton]}
-                        activeOpacity={0.7}
-                      >
-                        <Ionicons name="trash-outline" size={20} color={COLORS.accent} />
-                      </TouchableOpacity>
+                      
+                      {/* ✅ ELIMINADOS: Botones de editar y eliminar */}
                     </View>
                   </View>
                 ))}
@@ -850,9 +797,6 @@ const styles = StyleSheet.create({
   viewButton: {
     backgroundColor: 'rgba(52, 152, 219, 0.1)',
   },
-  deleteButton: {
-    backgroundColor: 'rgba(231, 76, 60, 0.1)',
-  },
   noUsersText: {
     fontSize: 16,
     color: COLORS.textTertiary,
@@ -947,28 +891,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 4,
-  },
-  modalActions: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-  },
-  modalActionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 8,
-    minWidth: 100,
-    justifyContent: 'center',
-  },
-  modalDeleteButton: {
-    backgroundColor: COLORS.accent,
-  },
-  modalActionButtonText: {
-    color: COLORS.white,
-    fontSize: 14,
-    fontWeight: '600',
-    marginLeft: 5,
   },
 });
 
