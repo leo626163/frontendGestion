@@ -344,7 +344,10 @@ const CrearUsuarioA = () => {
       }
      
       console.log("FRONTEND - Payload enviado:", JSON.stringify(newUserPayload, null, 2));
-      
+            console.log("=== ENVIANDO AL BACKEND ===");
+      console.log("Endpoint:", `${API_BASE_URL}${endpoint}`);
+      console.log("Payload completo:", newUserPayload);
+      console.log("Valor de 'role' que se envía:", newUserPayload.role); // Debe decir 'admin'
       // Endpoint dinámico según el rol
       const endpoint = role === 'student' ? '/auth/registerStudent' : '/auth/register';
       const response = await axios.post(`${API_BASE_URL}${endpoint}`, newUserPayload, {
