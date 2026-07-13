@@ -230,6 +230,23 @@ const UsuarioAcademico = () => {
     setFilteredUsers(filtered);
   }, [searchTerm, users, filterRole]);
 
+   useEffect(() => {
+    const getCurrentUser = async () => {
+      try {
+        const token = await getTokenAsync();
+        if (token) {
+          const response = await axios.get(`${API_BASE_URL}/users/me`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          setCurrentUser(response.data);
+        }
+      } catch (error) {
+        console.error("Error al obtener usuario actual:", error);
+      }
+    };
+    getCurrentUser();
+  }, []);
+
   const handleAddUser = () => {
     router.push('/admin/CrearUsuarioA');
   };
@@ -430,22 +447,7 @@ const UsuarioAcademico = () => {
               </View>
 
               <View style={styles.modalActions}>
-                <TouchableOpacity
-                  style={[styles.modalActionButton, styles.modalEditButton]}
-                  onPress={(e) => {
-                    e.stopPropagation(); // 👈 Evita que el Pressable cierre el modal
-                    setShowUserModal(false);
-                    if (selectedUser?.id) {
-                      router.push(`/admin/EditUser/${selectedUser.id}`);
-                    } else {
-                      Alert.alert('Error', 'ID de usuario no válido');
-                    }
-                  }}
-                >
-                  <Ionicons name="pencil" size={16} color="#fff" />
-                  <Text style={styles.modalActionButtonText}>Editar</Text>
-                </TouchableOpacity>
-
+                {/* Solo botón de eliminar, sin editar */}
                 <TouchableOpacity
                   style={[styles.modalActionButton, styles.modalDeleteButton]}
                   onPress={(e) => {
@@ -678,6 +680,77 @@ roleTitle: {
   headerButton: {
     marginRight: 15,
     padding: 5,
+  },
+   currentUserCard: {
+    backgroundColor: COLORS.surface,
+    margin: 15,
+    marginTop: 10,
+    borderRadius: 12,
+    padding: 15,
+    shadowColor: COLORS.shadow,
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3.84,
+    elevation: 3,
+  },
+  currentUserHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  currentUserTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: COLORS.textPrimary,
+    marginLeft: 8,
+  },
+  currentUserContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  currentUserAvatar: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: COLORS.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 15,
+  },
+  currentUserAvatarText: {
+    color: '#fff',
+    fontSize: 20,
+    fontWeight: 'bold',
+  },
+  currentUserDetails: {
+    flex: 1,
+  },
+  currentUserUsername: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: COLORS.textPrimary,
+    marginBottom: 4,
+  },
+  currentUserEmail: {
+    fontSize: 14,
+    color: COLORS.textSecondary,
+    marginBottom: 6,
+  },
+  currentUserRoleBadge: {
+    backgroundColor: 'rgba(233, 90, 12, 0.1)',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 4,
+    alignSelf: 'flex-start',
+  },
+  currentUserRoleText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: COLORS.primary,
+    textTransform: 'capitalize',
   },
   searchContainer: {
     paddingHorizontal: 15,
