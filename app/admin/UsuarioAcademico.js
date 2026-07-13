@@ -206,9 +206,7 @@ const UsuarioAcademico = () => {
     try {
       const token = await getTokenAsync();
       if (token) {
-        console.log(" Token obtenido:", token.substring(0, 50) + "...");
-        
-        // Decodificar el payload del JWT
+        // Decodificar el payload del JWT para obtener el idusuario
         const base64Url = token.split('.')[1];
         const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
         const jsonPayload = decodeURIComponent(
@@ -219,31 +217,38 @@ const UsuarioAcademico = () => {
         );
         const payload = JSON.parse(jsonPayload);
 
-        console.log("📦 Payload completo del token:", payload);
+        const userId = payload.idusuario;
+        console.log("🔍 Buscando usuario con ID:", userId);
 
-        // Mapeo flexible de campos (prueba diferentes nombres comunes)
-        const user = {
-          id: payload.idusuario || payload.id || payload.userId || payload._id || payload.sub,
-          username: payload.username || payload.userName || payload.nombre || payload.name || 'Usuario',
-          email: payload.email || payload.correo || 'Sin email',
-          role: payload.role || payload.rol || payload.roles || 'Sin rol',
-          nombre: payload.nombre || payload.name || payload.username || '',
-          apellidopat: payload.apellidopat || payload.apellido || payload.lastName || '',
-          apellidomat: payload.apellidomat || payload.apellidoMat || '',
-        };
-
-        console.log("✅ Usuario procesado:", user);
-        setCurrentUser(user);
-      } else {
-        console.warn("⚠️ No se encontró token");
+        // Buscar al usuario en la lista ya cargada
+        if (users && users.length > 0) {
+          const currentUserData = users.find(u => u.idusuario === userId || u.id === userId);
+          
+          if (currentUserData) {
+            console.log("✅ Usuario encontrado:", currentUserData);
+            setCurrentUser({
+              id: currentUserData.idusuario || currentUserData.id,
+              username: currentUserData.username,
+              email: currentUserData.email,
+              role: currentUserData.role,
+              nombre: currentUserData.nombre,
+              apellidopat: currentUserData.apellidopat,
+              apellidomat: currentUserData.apellidomat,
+            });
+          } else {
+            console.warn("⚠️ No se encontró el usuario en la lista");
+          }
+        } else {
+          console.log("⏳ Esperando a que se carguen los usuarios...");
+        }
       }
     } catch (error) {
-      console.error("❌ Error al decodificar el token:", error);
-      console.error("Stack trace:", error.stack);
+      console.error("❌ Error al obtener usuario actual:", error);
     }
   };
+  
   getCurrentUser();
-}, []);
+}, [users]); // ✅ Depender de 'users' para reintentar cuando se carguen
 
   const handleAddUser = () => {
     router.push('/admin/CrearUsuarioA');
