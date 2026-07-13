@@ -241,36 +241,37 @@ const UsuarioA = () => {
   };
 
   const handleDeleteUser = async (Id) => {
-    Alert.alert(
-      "Eliminar Usuario",
-      "¿Estás seguro de que quieres eliminar este usuario?",
-      [
-        { text: "Cancelar", style: "cancel" },
-        {
-          text: "Sí, Eliminar",
-          onPress: async () => {
-            console.log(`UsuariosA: Intentando eliminar usuario con ID: ${Id}`);
-            let localTokenForDelete = await getTokenAsync();
-            if (!localTokenForDelete) {
-              Alert.alert('Error de Autenticación', 'Token no disponible para eliminar.');
-              return;
-            }
-            try {
-              await axios.delete(`${API_BASE_URL}/users/${Id}`, {
-                headers: { 'Authorization': `Bearer ${localTokenForDelete}` }
-              });
-              Alert.alert("Usuario Eliminado", `El usuario ha sido eliminado del servidor.`);
-              fetchUsers();
-            } catch (error) {
-              console.error(`UsuariosA: Error deleting user ${userId}:`, error);
-              Alert.alert('Error', 'No se pudo eliminar el usuario.');
-            }
-          },
-          style: "destructive",
+  Alert.alert(
+    "Eliminar Usuario",
+    "¿Estás seguro de que quieres eliminar este usuario?",
+    [
+      { text: "Cancelar", style: "cancel" },
+      {
+        text: "Sí, Eliminar",
+        onPress: async () => {
+          console.log(`UsuariosA: Intentando eliminar usuario con ID: ${Id}`);
+          let localTokenForDelete = await getTokenAsync();
+          if (!localTokenForDelete) {
+            Alert.alert('Error de Autenticación', 'Token no disponible para eliminar.');
+            return;
+          }
+          try {
+            await axios.delete(`${API_BASE_URL}/users/${Id}`, {
+              headers: { 'Authorization': `Bearer ${localTokenForDelete}` }
+            });
+            Alert.alert("Usuario Eliminado", `El usuario ha sido eliminado del servidor.`);
+            fetchUsers();
+          } catch (error) {
+            // ✅ CORREGIDO: 'Id' en lugar de 'userId'
+            console.error(`UsuariosA: Error deleting user ${Id}:`, error);
+            Alert.alert('Error', 'No se pudo eliminar el usuario.');
+          }
         },
-      ]
-    );
-  };
+        style: "destructive",
+      },
+    ]
+  );
+};
 
   const getRoleColor = (role) => {
     switch (role?.toLowerCase()) {
