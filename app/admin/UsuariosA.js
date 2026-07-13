@@ -58,13 +58,31 @@ const getTokenAsync = async () => {
 const deleteTokenAsync = async () => {
   const TOKEN_KEY = 'adminAuthToken';
   if (Platform.OS === 'web') {
-    try {
-      localStorage.removeItem(TOKEN_KEY);
-      console.log(`Token eliminado de localStorage (web) con clave: ${TOKEN_KEY}`);
-    } catch (e) {
-      console.error("Error al eliminar token de localStorage en web:", e);
+  Alert.alert = (title, message, buttons) => {
+    // Si no hay botones o solo hay 1 botón (ej: solo "OK" para errores), usamos alert simple
+    if (!buttons || buttons.length <= 1) {
+      window.alert(`${title}\n\n${message || ''}`);
+      // Si ese único botón tiene una acción, la ejecutamos después
+      if (buttons && buttons.length === 1 && buttons[0].onPress) {
+        buttons[0].onPress();
+      }
+      return;
     }
-  } else {
+
+    // Si hay 2 o más botones (ej: "Cancelar" y "Sí, Eliminar"), usamos confirm
+    const cancelButton = buttons.find(b => b.style === 'cancel');
+    const actionButton = buttons.find(b => b.style !== 'cancel') || buttons[buttons.length - 1];
+
+    const confirmMessage = message ? `${title}\n\n${message}` : title;
+    const isConfirmed = window.confirm(confirmMessage);
+
+    if (isConfirmed && actionButton?.onPress) {
+      actionButton.onPress(); // Ejecuta "Sí, Eliminar"
+    } else if (!isConfirmed && cancelButton?.onPress) {
+      cancelButton.onPress(); // Ejecuta "Cancelar"
+    }
+  };
+} else {
     try {
       await SecureStore.deleteItemAsync(TOKEN_KEY);
       console.log(`Token eliminado de SecureStore (nativo) con clave: ${TOKEN_KEY}`);
