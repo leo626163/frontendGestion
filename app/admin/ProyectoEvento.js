@@ -1402,15 +1402,18 @@ const ProyectoEvento = () => {
     setShowConfirmModal(true);
   };
 
-  const handleSubmitConfirmed = async () => {
+    const handleSubmitConfirmed = async () => {
     setShowConfirmModal(false);
     setIsLoading(true);
+    
     if (!authToken) {
       Alert.alert("Error de Autenticación", "No se puede enviar el formulario. Intenta iniciar sesión de nuevo.");
       setIsLoading(false);
       return;
     }
+    
     try {
+      // 1. Verificar conflictos
       const conflictos = verificarConflictoHorario(fechaHoraSeleccionada);
       if (conflictos.length > 0) {
         setIsLoading(false);
@@ -1421,7 +1424,10 @@ const ProyectoEvento = () => {
         );
         return;
       }
+
       if (!nombreevento.trim()) throw new Error('El nombre del evento es obligatorio');
+      
+      // 2. Procesar tipos de evento
       const tiposParaEnviar = Object.keys(tiposSeleccionados)
         .filter(id => tiposSeleccionados[id])
         .map(id => {
@@ -1432,21 +1438,29 @@ const ProyectoEvento = () => {
           } : null;
         })
         .filter(item => item !== null);
+        
       if (tiposParaEnviar.length === 0) throw new Error('Debes seleccionar al menos un tipo de evento');
+      
+      // 3. Procesar objetivos (Lógica corregida para evitar duplicados)
       const objetivoParaEnviar = [];
       Object.keys(objetivos)
         .filter(key => objetivos[key] === true && key !== 'otroTexto')
-        .forEach(key => { if (objetivos[key]) objetivoParaEnviar.push(OBJETIVOS_EVENTO_MAP[key]); });
+        .forEach(key => { 
+          objetivoParaEnviar.push(OBJETIVOS_EVENTO_MAP[key]); 
+        });
+        
       if (objetivos.otro && objetivos.otroTexto.trim()) {
         objetivoParaEnviar.push({ id: OBJETIVOS_EVENTO_MAP.otro, texto_personalizado: objetivos.otroTexto.trim() });
       }
-      if (objetivos.otro) {
-        const pdiObjetivos = objetivosPDI
-          .filter(o => o.trim() !== '')
-          .map(texto => ({ id: OBJETIVOS_EVENTO_MAP.otro, texto_personalizado: texto.trim() }));
-        objetivoParaEnviar.push(...pdiObjetivos);
-      }
-      if (objetivoParaEnviar.length === 0) throw new Error('debes seleccionar al menos un objetivo');
+      
+      const pdiObjetivos = objetivosPDI
+        .filter(o => o.trim() !== '')
+        .map(texto => ({ id: OBJETIVOS_EVENTO_MAP.otro, texto_personalizado: texto.trim() }));
+        
+      const todosLosObjetivos = [...objetivoParaEnviar, ...pdiObjetivos];
+      if (todosLosObjetivos.length === 0) throw new Error('Debes seleccionar al menos un objetivo');
+      
+      // 4. Procesar segmentos
       const segmentosParaEnviar = [];
       const validKeys = ['estudiantes', 'docentes', 'publicoExterno', 'influencers'];
       Object.keys(segmentoObjetivo)
@@ -1454,25 +1468,46 @@ const ProyectoEvento = () => {
         .forEach(key => {
           const label = { estudiantes: 'Estudiantes', docentes: 'Docentes', publicoExterno: 'Público Externo', influencers: 'Influencers' }[key];
           const segmentoData = SEGMENTO_OBJETIVO.find(s => s.label === label);
-          if (segmentoData) segmentosParaEnviar.push({ id: parseInt(segmentoData.id, 10), texto_personalizado: segmentosTextoPersonalizado[key] || null });
+          if (segmentoData) {
+            segmentosParaEnviar.push({ 
+              id: parseInt(segmentoData.id, 10), 
+              texto_personalizado: segmentosTextoPersonalizado[key] || null 
+            });
+          }
         });
+        
+      // 5. Procesar recursos
       const nuevosRecursos = [
         ...recursosTecnologicos.filter(r => r.nombre?.trim()).map(r => ({ nombre_recurso: r.nombre.trim(), cantidad: parseInt(r.cantidad) || 1, recurso_tipo: 'tecnologico' })),
         ...mobiliario.filter(r => r.nombre?.trim()).map(r => ({ nombre_recurso: r.nombre.trim(), cantidad: parseInt(r.cantidad) || 1, recurso_tipo: 'mobiliario' })),
         ...vajilla.filter(r => r.nombre?.trim()).map(r => ({ nombre_recurso: r.nombre.trim(), cantidad: parseInt(r.cantidad) || 1, recurso_tipo: 'vajilla' }))
       ];
-      const recursosExistentes = recursosSeleccionados.filter(id => id != null).map(id => parseInt(id, 10)).filter(id => !isNaN(id));
+      
+      const recursosExistentes = recursosSeleccionados
+        .filter(id => id != null)
+        .map(id => parseInt(id, 10))
+        .filter(id => !isNaN(id));
+        
+      // 6. Procesar presupuesto
       const presupuestoData = {
-        egresos: egresos.filter(item => item.descripcion.trim()).map(item => ({ descripcion: item.descripcion, cantidad: parseFloat(item.cantidad) || 0, precio_unitario: parseFloat(item.precio) || 0, total: (parseFloat(item.cantidad) || 0) * (parseFloat(item.precio) || 0) })),
-        ingresos: ingresos.filter(item => item.descripcion.trim()).map(item => ({ descripcion: item.descripcion, cantidad: parseFloat(item.cantidad) || 0, precio_unitario: parseFloat(item.precio) || 0, total: (parseFloat(item.cantidad) || 0) * (parseFloat(item.precio) || 0) })),
+        egresos: egresos.filter(item => item.descripcion.trim()).map(item => ({ 
+          descripcion: item.descripcion, 
+          cantidad: parseFloat(item.cantidad) || 0, 
+          precio_unitario: parseFloat(item.precio) || 0, 
+          total: (parseFloat(item.cantidad) || 0) * (parseFloat(item.precio) || 0) 
+        })),
+        ingresos: ingresos.filter(item => item.descripcion.trim()).map(item => ({ 
+          descripcion: item.descripcion, 
+          cantidad: parseFloat(item.cantidad) || 0, 
+          precio_unitario: parseFloat(item.precio) || 0, 
+          total: (parseFloat(item.cantidad) || 0) * (parseFloat(item.precio) || 0) 
+        })),
         total_egresos: totalEgresos,
         total_ingresos: totalIngresos,
         balance: balance
       };
-      const todosLosObjetivos = [
-        ...objetivoParaEnviar,
-        ...objetivosPDI.filter(texto => texto.trim()).map(texto => ({ id: OBJETIVOS_EVENTO_MAP.otro, texto_personalizado: texto.trim() }))
-      ];
+      
+      // 7. Construir payload final
       const eventoPayload = {
         nombreevento: nombreevento.trim(),
         lugarevento: lugarevento.trim() || 'Por definir',
@@ -1492,19 +1527,43 @@ const ProyectoEvento = () => {
         evento_externo: segmentoObjetivo.publicoExterno === true,
         facultad_dirigida: segmentoObjetivo.estudiantes && facultadSeleccionada ? facultadSeleccionada : null,
       };
+
+      console.log("🚀 Enviando payload al servidor:", eventoPayload);
+
+      // 8. Petición al servidor
       const response = await axios.post(`${API_BASE_URL}/eventos`, eventoPayload, {
         headers: { Authorization: `Bearer ${authToken}`, 'Content-Type': 'application/json' },
       });
-      Alert.alert('Éxito', 'El evento ha sido creado correctamente.', [{ text: 'OK', onPress: () => router.replace('/HomeAcademico.js') }]);
+      
+      console.log("✅ Respuesta exitosa del servidor:", response.data);
+
+      // 9. Alerta y Navegación CORREGIDA (Sin .js)
+      Alert.alert(
+        'Éxito', 
+        'El evento ha sido creado correctamente.', 
+        [
+          { 
+            text: 'OK', 
+            onPress: () => {
+              // CORRECCIÓN CLAVE: En Expo Router, las rutas NO llevan la extensión .js
+              router.replace('/HomeAcademico'); 
+            } 
+          }
+        ]
+      );
+      
     } catch (error) {
+      console.error("❌ Error detallado al crear el evento:", error);
+      
       let errorMessage = "Ocurrió un error desconocido.";
       if (error.response) {
         errorMessage = error.response.data.message || error.response.data.error || JSON.stringify(error.response.data) || `Error del servidor: ${error.response.status}`;
       } else if (error.request) {
-        errorMessage = "No se pudo conectar con el servidor. Revisa tu conexión.";
+        errorMessage = "No se pudo conectar con el servidor. Revisa tu conexión a internet.";
       } else {
         errorMessage = error.message || "Error desconocido";
       }
+      
       Alert.alert('Error al crear el evento', errorMessage);
     } finally {
       setIsLoading(false);
