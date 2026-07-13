@@ -116,6 +116,7 @@ const UsuarioAcademico = () => {
   const [selectedUser, setSelectedUser] = useState(null);
   const [showUserModal, setShowUserModal] = useState(false);
   const [filterRole, setFilterRole] = useState('all');
+  const [currentUser, setCurrentUser] = useState(null);
   const params = useLocalSearchParams();
 
   const fetchUsers = async (isRefresh = false) => {
@@ -235,7 +236,7 @@ const UsuarioAcademico = () => {
       try {
         const token = await getTokenAsync();
         if (token) {
-          const response = await axios.get(`${API_BASE_URL}/users/me`, {
+          const response = await axios.get(`${API_BASE_URL}/me`, {
             headers: { 'Authorization': `Bearer ${token}` }
           });
           setCurrentUser(response.data);
