@@ -201,43 +201,49 @@ const UsuarioAcademico = () => {
     setFilteredUsers(filtered);
   }, [searchTerm, users, filterRole]);
 
-  // ✅ SOLUCIÓN INFALIBLE: Decodificar el token localmente para evitar el error 403 del backend
   useEffect(() => {
-    const getCurrentUser = async () => {
-      try {
-        const token = await getTokenAsync();
-        if (token) {
-          console.log("🔑 Obteniendo datos del usuario desde el token...");
-          
-          // Decodificar el payload del JWT (la segunda parte del token)
-          const base64Url = token.split('.')[1];
-          const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-          const jsonPayload = decodeURIComponent(
-            atob(base64)
-              .split('')
-              .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
-              .join('')
-          );
-          const payload = JSON.parse(jsonPayload);
+  const getCurrentUser = async () => {
+    try {
+      const token = await getTokenAsync();
+      if (token) {
+        console.log(" Token obtenido:", token.substring(0, 50) + "...");
+        
+        // Decodificar el payload del JWT
+        const base64Url = token.split('.')[1];
+        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+        const jsonPayload = decodeURIComponent(
+          atob(base64)
+            .split('')
+            .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+            .join('')
+        );
+        const payload = JSON.parse(jsonPayload);
 
-          console.log("✅ Usuario decodificado exitosamente:", payload);
+        console.log("📦 Payload completo del token:", payload);
 
-          // Establecer el estado con los datos del token
-          setCurrentUser({
-            id: payload.idusuario || payload.id,
-            username: payload.username || payload.nombre || 'Usuario',
-            email: payload.email || 'Sin email',
-            role: payload.role || 'Sin rol',
-            nombre: payload.nombre,
-            apellidopat: payload.apellidopat,
-          });
-        }
-      } catch (error) {
-        console.error("❌ Error al decodificar el token:", error);
+        // Mapeo flexible de campos (prueba diferentes nombres comunes)
+        const user = {
+          id: payload.idusuario || payload.id || payload.userId || payload._id || payload.sub,
+          username: payload.username || payload.userName || payload.nombre || payload.name || 'Usuario',
+          email: payload.email || payload.correo || 'Sin email',
+          role: payload.role || payload.rol || payload.roles || 'Sin rol',
+          nombre: payload.nombre || payload.name || payload.username || '',
+          apellidopat: payload.apellidopat || payload.apellido || payload.lastName || '',
+          apellidomat: payload.apellidomat || payload.apellidoMat || '',
+        };
+
+        console.log("✅ Usuario procesado:", user);
+        setCurrentUser(user);
+      } else {
+        console.warn("⚠️ No se encontró token");
       }
-    };
-    getCurrentUser();
-  }, []);
+    } catch (error) {
+      console.error("❌ Error al decodificar el token:", error);
+      console.error("Stack trace:", error.stack);
+    }
+  };
+  getCurrentUser();
+}, []);
 
   const handleAddUser = () => {
     router.push('/admin/CrearUsuarioA');
