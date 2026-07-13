@@ -58,31 +58,13 @@ const getTokenAsync = async () => {
 const deleteTokenAsync = async () => {
   const TOKEN_KEY = 'adminAuthToken';
   if (Platform.OS === 'web') {
-  Alert.alert = (title, message, buttons) => {
-    // Si no hay botones o solo hay 1 botón (ej: solo "OK" para errores), usamos alert simple
-    if (!buttons || buttons.length <= 1) {
-      window.alert(`${title}\n\n${message || ''}`);
-      // Si ese único botón tiene una acción, la ejecutamos después
-      if (buttons && buttons.length === 1 && buttons[0].onPress) {
-        buttons[0].onPress();
-      }
-      return;
+    try {
+      localStorage.removeItem(TOKEN_KEY);
+      console.log(`Token eliminado de localStorage (web) con clave: ${TOKEN_KEY}`);
+    } catch (e) {
+      console.error("Error al eliminar token de localStorage en web:", e);
     }
-
-    // Si hay 2 o más botones (ej: "Cancelar" y "Sí, Eliminar"), usamos confirm
-    const cancelButton = buttons.find(b => b.style === 'cancel');
-    const actionButton = buttons.find(b => b.style !== 'cancel') || buttons[buttons.length - 1];
-
-    const confirmMessage = message ? `${title}\n\n${message}` : title;
-    const isConfirmed = window.confirm(confirmMessage);
-
-    if (isConfirmed && actionButton?.onPress) {
-      actionButton.onPress(); // Ejecuta "Sí, Eliminar"
-    } else if (!isConfirmed && cancelButton?.onPress) {
-      cancelButton.onPress(); // Ejecuta "Cancelar"
-    }
-  };
-} else {
+  } else {
     try {
       await SecureStore.deleteItemAsync(TOKEN_KEY);
       console.log(`Token eliminado de SecureStore (nativo) con clave: ${TOKEN_KEY}`);
@@ -258,38 +240,53 @@ const UsuarioA = () => {
     setShowUserModal(true);
   };
 
-  const handleDeleteUser = async (Id) => {
-  Alert.alert(
-    "Eliminar Usuario",
-    "¿Estás seguro de que quieres eliminar este usuario?",
-    [
-      { text: "Cancelar", style: "cancel" },
-      {
-        text: "Sí, Eliminar",
-        onPress: async () => {
-          console.log(`UsuariosA: Intentando eliminar usuario con ID: ${Id}`);
-          let localTokenForDelete = await getTokenAsync();
-          if (!localTokenForDelete) {
-            Alert.alert('Error de Autenticación', 'Token no disponible para eliminar.');
-            return;
-          }
-          try {
-            await axios.delete(`${API_BASE_URL}/users/${Id}`, {
-              headers: { 'Authorization': `Bearer ${localTokenForDelete}` }
-            });
-            Alert.alert("Usuario Eliminado", `El usuario ha sido eliminado del servidor.`);
-            fetchUsers();
-          } catch (error) {
-            // ✅ CORREGIDO: 'Id' en lugar de 'userId'
-            console.error(`UsuariosA: Error deleting user ${Id}:`, error);
-            Alert.alert('Error', 'No se pudo eliminar el usuario.');
-          }
-        },
-        style: "destructive",
-      },
-    ]
-  );
-};
+    const handleDisableUser = async (Id) => {
+    // 1. Confirmación adaptada para Web y Móvil de forma segura
+    const isConfirmed = await new Promise((resolve) => {
+      if (Platform.OS === 'web') {
+        resolve(window.confirm("¿Estás seguro de que quieres deshabilitar este usuario?"));
+      } else {
+        Alert.alert(
+          "Deshabilitar Usuario",
+          "¿Estás seguro de que quieres deshabilitar este usuario?",
+          [
+            { text: "Cancelar", onPress: () => resolve(false), style: "cancel" },
+            { text: "Sí, Deshabilitar", onPress: () => resolve(true), style: "destructive" }
+          ]
+        );
+      }
+    });
+
+    // Si el usuario cancela, no hacemos nada
+    if (!isConfirmed) return;
+
+    console.log(`UsuariosA: Intentando deshabilitar usuario con ID: ${Id}`);
+    const localToken = await getTokenAsync();
+    
+    if (!localToken) {
+      const msg = 'Token no disponible. Inicia sesión de nuevo.';
+      Platform.OS === 'web' ? window.alert(msg) : Alert.alert('Error', msg);
+      return;
+    }
+
+    try {
+      // 2. Usamos PATCH para actualizar solo el campo 'habilitado' a false
+      await axios.patch(
+        `${API_BASE_URL}/users/${Id}`, 
+        { habilitado: false }, // <--- Aquí se envía el cambio
+        { headers: { 'Authorization': `Bearer ${localToken}` } }
+      );
+      
+      const successMsg = "Usuario deshabilitado correctamente.";
+      Platform.OS === 'web' ? window.alert(successMsg) : Alert.alert("Éxito", successMsg);
+      
+      fetchUsers(); // Recargar la lista para reflejar el cambio
+    } catch (error) {
+      console.error(`UsuariosA: Error deshabilitando usuario ${Id}:`, error);
+      const errorMsg = "No se pudo deshabilitar el usuario. Verifica el backend.";
+      Platform.OS === 'web' ? window.alert(errorMsg) : Alert.alert('Error', errorMsg);
+    }
+  };
 
   const getRoleColor = (role) => {
     switch (role?.toLowerCase()) {
@@ -374,12 +371,12 @@ const renderUserItem = ({ item, index }) => {
           <Ionicons name="pencil-outline" size={20} color={COLORS.warning} />
         </TouchableOpacity>
 
-        <TouchableOpacity
-          onPress={() => handleDeleteUser(item.id)}
+                <TouchableOpacity
+          onPress={() => handleDisableUser(item.id)} // ✅ Cambiado aquí
           style={[styles.actionButton, styles.deleteButton]}
           activeOpacity={0.7}
         >
-          <Ionicons name="trash-outline" size={20} color={COLORS.accent} />
+          <Ionicons name="ban-outline" size={20} color={COLORS.accent} />
         </TouchableOpacity>
       </View>
     </View>
@@ -471,15 +468,15 @@ const renderUserItem = ({ item, index }) => {
                   }}
                 ></TouchableOpacity>
 
-                <TouchableOpacity
+                                <TouchableOpacity
                   style={[styles.modalActionButton, styles.modalDeleteButton]}
                   onPress={() => {
                     setShowUserModal(false);
-                    handleDeleteUser(selectedUser.id);
+                    handleDisableUser(selectedUser.id); 
                   }}
                 >
-                  <Ionicons name="trash" size={16} color="#fff" />
-                  <Text style={styles.modalActionButtonText}>Eliminar</Text>
+                  <Ionicons name="ban" size={16} color="#fff" /> {/* ✅ Ícono actualizado */}
+                  <Text style={styles.modalActionButtonText}>Deshabilitar</Text> {/* ✅ Texto actualizado */}
                 </TouchableOpacity>
               </View>
             </View>
