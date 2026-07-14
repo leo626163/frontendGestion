@@ -1549,7 +1549,7 @@ const ProyectoEvento = () => {
       // CORRECCIÓN CLAVE: Fallback para Web + Navegación segura
       if (Platform.OS === 'web') {
         window.alert(`✅ Éxito\n\n${successMessage}`);
-        router.replace('/HomeAcademico');
+        router.replace('/admin/HomeAcademico');
       } else {
         Alert.alert(
           '✅ Éxito',
@@ -1558,8 +1558,8 @@ const ProyectoEvento = () => {
             {
               text: 'OK',
               onPress: () => {
-                console.log("🔄 Navegando a /HomeAcademico");
-                router.replace('/HomeAcademico');
+                console.log("🔄 Navegando a /admin/HomeAcademico");
+                router.replace('/admin/HomeAcademico');
               }
             }
           ]
