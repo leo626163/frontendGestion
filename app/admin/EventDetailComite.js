@@ -492,16 +492,17 @@ console.log('objetivos_pdi del backend:', eventData.objetivos_pdi);
           </View>
         )}
 
-        {/* Objetivos Principales */}
-        {/* Objetivos Principales */}
+{/* Objetivos Principales - Solo mostrar texto personalizado */}
 {(() => {
-  // Filtrar solo objetivos con contenido real
   const validObjectives = event.objetivos?.filter(obj => {
-    const hasName = obj.nombre_objetivo && obj.nombre_objetivo.trim() !== '';
+    const nombre = (obj.nombre_objetivo || '').toLowerCase();
     const hasText = obj.texto_personalizado && obj.texto_personalizado.trim() !== '';
-    // Excluir "argumentacion" si existe en el nombre
-    const isNotArgumentacion = !obj.nombre_objetivo?.toLowerCase().includes('argumentacion');
-    return hasName && isNotArgumentacion;
+    
+    // Solo mostrar objetivos que tengan texto personalizado y no sean argumentacion/otro
+    return hasText && 
+           nombre !== 'argumentacion' && 
+           nombre !== 'otro' && 
+           !nombre.includes('sin tipo');
   }) || [];
 
   if (validObjectives.length === 0) return null;
@@ -513,16 +514,63 @@ console.log('objetivos_pdi del backend:', eventData.objetivos_pdi);
         <View key={index} style={styles.listItem}>
           <Ionicons name="bulb-outline" size={16} color={COLORS.grayText} style={styles.listIcon} />
           <Text style={styles.listText}>
-            {obj.nombre_objetivo}
-            {obj.texto_personalizado && obj.texto_personalizado.trim() !== '' && (
-              <Text> — {obj.texto_personalizado}</Text>
-            )}
+            {/* Mostrar SOLO el texto personalizado (lo que viene después del —) */}
+            {obj.texto_personalizado}
           </Text>
         </View>
       ))}
     </View>
   );
 })()}
+
+{/* Definición del Segmento Objetivo */}
+{(() => {
+  const allSegments = event.objetivos
+    ?.filter(obj => obj.segmentos && obj.segmentos.length > 0)
+    .flatMap(obj => obj.segmentos)
+    .filter(seg => {
+      const nombre = (seg.nombre_segmento || '').toLowerCase();
+      return nombre !== 'otro' && nombre.trim() !== '';
+    }) || [];
+
+  const uniqueSegmentsMap = new Map();
+  allSegments.forEach(seg => {
+    if (!uniqueSegmentsMap.has(seg.idsegmento)) {
+      uniqueSegmentsMap.set(seg.idsegmento, seg);
+    }
+  });
+  
+  const uniqueSegments = Array.from(uniqueSegmentsMap.values());
+
+  if (uniqueSegments.length === 0) return null;
+
+  return (
+    <View style={styles.sectionCard}>
+      <Text style={styles.sectionTitle}>Definición del Segmento Objetivo</Text>
+      <Text style={styles.sectionSubtitle}>(puede seleccionar más de un público)</Text>
+      {uniqueSegments.map((seg, index) => (
+        <View key={`seg-def-${seg.idsegmento || index}`} style={styles.segmentItem}>
+          <View style={styles.segmentHeader}>
+            <Ionicons name="person-outline" size={16} color={COLORS.primary} style={styles.segmentIcon} />
+            <Text style={styles.segmentName}>
+              {seg.nombre_segmento || `Segmento ID ${seg.idsegmento}`}
+            </Text>
+          </View>
+        </View>
+      ))}
+    </View>
+  );
+})()}
+
+{/* Argumentación */}
+{event.argumentacion && event.argumentacion !== 'Sin argumentación' && event.argumentacion.trim() !== '' && (
+  <View style={styles.sectionCard}>
+    <Text style={styles.sectionTitle}>Argumentación</Text>
+    <Text style={styles.argumentacionText}>
+      {event.argumentacion}
+    </Text>
+  </View>
+)}
 
         {event.objetivosPDI && event.objetivosPDI.length > 0 && (
   <View style={styles.sectionCard}>
