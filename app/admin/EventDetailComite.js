@@ -222,7 +222,7 @@ console.log('objetivos_pdi del backend:', eventData.objetivos_pdi);
       : [],
   
   segmentos: eventData.segmentos || [],
-  argumentacion: eventData.argumentacion || 'Sin argumentación',
+    argumentacion: eventData.argumentacion ? String(eventData.argumentacion).trim() : null,
   
  resultados: (eventData.Resultados && eventData.Resultados.length > 0)
   ? eventData.Resultados[0]
@@ -492,17 +492,15 @@ console.log('objetivos_pdi del backend:', eventData.objetivos_pdi);
           </View>
         )}
 
-{/* Objetivos Principales - Solo mostrar texto personalizado */}
+{/* Objetivos Principales */}
 {(() => {
+  console.log('🔍 Objetivos raw:', event.objetivos);
   const validObjectives = event.objetivos?.filter(obj => {
     const nombre = (obj.nombre_objetivo || '').toLowerCase();
     const hasText = obj.texto_personalizado && obj.texto_personalizado.trim() !== '';
+    const isValidName = nombre && nombre !== 'argumentacion' && nombre !== 'otro' && !nombre.includes('sin tipo');
     
-    // Solo mostrar objetivos que tengan texto personalizado y no sean argumentacion/otro
-    return hasText && 
-           nombre !== 'argumentacion' && 
-           nombre !== 'otro' && 
-           !nombre.includes('sin tipo');
+    return hasText || isValidName;
   }) || [];
 
   if (validObjectives.length === 0) return null;
@@ -510,59 +508,25 @@ console.log('objetivos_pdi del backend:', eventData.objetivos_pdi);
   return (
     <View style={styles.sectionCard}>
       <Text style={styles.sectionTitle}>Objetivos Principales</Text>
-      {validObjectives.map((obj, index) => (
-        <View key={index} style={styles.listItem}>
-          <Ionicons name="bulb-outline" size={16} color={COLORS.grayText} style={styles.listIcon} />
-          <Text style={styles.listText}>
-            {/* Mostrar SOLO el texto personalizado (lo que viene después del —) */}
-            {obj.texto_personalizado}
-          </Text>
-        </View>
-      ))}
-    </View>
-  );
-})()}
-
-{/* Definición del Segmento Objetivo */}
-{(() => {
-  const allSegments = event.objetivos
-    ?.filter(obj => obj.segmentos && obj.segmentos.length > 0)
-    .flatMap(obj => obj.segmentos)
-    .filter(seg => {
-      const nombre = (seg.nombre_segmento || '').toLowerCase();
-      return nombre !== 'otro' && nombre.trim() !== '';
-    }) || [];
-
-  const uniqueSegmentsMap = new Map();
-  allSegments.forEach(seg => {
-    if (!uniqueSegmentsMap.has(seg.idsegmento)) {
-      uniqueSegmentsMap.set(seg.idsegmento, seg);
-    }
-  });
-  
-  const uniqueSegments = Array.from(uniqueSegmentsMap.values());
-
-  if (uniqueSegments.length === 0) return null;
-
-  return (
-    <View style={styles.sectionCard}>
-      <Text style={styles.sectionTitle}>Definición del Segmento Objetivo</Text>
-      <Text style={styles.sectionSubtitle}>(puede seleccionar más de un público)</Text>
-      {uniqueSegments.map((seg, index) => (
-        <View key={`seg-def-${seg.idsegmento || index}`} style={styles.segmentItem}>
-          <View style={styles.segmentHeader}>
-            <Ionicons name="person-outline" size={16} color={COLORS.primary} style={styles.segmentIcon} />
-            <Text style={styles.segmentName}>
-              {seg.nombre_segmento || `Segmento ID ${seg.idsegmento}`}
+      {validObjectives.map((obj, index) => {
+        // Priorizar texto personalizado, si no, usar nombre del objetivo
+        const displayText = (obj.texto_personalizado && obj.texto_personalizado.trim() !== '') 
+          ? obj.texto_personalizado 
+          : obj.nombre_objetivo;
+          
+        return (
+          <View key={index} style={styles.listItem}>
+            <Ionicons name="bulb-outline" size={16} color={COLORS.grayText} style={styles.listIcon} />
+            <Text style={styles.listText}>
+              {displayText}
             </Text>
           </View>
-        </View>
-      ))}
+        );
+      })}
     </View>
   );
 })()}
 
-{/* Argumentación */}
 {event.argumentacion && event.argumentacion !== 'Sin argumentación' && event.argumentacion.trim() !== '' && (
   <View style={styles.sectionCard}>
     <Text style={styles.sectionTitle}>Argumentación</Text>
@@ -588,44 +552,53 @@ console.log('objetivos_pdi del backend:', eventData.objetivos_pdi);
   </View>
 )}
 
-       {event.objetivos && event.objetivos.some(obj => obj.segmentos && obj.segmentos.length > 0) && (
-  <View style={styles.sectionCard}>
-    <Text style={styles.sectionTitle}>Segmentos Objetivo</Text>
-    {(() => {
-      // 1️⃣ Extraer todos los segmentos de todos los objetivos
-      const allSegments = event.objetivos
-        .filter(obj => obj.segmentos && obj.segmentos.length > 0)
-        .flatMap(obj => obj.segmentos);
-      
-      // 2️⃣ Eliminar duplicados usando un Map (por idsegmento)
-      const uniqueSegmentsMap = new Map();
-      allSegments.forEach(seg => {
-        if (!uniqueSegmentsMap.has(seg.idsegmento)) {
-          uniqueSegmentsMap.set(seg.idsegmento, seg);
-        }
-      });
-      
-      // 3️⃣ Convertir a array y renderizar
-      const uniqueSegments = Array.from(uniqueSegmentsMap.values());
-      
-      return uniqueSegments.map((seg, index) => (
-        <View key={`seg-unique-${seg.idsegmento || index}`} style={styles.segmentItem}>
+       {/* Definición del Segmento Objetivo */}
+{(() => {
+  console.log('🔍 Segmentos root:', event.segmentos);
+  // Usar segmentos del root si existen, sino buscar dentro de objetivos
+  const segmentsSource = (event.segmentos && event.segmentos.length > 0) 
+    ? event.segmentos 
+    : (event.objetivos?.flatMap(obj => obj.segmentos || []) || []);
+
+  const validSegments = segmentsSource.filter(seg => {
+    const nombre = (seg.nombre_segmento || '').toLowerCase();
+    return nombre !== 'otro' && nombre.trim() !== '';
+  });
+
+  const uniqueSegmentsMap = new Map();
+  validSegments.forEach(seg => {
+    if (!uniqueSegmentsMap.has(seg.idsegmento)) {
+      uniqueSegmentsMap.set(seg.idsegmento, seg);
+    }
+  });
+  
+  const uniqueSegments = Array.from(uniqueSegmentsMap.values());
+  console.log('🔍 Segmentos únicos a mostrar:', uniqueSegments);
+
+  if (uniqueSegments.length === 0) return null;
+
+  return (
+    <View style={styles.sectionCard}>
+      <Text style={styles.sectionTitle}>Definición del Segmento Objetivo</Text>
+      <Text style={styles.sectionSubtitle}>(puede seleccionar más de un público)</Text>
+      {uniqueSegments.map((seg, index) => (
+        <View key={`seg-def-${seg.idsegmento || index}`} style={styles.segmentItem}>
           <View style={styles.segmentHeader}>
             <Ionicons name="person-outline" size={16} color={COLORS.primary} style={styles.segmentIcon} />
             <Text style={styles.segmentName}>
               {seg.nombre_segmento || `Segmento ID ${seg.idsegmento}`}
             </Text>
           </View>
-          {seg.texto_personalizado && (
+          {seg.texto_personalizado && seg.texto_personalizado.trim() !== '' && (
             <Text style={styles.segmentDescription}>
               {seg.texto_personalizado}
             </Text>
           )}
         </View>
-      ));
-    })()}
-  </View>
-)}
+      ))}
+    </View>
+  );
+})()}
 
         {event.resultados && (
           <View style={styles.sectionCard}>
