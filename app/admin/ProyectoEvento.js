@@ -1407,27 +1407,34 @@ const ProyectoEvento = () => {
     setIsLoading(true);
     
     if (!authToken) {
-      Alert.alert("Error de Autenticación", "No se puede enviar el formulario. Intenta iniciar sesión de nuevo.");
+      console.warn("⚠️ No hay authToken");
+      const msg = "Error de Autenticación: No se puede enviar el formulario. Intenta iniciar sesión de nuevo.";
+      if (Platform.OS === 'web') {
+        window.alert(msg);
+      } else {
+        Alert.alert("Error de Autenticación", msg);
+      }
       setIsLoading(false);
       return;
     }
     
     try {
-      // 1. Verificar conflictos
+      console.log("🔍 1. Verificando conflictos de horario...");
       const conflictos = verificarConflictoHorario(fechaHoraSeleccionada);
       if (conflictos.length > 0) {
         setIsLoading(false);
-        Alert.alert(
-          '⚠️ Conflicto de Horario',
-          `Ya existe un evento programado a las ${dayjs(fechaHoraSeleccionada).format('HH:mm')} del ${dayjs(fechaHoraSeleccionada).format('DD/MM/YYYY')}.\n\nEvento existente: ${conflictos[0].nombreevento}\nLugar: ${conflictos[0].lugarevento}\nResponsable: ${conflictos[0].responsable_evento}\n\nPor favor, selecciona otra hora o fecha.`,
-          [{ text: 'Entendido' }]
-        );
+        const msg = `Ya existe un evento programado a las ${dayjs(fechaHoraSeleccionada).format('HH:mm')} del ${dayjs(fechaHoraSeleccionada).format('DD/MM/YYYY')}.\n\nEvento existente: ${conflictos[0].nombreevento}\nLugar: ${conflictos[0].lugarevento}\nResponsable: ${conflictos[0].responsable_evento}\n\nPor favor, selecciona otra hora o fecha.`;
+        if (Platform.OS === 'web') {
+          window.alert(`⚠️ Conflicto de Horario\n\n${msg}`);
+        } else {
+          Alert.alert('⚠️ Conflicto de Horario', msg, [{ text: 'Entendido' }]);
+        }
         return;
       }
 
       if (!nombreevento.trim()) throw new Error('El nombre del evento es obligatorio');
       
-      // 2. Procesar tipos de evento
+      console.log("🔍 2. Procesando tipos de evento...");
       const tiposParaEnviar = Object.keys(tiposSeleccionados)
         .filter(id => tiposSeleccionados[id])
         .map(id => {
@@ -1441,12 +1448,12 @@ const ProyectoEvento = () => {
         
       if (tiposParaEnviar.length === 0) throw new Error('Debes seleccionar al menos un tipo de evento');
       
-      // 3. Procesar objetivos (Lógica corregida para evitar duplicados)
+      console.log("🔍 3. Procesando objetivos...");
       const objetivoParaEnviar = [];
       Object.keys(objetivos)
         .filter(key => objetivos[key] === true && key !== 'otroTexto')
-        .forEach(key => { 
-          objetivoParaEnviar.push(OBJETIVOS_EVENTO_MAP[key]); 
+        .forEach(key => {
+          objetivoParaEnviar.push(OBJETIVOS_EVENTO_MAP[key]);
         });
         
       if (objetivos.otro && objetivos.otroTexto.trim()) {
@@ -1460,7 +1467,7 @@ const ProyectoEvento = () => {
       const todosLosObjetivos = [...objetivoParaEnviar, ...pdiObjetivos];
       if (todosLosObjetivos.length === 0) throw new Error('Debes seleccionar al menos un objetivo');
       
-      // 4. Procesar segmentos
+      console.log("🔍 4. Procesando segmentos...");
       const segmentosParaEnviar = [];
       const validKeys = ['estudiantes', 'docentes', 'publicoExterno', 'influencers'];
       Object.keys(segmentoObjetivo)
@@ -1469,14 +1476,14 @@ const ProyectoEvento = () => {
           const label = { estudiantes: 'Estudiantes', docentes: 'Docentes', publicoExterno: 'Público Externo', influencers: 'Influencers' }[key];
           const segmentoData = SEGMENTO_OBJETIVO.find(s => s.label === label);
           if (segmentoData) {
-            segmentosParaEnviar.push({ 
-              id: parseInt(segmentoData.id, 10), 
-              texto_personalizado: segmentosTextoPersonalizado[key] || null 
+            segmentosParaEnviar.push({
+              id: parseInt(segmentoData.id, 10),
+              texto_personalizado: segmentosTextoPersonalizado[key] || null
             });
           }
         });
         
-      // 5. Procesar recursos
+      console.log("🔍 5. Procesando recursos...");
       const nuevosRecursos = [
         ...recursosTecnologicos.filter(r => r.nombre?.trim()).map(r => ({ nombre_recurso: r.nombre.trim(), cantidad: parseInt(r.cantidad) || 1, recurso_tipo: 'tecnologico' })),
         ...mobiliario.filter(r => r.nombre?.trim()).map(r => ({ nombre_recurso: r.nombre.trim(), cantidad: parseInt(r.cantidad) || 1, recurso_tipo: 'mobiliario' })),
@@ -1488,26 +1495,26 @@ const ProyectoEvento = () => {
         .map(id => parseInt(id, 10))
         .filter(id => !isNaN(id));
         
-      // 6. Procesar presupuesto
+      console.log("🔍 6. Procesando presupuesto...");
       const presupuestoData = {
-        egresos: egresos.filter(item => item.descripcion.trim()).map(item => ({ 
-          descripcion: item.descripcion, 
-          cantidad: parseFloat(item.cantidad) || 0, 
-          precio_unitario: parseFloat(item.precio) || 0, 
-          total: (parseFloat(item.cantidad) || 0) * (parseFloat(item.precio) || 0) 
+        egresos: egresos.filter(item => item.descripcion.trim()).map(item => ({
+          descripcion: item.descripcion,
+          cantidad: parseFloat(item.cantidad) || 0,
+          precio_unitario: parseFloat(item.precio) || 0,
+          total: (parseFloat(item.cantidad) || 0) * (parseFloat(item.precio) || 0)
         })),
-        ingresos: ingresos.filter(item => item.descripcion.trim()).map(item => ({ 
-          descripcion: item.descripcion, 
-          cantidad: parseFloat(item.cantidad) || 0, 
-          precio_unitario: parseFloat(item.precio) || 0, 
-          total: (parseFloat(item.cantidad) || 0) * (parseFloat(item.precio) || 0) 
+        ingresos: ingresos.filter(item => item.descripcion.trim()).map(item => ({
+          descripcion: item.descripcion,
+          cantidad: parseFloat(item.cantidad) || 0,
+          precio_unitario: parseFloat(item.precio) || 0,
+          total: (parseFloat(item.cantidad) || 0) * (parseFloat(item.precio) || 0)
         })),
         total_egresos: totalEgresos,
         total_ingresos: totalIngresos,
         balance: balance
       };
       
-      // 7. Construir payload final
+      console.log("🔍 7. Construyendo payload final...");
       const eventoPayload = {
         nombreevento: nombreevento.trim(),
         lugarevento: lugarevento.trim() || 'Por definir',
@@ -1528,44 +1535,58 @@ const ProyectoEvento = () => {
         facultad_dirigida: segmentoObjetivo.estudiantes && facultadSeleccionada ? facultadSeleccionada : null,
       };
 
-      console.log("🚀 Enviando payload al servidor:", eventoPayload);
-
-      // 8. Petición al servidor
+      console.log("🚀 8. Enviando payload al servidor:", eventoPayload);
+      
       const response = await axios.post(`${API_BASE_URL}/eventos`, eventoPayload, {
         headers: { Authorization: `Bearer ${authToken}`, 'Content-Type': 'application/json' },
       });
       
-      console.log("✅ Respuesta exitosa del servidor:", response.data);
-
-      // 9. Alerta y Navegación CORREGIDA (Sin .js)
-      Alert.alert(
-        'Éxito', 
-        'El evento ha sido creado correctamente.', 
-        [
-          { 
-            text: 'OK', 
-            onPress: () => {
-              // CORRECCIÓN CLAVE: En Expo Router, las rutas NO llevan la extensión .js
-              router.replace('/HomeAcademico'); 
-            } 
-          }
-        ]
-      );
+      console.log("✅ 9. Respuesta exitosa del servidor:", response.data);
+      
+      const successMessage = 'El evento ha sido creado correctamente.';
+      console.log("🎉 10. Mostrando alerta de éxito...");
+      
+      // CORRECCIÓN CLAVE: Fallback para Web + Navegación segura
+      if (Platform.OS === 'web') {
+        window.alert(`✅ Éxito\n\n${successMessage}`);
+        router.replace('/HomeAcademico');
+      } else {
+        Alert.alert(
+          '✅ Éxito',
+          successMessage,
+          [
+            {
+              text: 'OK',
+              onPress: () => {
+                console.log("🔄 Navegando a /HomeAcademico");
+                router.replace('/HomeAcademico');
+              }
+            }
+          ]
+        );
+      }
       
     } catch (error) {
-      console.error("❌ Error detallado al crear el evento:", error);
-      
+      console.error("❌ ERROR DETALLADO al crear el evento:", error);
       let errorMessage = "Ocurrió un error desconocido.";
+      
       if (error.response) {
-        errorMessage = error.response.data.message || error.response.data.error || JSON.stringify(error.response.data) || `Error del servidor: ${error.response.status}`;
+        // Manejo seguro de posibles estructuras de error del backend
+        errorMessage = error.response.data?.message || error.response.data?.error || JSON.stringify(error.response.data) || `Error del servidor: ${error.response.status}`;
       } else if (error.request) {
         errorMessage = "No se pudo conectar con el servidor. Revisa tu conexión a internet.";
       } else {
         errorMessage = error.message || "Error desconocido";
       }
       
-      Alert.alert('Error al crear el evento', errorMessage);
+      console.warn("⚠️ Mostrando alerta de error:", errorMessage);
+      if (Platform.OS === 'web') {
+        window.alert(`❌ Error al crear el evento\n\n${errorMessage}`);
+      } else {
+        Alert.alert('❌ Error al crear el evento', errorMessage);
+      }
     } finally {
+      console.log("🔄 11. Estableciendo isLoading en false");
       setIsLoading(false);
     }
   };
