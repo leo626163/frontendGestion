@@ -283,19 +283,19 @@ console.log('objetivos_pdi del backend:', eventData.objetivos_pdi);
   };
 
   useEffect(() => {
-     if (event) {
-    console.log('🔍 Evento completo:', event);
+  if (event) {
+    console.log('🔍 EVENTO COMPLETO:', JSON.stringify(event, null, 2));
     console.log('🔍 Fases:', event.fases);
-    console.log('🔍 Primera fase:', event.fases?.[0]);
+    console.log(' Primera fase:', event.fases?.[0]);
     console.log('🔍 nrofase:', event.fases?.[0]?.nrofase);
   }
-    if (eventId) {
-      fetchEventDetails();
-    } else {
-      setError('No se proporcionó un ID de evento.');
-      setLoading(false);
-    }
-  }, [fetchEventDetails, eventId]);
+  if (eventId) {
+    fetchEventDetails();
+  } else {
+    setError('No se proporcionó un ID de evento.');
+    setLoading(false);
+  }
+}, [fetchEventDetails, eventId]);
 
   const handleApproveEvent = async () => {
     try {
@@ -527,14 +527,27 @@ console.log('objetivos_pdi del backend:', eventData.objetivos_pdi);
   );
 })()}
 
-{event.argumentacion && event.argumentacion !== 'Sin argumentación' && event.argumentacion.trim() !== '' && (
-  <View style={styles.sectionCard}>
-    <Text style={styles.sectionTitle}>Argumentación</Text>
-    <Text style={styles.argumentacionText}>
-      {event.argumentacion}
-    </Text>
-  </View>
-)}
+{/* Argumentación */}
+{(() => {
+  console.log('🔍 Argumentación raw:', event.argumentacion);
+  console.log('🔍 Argumentación type:', typeof event.argumentacion);
+  
+  const arg = event.argumentacion ? String(event.argumentacion).trim() : '';
+  
+  if (!arg || arg === 'Sin argumentación' || arg.length === 0) {
+    console.log('⚠️ No hay argumentación válida para mostrar');
+    return null;
+  }
+
+  return (
+    <View style={styles.sectionCard}>
+      <Text style={styles.sectionTitle}>Argumentación</Text>
+      <Text style={styles.argumentacionText}>
+        {arg}
+      </Text>
+    </View>
+  );
+})()}
 
         {event.objetivosPDI && event.objetivosPDI.length > 0 && (
   <View style={styles.sectionCard}>
@@ -552,15 +565,28 @@ console.log('objetivos_pdi del backend:', eventData.objetivos_pdi);
   </View>
 )}
 
-       {/* Definición del Segmento Objetivo */}
+{/* Definición del Segmento Objetivo */}
 {(() => {
-  console.log('🔍 Segmentos root:', event.segmentos);
-  // Usar segmentos del root si existen, sino buscar dentro de objetivos
-  const segmentsSource = (event.segmentos && event.segmentos.length > 0) 
-    ? event.segmentos 
-    : (event.objetivos?.flatMap(obj => obj.segmentos || []) || []);
+  // Buscar segmentos en múltiples lugares
+  let allSegments = [];
+  
+  // 1. Buscar en root
+  if (event.segmentos && event.segmentos.length > 0) {
+    allSegments = [...event.segmentos];
+  }
+  
+  // 2. Buscar dentro de objetivos
+  if (event.objetivos) {
+    const fromObjetivos = event.objetivos
+      .filter(obj => obj.segmentos && obj.segmentos.length > 0)
+      .flatMap(obj => obj.segmentos);
+    allSegments = [...allSegments, ...fromObjetivos];
+  }
+  
+  console.log('🔍 Todos los segmentos encontrados:', allSegments);
 
-  const validSegments = segmentsSource.filter(seg => {
+  // Filtrar "Otro"
+  const validSegments = allSegments.filter(seg => {
     const nombre = (seg.nombre_segmento || '').toLowerCase();
     return nombre !== 'otro' && nombre.trim() !== '';
   });
@@ -573,7 +599,7 @@ console.log('objetivos_pdi del backend:', eventData.objetivos_pdi);
   });
   
   const uniqueSegments = Array.from(uniqueSegmentsMap.values());
-  console.log('🔍 Segmentos únicos a mostrar:', uniqueSegments);
+  console.log(' Segmentos únicos a mostrar:', uniqueSegments);
 
   if (uniqueSegments.length === 0) return null;
 
@@ -589,11 +615,6 @@ console.log('objetivos_pdi del backend:', eventData.objetivos_pdi);
               {seg.nombre_segmento || `Segmento ID ${seg.idsegmento}`}
             </Text>
           </View>
-          {seg.texto_personalizado && seg.texto_personalizado.trim() !== '' && (
-            <Text style={styles.segmentDescription}>
-              {seg.texto_personalizado}
-            </Text>
-          )}
         </View>
       ))}
     </View>
