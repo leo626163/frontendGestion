@@ -527,23 +527,19 @@ console.log('objetivos_pdi del backend:', eventData.objetivos_pdi);
   );
 })()}
 
-{/* Argumentación */}
 {(() => {
-  console.log('🔍 Argumentación raw:', event.argumentacion);
-  console.log('🔍 Argumentación type:', typeof event.argumentacion);
-  
-  const arg = event.argumentacion ? String(event.argumentacion).trim() : '';
-  
-  if (!arg || arg === 'Sin argumentación' || arg.length === 0) {
-    console.log('⚠️ No hay argumentación válida para mostrar');
-    return null;
-  }
+  // Buscar argumentación en los objetivos (está dentro de cada objetivo, no en el root)
+  const argumentacion = event.objetivos?.find(obj => 
+    obj.argumentacion && obj.argumentacion.trim() !== ''
+  )?.argumentacion;
+
+  if (!argumentacion) return null;
 
   return (
     <View style={styles.sectionCard}>
       <Text style={styles.sectionTitle}>Argumentación</Text>
       <Text style={styles.argumentacionText}>
-        {arg}
+        {argumentacion}
       </Text>
     </View>
   );
