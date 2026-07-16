@@ -1602,6 +1602,43 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     backgroundColor: COLORS.background,
   },
+   committeeTabsContainer: {
+    marginBottom: 16,
+    paddingHorizontal: 4, // Alineado con sectionHeaderMinimal
+  },
+  committeeTab: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: COLORS.background,
+    marginRight: 8,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  committeeTabActive: {
+    backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
+  },
+  committeeTabText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: COLORS.textSecondary,
+  },
+  committeeTabTextActive: {
+    color: COLORS.white,
+  },
+  emptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 40,
+    paddingHorizontal: 20,
+  },
+  emptyStateText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: COLORS.textTertiary,
+    textAlign: 'center',
+  },
   notificationBadge: {
     position: 'absolute',
     top: 4,
