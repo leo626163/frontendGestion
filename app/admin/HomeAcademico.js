@@ -487,6 +487,7 @@ const fetchEstudiantesInscritosFacultad = useCallback(async () => {
     const response = await axios.get(`${API_BASE_URL}/estudiantes-inscritos-facultad`, {
       headers: { 'Authorization': `Bearer ${token}` },
     });
+    console.log('📚 Estudiantes inscritos en eventos de la facultad:', response.data);
 
     setEventosFacultad(response.data.eventos || []);
   } catch (error) {
@@ -556,8 +557,6 @@ const fetchNotifications = useCallback(async () => {
       timeout: 8000,
     });
 
-    console.log('📬 Respuesta del servidor:', response.data);
-    console.log('📊 Cantidad de notificaciones:', response.data?.length);
 
     // Mapear respuesta - el backend devuelve 'idnotificacion'
     const mapped = (response.data || []).map(n => ({
