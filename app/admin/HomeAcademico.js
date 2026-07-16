@@ -479,21 +479,21 @@ const [showTelegramModal, setShowTelegramModal] = useState(false);
 const [isTelegramLinked, setIsTelegramLinked] = useState(false);
 const [telegramUsername, setTelegramUsername] = useState('');
 const fetchEstudiantesInscritosFacultad = useCallback(async () => {
+  setLoadingEventosFacultad(true);
   try {
     const token = await getTokenAsync();
     if (!token) return;
 
-    const response = await axios.get(`${API_BASE_URL}/estudiantes/estudiantes-inscritos-facultad`,{
+    // ✅ CORREGIDO: Agregado el prefijo '/estudiantes/' que coincide con app.js
+    const response = await axios.get(`${API_BASE_URL}/estudiantes/estudiantes-inscritos-facultad`, {
       headers: { 'Authorization': `Bearer ${token}` },
-      timeout: 10000,
     });
+    
     console.log('📚 Estudiantes inscritos en eventos de la facultad:', response.data);
-
     setEventosFacultad(response.data.eventos || []);
   } catch (error) {
     console.error('Error al cargar estudiantes de la facultad:', error);
-  }
-  finally { 
+  } finally {
     setLoadingEventosFacultad(false);
   }
 }, []);
