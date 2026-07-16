@@ -465,6 +465,9 @@ const HomeAcademicoScreen = () => {
   const [comiteeEvents, setComiteeEvents] = useState([]);
   const [loadingComitee, setLoadingComitee] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
+  const [eventosFacultad, setEventosFacultad] = useState([]);
+const [loadingEventosFacultad, setLoadingEventosFacultad] = useState(false);
+const [expandedEventoId, setExpandedEventoId] = useState(null);
 const [userProfile, setUserProfile] = useState({
   nombre: '',
   apellidopat: '',
@@ -475,6 +478,23 @@ const [userProfile, setUserProfile] = useState({
 const [showTelegramModal, setShowTelegramModal] = useState(false);
 const [isTelegramLinked, setIsTelegramLinked] = useState(false);
 const [telegramUsername, setTelegramUsername] = useState('');
+const fetchEstudiantesInscritosFacultad = useCallback(async () => {
+  setLoadingEventosFacultad(true);
+  try {
+    const token = await getTokenAsync();
+    if (!token) return;
+
+    const response = await axios.get(`${API_BASE_URL}/dashboard/estudiantes-inscritos-facultad`, {
+      headers: { 'Authorization': `Bearer ${token}` },
+    });
+
+    setEventosFacultad(response.data.eventos || []);
+  } catch (error) {
+    console.error('Error al cargar estudiantes de la facultad:', error);
+  } finally {
+    setLoadingEventosFacultad(false);
+  }
+}, []);
 const checkTelegramStatus = useCallback(async () => {
   try {
     const token = await getTokenAsync();
@@ -818,7 +838,8 @@ useEffect(() => {
       fetchHistoricalData(),
       fetchCommitteeEvents(),
       fetchNotifications(),
-      checkTelegramStatus()
+      checkTelegramStatus(),
+      fetchEstudiantesInscritosFacultad()
     ]);
   };
 
@@ -1155,6 +1176,67 @@ const handleActionPress = (action) => {
   contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 20 }}
   showsVerticalScrollIndicator={false}
 />
+  )}
+</View>
+<View style={styles.committeeSection}>
+  <View style={styles.sectionHeaderMinimal}>
+    <Text style={styles.sectionTitleMinimal}>Estudiantes Inscritos</Text>
+    <Text style={styles.sectionSubtitleMinimal}>Inscripciones de tu facultad por evento</Text>
+  </View>
+
+  {loadingEventosFacultad ? (
+    <View style={styles.loadingContainer}>
+      <ActivityIndicator size="large" color={COLORS.primary} />
+      <Text style={styles.loadingText}>Cargando inscripciones...</Text>
+    </View>
+  ) : eventosFacultad.length === 0 ? (
+    <View style={styles.emptyState}>
+      <Ionicons name="people-outline" size={40} color={COLORS.textTertiary} />
+      <Text style={styles.emptyStateText}>No hay estudiantes inscritos aún.</Text>
+    </View>
+  ) : (
+    eventosFacultad.map((evento) => (
+      <View key={evento.idevento} style={styles.eventCard}>
+        <TouchableOpacity
+          onPress={() => setExpandedEventoId(expandedEventoId === evento.idevento ? null : evento.idevento)}
+          style={styles.eventCardHeader}
+        >
+          <View style={styles.eventCardTextContainer}>
+            <Text style={styles.eventTitle}>{evento.nombreevento}</Text>
+            <Text style={styles.eventSubtitle}>
+              {evento.estudiantes.length} estudiante{evento.estudiantes.length !== 1 ? 's' : ''} inscrito{evento.estudiantes.length !== 1 ? 's' : ''}
+            </Text>
+          </View>
+          <Ionicons
+            name={expandedEventoId === evento.idevento ? 'chevron-up' : 'chevron-down'}
+            size={20}
+            color={COLORS.textSecondary}
+          />
+        </TouchableOpacity>
+
+        {expandedEventoId === evento.idevento && (
+          <View style={{ marginTop: 12, gap: 8 }}>
+            {evento.estudiantes.map((est) => (
+              <View
+                key={est.idestudiante}
+                style={{
+                  flexDirection: 'row',
+                  justifyContent: 'space-between',
+                  paddingVertical: 8,
+                  borderTopWidth: 1,
+                  borderTopColor: COLORS.divider,
+                }}
+              >
+                <Text style={{ fontSize: 13, color: COLORS.textPrimary }}>{est.nombre}</Text>
+                <Text style={{ fontSize: 12, color: COLORS.textTertiary }}>
+                  {est.fecha_inscripcion ? new Date(est.fecha_inscripcion).toLocaleDateString('es-ES') : ''}
+                </Text>
+              </View>
+            ))}
+          </View>
+        )}
+      </View>
+    ))
   )}
 </View>
         <View style={styles.actionsSectionMinimal}>
