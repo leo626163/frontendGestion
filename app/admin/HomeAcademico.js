@@ -765,7 +765,7 @@ const fetchCommitteeEvents = useCallback(async () => {
     const token = await getTokenAsync();
     if (!token) return;
 
-    const response = await axios.get(`${API_BASE_URL}/dashboard/historical`, {
+    const response = await axios.get(`${API_BASE_URL}/dashboard/my-historical`, {
       headers: { 'Authorization': `Bearer ${token}` }
     });
 
