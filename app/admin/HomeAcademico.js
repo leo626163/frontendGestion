@@ -483,7 +483,7 @@ const fetchEstudiantesInscritosFacultad = useCallback(async () => {
     const token = await getTokenAsync();
     if (!token) return;
 
-    const response = await axios.get(`${API_BASE_URL}/estudiantes-inscritos-facultad`, {
+    const response = await axios.get(`${API_BASE_URL}/estudiantesInscritos`, {
       headers: { 'Authorization': `Bearer ${token}` },
     });
     console.log('📚 Estudiantes inscritos en eventos de la facultad:', response.data);
@@ -842,7 +842,7 @@ useEffect(() => {
   checkAuthAndLoadData();
    const interval = setInterval(fetchNotifications, 30000);
   return () => clearInterval(interval);
-}, [fetchDashboardData, fetchUserProfile, fetchHistoricalData,fetchHistoricalData,checkTelegramStatus, router]);
+}, [fetchDashboardData, fetchUserProfile, fetchHistoricalData,fetchHistoricalData,checkTelegramStatus,fetchEstudiantesInscritosFacultad, router]);
   const { columns: dashboardColumns, cardWidth: dashboardCardWidth } = useMemo(() => {
     let numColumns = Math.floor(windowWidth / (MIN_CARD_WIDTH_DASHBOARD + CARD_MARGIN));
     numColumns = Math.min(numColumns, MAX_COLUMNS_DASHBOARD);
