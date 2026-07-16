@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { useRouter, Link } from 'expo-router';
 import axios from 'axios';
+import dayjs from 'dayjs'; // <-- 1. Agregado para manejo robusto de fechas
 
 import {
   StyleSheet,
@@ -16,10 +17,8 @@ import {
   Animated,
 } from 'react-native';
 
-//const API_BASE_URL = 'https://evento.cidtec-uc.com';
-const API_BASE_URL =  'https://backendgestion-production-e2aa.up.railway.app';
+const API_BASE_URL = 'https://backendgestion-production-e2aa.up.railway.app';
 
-//'https://unifrontend.onrender.com';
 const windowWidth = Dimensions.get('window').width;
 const CAROUSEL_ITEM_WIDTH = windowWidth * 0.80;
 const ITEM_MARGIN = 8;
@@ -56,6 +55,30 @@ const getEventImage       = (ev) => {
   return `${API_BASE_URL}/${path.replace(/^\//, '')}`;
 };
 
+// --- 2. NUEVO: Obtener la fecha del evento (soporta los nombres de campo que usas) ---
+const getEventDate = (ev) => ev.fechaevento ?? ev.date ?? ev.fecha ?? ev.fechaInicio ?? null;
+
+// --- 3. NUEVO: Verificar si el evento NO ha pasado (es hoy o está en el futuro) ---
+const isEventActive = (ev) => {
+  const dateStr = getEventDate(ev);
+  if (!dateStr) return true; // Si no tiene fecha registrada, lo mostramos por defecto
+
+  let eventDate;
+  // Soporta formatos comunes: YYYY-MM-DD, DD/MM/YYYY, o string ISO
+  if (/^\d{4}-\d{2}-\d{2}/.test(dateStr)) {
+    eventDate = dayjs(dateStr, 'YYYY-MM-DD');
+  } else if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(dateStr)) {
+    eventDate = dayjs(dateStr, 'DD/MM/YYYY');
+  } else {
+    eventDate = dayjs(dateStr);
+  }
+
+  if (!eventDate.isValid()) return true; // Si la fecha es inválida, lo mostramos por seguridad
+
+  // Retorna true si la fecha del evento es hoy o en el futuro
+  return eventDate.isSame(dayjs().startOf('day')) || eventDate.isAfter(dayjs().startOf('day'));
+};
+
 export default function Home() {
   const router = useRouter();
   const [allEvents, setAllEvents]             = useState([]);
@@ -72,18 +95,16 @@ export default function Home() {
     axios.get(`${API_BASE_URL}/eventos/con-facultad`)
       .then((res) => {
         const data = res.data;
-
         console.log('=== DATOS CRUDOS ===', JSON.stringify(data, null, 2));
       
-      const list = Array.isArray(data) ? data : data.data ?? data.eventos ?? data.events ?? [];
-      console.log('=== EVENTOS EXTRAÍDOS ===', list.length, 'eventos');
-      console.log('=== PRIMER EVENTO ===', list[0]);
-      
-      // Verificar estructura
-      if (list.length > 0) {
-        console.log('=== CAMPOS DEL PRIMER EVENTO ===', Object.keys(list[0]));
-        console.log('=== FACULTAD ID ===', getEventFacultadId(list[0]));
-      }
+        const list = Array.isArray(data) ? data : data.data ?? data.eventos ?? data.events ?? [];
+        console.log('=== EVENTOS EXTRAÍDOS ===', list.length, 'eventos');
+        console.log('=== PRIMER EVENTO ===', list[0]);
+        
+        if (list.length > 0) {
+          console.log('=== CAMPOS DEL PRIMER EVENTO ===', Object.keys(list[0]));
+          console.log('=== FACULTAD ID ===', getEventFacultadId(list[0]));
+        }
         setAllEvents(list);
         setLoading(false);
         Animated.parallel([
@@ -97,15 +118,22 @@ export default function Home() {
         setLoading(false);
       });
   }, []);
+
+  // --- 4. FILTRO ACTUALIZADO: Solo eventos de la facultad Y que no hayan pasado ---
+  const eventos = allEvents.filter((ev) => {
+    const matchesFacultad = getEventFacultadId(ev) === selectedFacultad.id;
+    return matchesFacultad && isEventActive(ev);
+  });
+
   useEffect(() => {
-  console.log('=== FILTRANDO ===');
-  console.log('Facultad seleccionada ID:', selectedFacultad.id);
-  console.log('Total eventos:', allEvents.length);
-  console.log('Eventos filtrados:', eventos.length);
-  if (eventos.length > 0) {
-    console.log('Primer evento filtrado:', eventos[0]);
-  }
-}, [selectedFacultad, allEvents]);
+    console.log('=== FILTRANDO ===');
+    console.log('Facultad seleccionada ID:', selectedFacultad.id);
+    console.log('Total eventos:', allEvents.length);
+    console.log('Eventos filtrados (activos):', eventos.length);
+    if (eventos.length > 0) {
+      console.log('Primer evento filtrado:', eventos[0]);
+    }
+  }, [selectedFacultad, allEvents, eventos]);
 
   const animateEvents = () => {
     eventsAnim.setValue(0);
@@ -117,8 +145,6 @@ export default function Home() {
     setActiveCatIndex(index);
     animateEvents();
   };
-
-  const eventos = allEvents.filter((ev) => getEventFacultadId(ev) === selectedFacultad.id);
 
   if (loading) {
     return (
@@ -278,7 +304,6 @@ export default function Home() {
       </ScrollView>
 
       {/* FABs */}
-      
       <TouchableOpacity style={styles.fabLogin} onPress={() => router.push('./(tabs)/Login')} activeOpacity={0.85}>
         <Text style={styles.fabIcon}>👤</Text>
         <Text style={styles.fabLabel}>Login</Text>
