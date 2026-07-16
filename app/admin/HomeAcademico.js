@@ -479,7 +479,6 @@ const [showTelegramModal, setShowTelegramModal] = useState(false);
 const [isTelegramLinked, setIsTelegramLinked] = useState(false);
 const [telegramUsername, setTelegramUsername] = useState('');
 const fetchEstudiantesInscritosFacultad = useCallback(async () => {
-  setLoadingEventosFacultad(true);
   try {
     const token = await getTokenAsync();
     if (!token) return;
@@ -492,8 +491,6 @@ const fetchEstudiantesInscritosFacultad = useCallback(async () => {
     setEventosFacultad(response.data.eventos || []);
   } catch (error) {
     console.error('Error al cargar estudiantes de la facultad:', error);
-  } finally {
-    setLoadingEventosFacultad(false);
   }
 }, []);
 const checkTelegramStatus = useCallback(async () => {
