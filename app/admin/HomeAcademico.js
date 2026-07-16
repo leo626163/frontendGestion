@@ -466,6 +466,7 @@ const HomeAcademicoScreen = () => {
   const [loadingComitee, setLoadingComitee] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [eventosFacultad, setEventosFacultad] = useState([]);
+  const [committeeFilter, setCommitteeFilter] = useState('todos');
 const [loadingEventosFacultad, setLoadingEventosFacultad] = useState(false);
 const [expandedEventoId, setExpandedEventoId] = useState(null);
 const [userProfile, setUserProfile] = useState({
@@ -478,6 +479,12 @@ const [userProfile, setUserProfile] = useState({
 const [showTelegramModal, setShowTelegramModal] = useState(false);
 const [isTelegramLinked, setIsTelegramLinked] = useState(false);
 const [telegramUsername, setTelegramUsername] = useState('');
+const filteredCommitteeEvents = useMemo(() => {
+  if (committeeFilter === 'todos') return comiteeEvents;
+  return comiteeEvents.filter(e => e.estado === committeeFilter);
+}, [comiteeEvents, committeeFilter]);
+
+
 const fetchEstudiantesInscritosFacultad = useCallback(async () => {
   setLoadingEventosFacultad(true);
   try {
@@ -1105,79 +1112,131 @@ const handleActionPress = (action) => {
 <View style={styles.committeeSection}>
   <View style={styles.sectionHeaderMinimal}>
     <Text style={styles.sectionTitleMinimal}>Mis Eventos como Comité</Text>
-    <Text style={styles.sectionSubtitleMinimal}>Eventos en los que participas como miembro del comité</Text>
+    <Text style={styles.sectionSubtitleMinimal}>
+      Eventos en los que participas como miembro del comité
+    </Text>
   </View>
 
+  {/* Pestañas de filtro horizontal */}
+  <ScrollView 
+    horizontal 
+    showsHorizontalScrollIndicator={false}
+    style={styles.committeeTabsContainer}
+  >
+    <TouchableOpacity
+      style={[
+        styles.committeeTab,
+        committeeFilter === 'todos' && styles.committeeTabActive
+      ]}
+      onPress={() => setCommitteeFilter('todos')}
+    >
+      <Text style={[
+        styles.committeeTabText,
+        committeeFilter === 'todos' && styles.committeeTabTextActive
+      ]}>
+        Todos ({comiteeEvents.length})
+      </Text>
+    </TouchableOpacity>
+    
+    <TouchableOpacity
+      style={[
+        styles.committeeTab,
+        committeeFilter === 'aprobado' && styles.committeeTabActive
+      ]}
+      onPress={() => setCommitteeFilter('aprobado')}
+    >
+      <Text style={[
+        styles.committeeTabText,
+        committeeFilter === 'aprobado' && styles.committeeTabTextActive
+      ]}>
+        Aprobados ({comiteeEvents.filter(e => e.estado === 'aprobado').length})
+      </Text>
+    </TouchableOpacity>
+    
+    <TouchableOpacity
+      style={[
+        styles.committeeTab,
+        committeeFilter === 'pendiente' && styles.committeeTabActive
+      ]}
+      onPress={() => setCommitteeFilter('pendiente')}
+    >
+      <Text style={[
+        styles.committeeTabText,
+        committeeFilter === 'pendiente' && styles.committeeTabTextActive
+      ]}>
+        Pendientes ({comiteeEvents.filter(e => e.estado === 'pendiente').length})
+      </Text>
+    </TouchableOpacity>
+  </ScrollView>
+
+  {/* Lista de eventos (usando .map para evitar conflictos de scroll anidado) */}
   {loadingComitee ? (
     <View style={styles.loadingContainer}>
       <ActivityIndicator size="large" color={COLORS.primary} />
       <Text style={styles.loadingText}>Cargando tus eventos como comité...</Text>
     </View>
-  ) : comiteeEvents.length === 0 ? (
+  ) : filteredCommitteeEvents.length === 0 ? (
     <View style={styles.emptyState}>
-      <Ionicons name="people-outline" size={40} color={COLORS.textTertiary} />
-      <Text style={styles.emptyStateText}>No eres miembro de ningún comité aún.</Text>
+      <Ionicons name="calendar-outline" size={40} color={COLORS.textTertiary} />
+      <Text style={styles.emptyStateText}>
+        No hay eventos en esta categoría.
+      </Text>
     </View>
   ) : (
- <FlatList
-  data={comiteeEvents}
-  keyExtractor={(item) => item.idevento.toString()}
-  renderItem={({ item }) => (
-    <TouchableOpacity
-      style={styles.tableRow}
-      onPress={() => router.push(`/admin/EventDetailComite?eventId=${item.idevento}`)}
-      activeOpacity={0.8}
-    >
-      <View style={styles.tableCellStatus}>
-        {item.estado && (
-          <View style={[
-            styles.statusBadge,
-            {
-              backgroundColor: 
-                item.estado === 'aprobado' ? COLORS.success + '20' :
-                item.estado === 'pendiente' ? COLORS.warning + '20' :
-                COLORS.accent + '20'
-            }
-          ]}>
-            <Text style={[
-              styles.statusText,
+    filteredCommitteeEvents.map((item) => (
+      <TouchableOpacity
+        key={item.idevento}
+        style={styles.tableRow}
+        onPress={() => router.push(`/admin/EventDetailComite?eventId=${item.idevento}`)}
+        activeOpacity={0.8}
+      >
+        <View style={styles.tableCellStatus}>
+          {item.estado && (
+            <View style={[
+              styles.statusBadge,
               {
-                color: 
-                  item.estado === 'aprobado' ? COLORS.success :
-                  item.estado === 'pendiente' ? COLORS.warning :
-                  COLORS.accent
+                backgroundColor: 
+                  item.estado === 'aprobado' ? COLORS.success + '20' :
+                  item.estado === 'pendiente' ? COLORS.warning + '20' :
+                  COLORS.accent + '20'
               }
             ]}>
-              {item.estado.charAt(0).toUpperCase() + item.estado.slice(1)}
-            </Text>
-          </View>
-        )}
-      </View>
-
-      {/* Nombre y descripción - columna central */}
-      <View style={styles.tableCellName}>
-        <Text style={styles.tableEventName} numberOfLines={1}>
-          {item.nombreevento || 'Sin título'}
-        </Text>
-        <Text style={styles.tableEventDescription} numberOfLines={1}>
-          {item.descripcion || 'Sin descripción'}
-        </Text>
-      </View>
-
-      {/* Badge "Como Comité" - columna derecha */}
-      <View style={styles.tableCellRole}>
-        <View style={styles.roleBadge}>
-          <Ionicons name="shield-checkmark" size={16} color={COLORS.primary} />
-          <Text style={styles.roleBadgeText}>Como Comité</Text>
+              <Text style={[
+                styles.statusText,
+                {
+                  color: 
+                    item.estado === 'aprobado' ? COLORS.success :
+                    item.estado === 'pendiente' ? COLORS.warning :
+                    COLORS.accent
+                }
+              ]}>
+                {item.estado.charAt(0).toUpperCase() + item.estado.slice(1)}
+              </Text>
+            </View>
+          )}
         </View>
-      </View>
-    </TouchableOpacity>
-  )}
-  contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 20 }}
-  showsVerticalScrollIndicator={false}
-/>
+
+        <View style={styles.tableCellName}>
+          <Text style={styles.tableEventName} numberOfLines={1}>
+            {item.nombreevento || 'Sin título'}
+          </Text>
+          <Text style={styles.tableEventDescription} numberOfLines={1}>
+            {item.descripcion || 'Sin descripción'}
+          </Text>
+        </View>
+
+        <View style={styles.tableCellRole}>
+          <View style={styles.roleBadge}>
+            <Ionicons name="shield-checkmark" size={16} color={COLORS.primary} />
+            <Text style={styles.roleBadgeText}>Como Comité</Text>
+          </View>
+        </View>
+      </TouchableOpacity>
+    ))
   )}
 </View>
+
+
 <View style={styles.committeeSection}>
   <View style={styles.sectionHeaderMinimal}>
     <Text style={styles.sectionTitleMinimal}>Estudiantes Inscritos</Text>
