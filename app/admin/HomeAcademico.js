@@ -483,7 +483,7 @@ const fetchEstudiantesInscritosFacultad = useCallback(async () => {
     const token = await getTokenAsync();
     if (!token) return;
 
-    const response = await axios.get(`${API_BASE_URL}/estudiantesInscritos`, {
+    const response = await axios.get(`${API_BASE_URL}/estudiantes-inscritos-facultad`,{
       headers: { 'Authorization': `Bearer ${token}` },
       timeout: 10000,
     });
@@ -492,6 +492,9 @@ const fetchEstudiantesInscritosFacultad = useCallback(async () => {
     setEventosFacultad(response.data.eventos || []);
   } catch (error) {
     console.error('Error al cargar estudiantes de la facultad:', error);
+  }
+  finally { 
+    setLoadingEventosFacultad(false);
   }
 }, []);
 const checkTelegramStatus = useCallback(async () => {
