@@ -485,6 +485,7 @@ const fetchEstudiantesInscritosFacultad = useCallback(async () => {
 
     const response = await axios.get(`${API_BASE_URL}/estudiantesInscritos`, {
       headers: { 'Authorization': `Bearer ${token}` },
+      timeout: 10000,
     });
     console.log('📚 Estudiantes inscritos en eventos de la facultad:', response.data);
 
