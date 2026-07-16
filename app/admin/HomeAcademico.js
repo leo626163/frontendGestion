@@ -484,7 +484,7 @@ const fetchEstudiantesInscritosFacultad = useCallback(async () => {
     const token = await getTokenAsync();
     if (!token) return;
 
-    const response = await axios.get(`${API_BASE_URL}/estudiantes-inscritos`, {
+    const response = await axios.get(`${API_BASE_URL}/estudiantes-inscritos-facultad`, {
       headers: { 'Authorization': `Bearer ${token}` },
     });
 
@@ -765,7 +765,7 @@ const fetchCommitteeEvents = useCallback(async () => {
     const token = await getTokenAsync();
     if (!token) return;
 
-    const response = await axios.get(`${API_BASE_URL}/dashboard/my-historical`, {
+    const response = await axios.get(`${API_BASE_URL}/dashboard/historical`, {
       headers: { 'Authorization': `Bearer ${token}` }
     });
 
