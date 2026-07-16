@@ -11,6 +11,7 @@ import { Ionicons } from '@expo/vector-icons';
 import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
 import QRCode from 'react-qr-code';
+import dayjs from 'dayjs';
 
 //const API_BASE_URL =  'https://evento.cidtec-uc.com';
 //const API_BASE_URL =  'https://unifrontend.onrender.com';
@@ -54,6 +55,24 @@ const MONTH_SHORT = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct'
 const CARD_MARGIN = 12;
 const MIN_CARD_WIDTH_ACTIONS = 140;
 const MAX_COLUMNS_ACTIONS = 4;
+
+const isEventActive = (ev) => {
+  const dateStr = ev.fechaevento ?? ev.date ?? ev.fecha ?? ev.fechaInicio ?? null;
+  if (!dateStr) return true; // Si no tiene fecha, lo mostramos por defecto
+
+  let eventDate;
+  if (/^\d{4}-\d{2}-\d{2}/.test(dateStr)) {
+    eventDate = dayjs(dateStr, 'YYYY-MM-DD');
+  } else if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(dateStr)) {
+    eventDate = dayjs(dateStr, 'DD/MM/YYYY');
+  } else {
+    eventDate = dayjs(dateStr);
+  }
+
+  if (!eventDate.isValid()) return true; // Si la fecha es inválida, lo mostramos por seguridad
+
+  return eventDate.isSame(dayjs().startOf('day')) || eventDate.isAfter(dayjs().startOf('day'));
+};
 
 const CustomLineChart = ({ data, width, height, color = COLORS.primary }) => {
   if (!data?.labels?.length) return null;
@@ -399,7 +418,7 @@ const ChatEmbed = ({ userId, userRole }) => {
         const data = await res.json();
         // Solo aprobados con comité
         const aprobados = Array.isArray(data)
-          ? data.filter(e => e.estado === 'aprobado')
+          ? data.filter(e => e.estado === 'aprobado' && isEventActive(e))
           : [];
         setEventos(aprobados);
       } catch (e) {
@@ -749,11 +768,17 @@ const HomeAdministradorScreen = () => {
 
       const data = statsRes.data;
 
-      if (Array.isArray(eventosRes.data) && eventosRes.data.length > 0) {
-        const sorted = [...eventosRes.data].sort((a, b) =>
-          new Date(b.createdAt || 0) - new Date(a.createdAt || 0)
-        );
-        setUltimoEvento(sorted[0]);
+            if (Array.isArray(eventosRes.data) && eventosRes.data.length > 0) {
+        const eventosActivos = eventosRes.data.filter(isEventActive);
+        
+        if (eventosActivos.length > 0) {
+          const sorted = [...eventosActivos].sort((a, b) =>
+            new Date(b.createdAt || 0) - new Date(a.createdAt || 0)
+          );
+          setUltimoEvento(sorted[0]);
+        } else {
+          setUltimoEvento(null); // No hay eventos activos, oculta la tarjeta
+        }
       }
 
       if (data.estadoCounts) {
