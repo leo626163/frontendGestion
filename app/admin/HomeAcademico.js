@@ -484,7 +484,7 @@ const fetchEstudiantesInscritosFacultad = useCallback(async () => {
     const token = await getTokenAsync();
     if (!token) return;
 
-    const response = await axios.get(`${API_BASE_URL}/estudiantes-inscritos-facultad`, {
+    const response = await axios.get(`${API_BASE_URL}/estudiantes-inscritos`, {
       headers: { 'Authorization': `Bearer ${token}` },
     });
 
