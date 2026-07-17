@@ -1117,7 +1117,7 @@ const handleActionPress = (action) => {
     </Text>
   </View>
 
-  {/* Pestañas de filtro horizontal */}
+   {/* Pestañas de filtro horizontal */}
   <ScrollView 
     horizontal 
     showsHorizontalScrollIndicator={false}
@@ -1165,6 +1165,36 @@ const handleActionPress = (action) => {
         committeeFilter === 'pendiente' && styles.committeeTabTextActive
       ]}>
         Pendientes ({comiteeEvents.filter(e => e.estado === 'pendiente').length})
+      </Text>
+    </TouchableOpacity>
+
+    <TouchableOpacity
+      style={[
+        styles.committeeTab,
+        committeeFilter === 'rechazado' && styles.committeeTabActive
+      ]}
+      onPress={() => setCommitteeFilter('rechazado')}
+    >
+      <Text style={[
+        styles.committeeTabText,
+        committeeFilter === 'rechazado' && styles.committeeTabTextActive
+      ]}>
+        Rechazados ({comiteeEvents.filter(e => e.estado === 'rechazado').length})
+      </Text>
+    </TouchableOpacity>
+
+    <TouchableOpacity
+      style={[
+        styles.committeeTab,
+        committeeFilter === 'vencido' && styles.committeeTabActive
+      ]}
+      onPress={() => setCommitteeFilter('vencido')}
+    >
+      <Text style={[
+        styles.committeeTabText,
+        committeeFilter === 'vencido' && styles.committeeTabTextActive
+      ]}>
+        Vencidos ({comiteeEvents.filter(e => e.estado === 'vencido').length})
       </Text>
     </TouchableOpacity>
   </ScrollView>
