@@ -201,7 +201,7 @@ const EventosVencidos = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
-  const fetchExpiredEvents = useCallback(async () => {
+    const fetchExpiredEvents = useCallback(async () => {
     try {
       const token = await getTokenAsync();
       if (!token) {
@@ -210,10 +210,10 @@ const EventosVencidos = () => {
         return;
       }
 
-      console.log('🔍 Solicitando eventos pendientes para filtrar vencidos...');
+      console.log('🔍 Solicitando eventos aprobados para obtener los vencidos...');
       
-      // Obtener TODOS los eventos pendientes
-      const response = await axios.get(`${API_BASE_URL}/eventos/pendientes`, {
+      // El backend ya separa los eventos aprobados en 'activos' y 'vencidos'
+      const response = await axios.get(`${API_BASE_URL}/eventos/aprobados`, {
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
@@ -221,33 +221,41 @@ const EventosVencidos = () => {
         timeout: 10000,
       });
       
-      const allPending = Array.isArray(response.data) ? response.data : [];
-      console.log(`📋 Total eventos pendientes: ${allPending.length}`);
+      const data = response.data;
+      let rawExpiredEvents = [];
       
-      // 🔥 Filtrar solo los que YA ESTÁN VENCIDOS (fecha ya pasó)
-      const expiredEvents = allPending.filter(event => {
-        const fecha = event.fechaevento || event.fecha || event.date;
-        return isEventExpired(fecha);
-      });
-      
-      // Ordenar por más antiguos primero (los más vencidos)
-      const sorted = expiredEvents.sort((a, b) => {
-        const dateA = new Date(a.fechaevento || a.date || 0);
-        const dateB = new Date(b.fechaevento || b.date || 0);
-        return dateA - dateB;
-      });
-      
-      console.log(`⚠️ Eventos vencidos encontrados: ${sorted.length}`);
-      if (sorted.length > 0) {
-        console.log('📅 Primer evento vencido:', {
-          id: sorted[0].idevento || sorted[0].id,
-          nombre: sorted[0].nombreevento,
-          fecha: sorted[0].fechaevento,
-          diasVencido: getDaysSinceExpired(sorted[0].fechaevento)
+      // Manejar la respuesta según el rol (Admin devuelve objeto, Académico devuelve array)
+      if (data && Array.isArray(data.vencidos)) {
+        // Respuesta para admin/daf: el backend ya filtró los vencidos
+        rawExpiredEvents = data.vencidos;
+      } else if (Array.isArray(data)) {
+        // Respuesta para académico: viene como array plano, filtramos client-side por seguridad
+        rawExpiredEvents = data.filter(event => {
+          const fecha = event.fechaevento || event.date;
+          return isEventExpired(fecha);
         });
       }
       
-      setEvents(sorted);
+      // Mapear los datos para asegurar compatibilidad con el componente ExpiredEventCard
+      const expiredEvents = rawExpiredEvents.map(event => ({
+        idevento: event.idevento || event.id,
+        nombreevento: event.nombreevento || event.title || 'Sin título',
+        descripcion: event.descripcion || event.description || '',
+        fechaevento: event.fechaevento || event.date,
+        horaevento: event.horaevento || event.time,
+        lugarevento: event.lugarevento || event.location,
+        estado: event.estado,
+        idfase: event.idfase,
+        idacademico: event.idacademico,
+        academico: event.academicoCreador ? {
+          nombre: `${event.academicoCreador.nombre || ''} ${event.academicoCreador.apellidopat || ''}`.trim() || 'Académico'
+        } : (event.academico || null),
+        facultad: event.facultad || event.faculty || null
+      }));
+      
+      console.log(`⚠️ Eventos vencidos encontrados: ${expiredEvents.length}`);
+      
+      setEvents(expiredEvents);
       
     } catch (error) {
       console.error('❌ Error fetching expired events:', error);
