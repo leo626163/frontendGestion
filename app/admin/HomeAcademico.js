@@ -1247,22 +1247,25 @@ const handleActionPress = (action) => {
         </View>
 
         <View style={styles.tableCellName}>
-          <Text style={styles.tableEventName} numberOfLines={1}>
-            {item.nombreevento || 'Sin título'}
-          </Text>
-        </View>
-        {(item.fecha_inicio || item.fecha) && (
-            <View style={styles.eventDateContainer}>
-              <Ionicons name="calendar-outline" size={14} color={COLORS.textTertiary} />
-              <Text style={styles.eventDateText}>
-                {new Date(item.fecha_inicio || item.fecha).toLocaleDateString('es-ES', {
-                  day: '2-digit',
-                  month: 'short',
-                  year: 'numeric'
-                })}
-              </Text>
-            </View>
-          )}
+  <Text style={styles.tableEventName} numberOfLines={1}>
+    {item.nombreevento || 'Sin título'}
+  </Text>
+  
+  {/* Fecha del evento */}
+  {(item.fecha_inicio || item.fecha_evento) && (
+    <View style={styles.eventDateRow}>
+      <Ionicons name="calendar-outline" size={14} color={COLORS.textTertiary} />
+      <Text style={styles.eventDateText}>
+        {new Date(item.fecha_inicio || item.fecha_evento).toLocaleDateString('es-ES', {
+          day: '2-digit',
+          month: 'short',
+          year: 'numeric'
+        })}
+      </Text>
+    </View>
+  )}
+</View>
+        
         <View style={styles.tableCellRole}>
           <View style={styles.roleBadge}>
             <Ionicons name="shield-checkmark" size={16} color={COLORS.primary} />
