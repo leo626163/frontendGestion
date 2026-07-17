@@ -1250,11 +1250,19 @@ const handleActionPress = (action) => {
           <Text style={styles.tableEventName} numberOfLines={1}>
             {item.nombreevento || 'Sin título'}
           </Text>
-          <Text style={styles.tableEventDescription} numberOfLines={1}>
-            {item.descripcion || 'Sin descripción'}
-          </Text>
         </View>
-
+        {(item.fecha_inicio || item.fecha) && (
+            <View style={styles.eventDateContainer}>
+              <Ionicons name="calendar-outline" size={14} color={COLORS.textTertiary} />
+              <Text style={styles.eventDateText}>
+                {new Date(item.fecha_inicio || item.fecha).toLocaleDateString('es-ES', {
+                  day: '2-digit',
+                  month: 'short',
+                  year: 'numeric'
+                })}
+              </Text>
+            </View>
+          )}
         <View style={styles.tableCellRole}>
           <View style={styles.roleBadge}>
             <Ionicons name="shield-checkmark" size={16} color={COLORS.primary} />
