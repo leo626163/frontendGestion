@@ -1252,11 +1252,11 @@ const handleActionPress = (action) => {
   </Text>
   
   {/* Fecha del evento */}
-  {(item.fecha_inicio || item.fecha_evento) && (
+  {(item.fechaevento) && (
     <View style={styles.eventDateRow}>
       <Ionicons name="calendar-outline" size={14} color={COLORS.textTertiary} />
       <Text style={styles.eventDateText}>
-        {new Date(item.fecha_inicio || item.fecha_evento).toLocaleDateString('es-ES', {
+        {new Date(item.fechaevento).toLocaleDateString('es-ES', {
           day: '2-digit',
           month: 'short',
           year: 'numeric'
