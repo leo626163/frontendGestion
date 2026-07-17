@@ -123,7 +123,6 @@ const formatDate = (dateString) => {
   }
 };
 
-// ── Card de Evento Vencido ──────────────────────────────────────────────────
 const ExpiredEventCard = ({ event, onPress }) => {
   const eventDate = event.fechaevento || event.date || event.fecha;
   const daysSinceExpired = getDaysSinceExpired(eventDate);
@@ -134,64 +133,71 @@ const ExpiredEventCard = ({ event, onPress }) => {
       onPress={() => onPress(event)}
       activeOpacity={0.85}
     >
-      <View style={styles.eventHeader}>
-        <View style={[styles.statusBadge, { backgroundColor: COLORS.danger + '18' }]}>
-          <Ionicons name="close-circle" size={14} color={COLORS.danger} />
-          <Text style={[styles.statusText, { color: COLORS.danger }]}>
-            Vencido {daysSinceExpired ? `hace ${daysSinceExpired} día${daysSinceExpired !== 1 ? 's' : ''}` : ''}
+      {/* Header con estado y fecha */}
+      <View style={styles.cardHeader}>
+        <View style={styles.badgeContainer}>
+          <View style={[styles.statusBadge, { backgroundColor: COLORS.danger + '15' }]}>
+            <Ionicons name="time-outline" size={14} color={COLORS.danger} />
+            <Text style={[styles.statusText, { color: COLORS.danger }]}>
+              Vencido
+            </Text>
+          </View>
+          <Text style={styles.daysExpired}>
+            {daysSinceExpired ? `Hace ${daysSinceExpired} día${daysSinceExpired !== 1 ? 's' : ''}` : ''}
           </Text>
         </View>
-        <Text style={[styles.eventDate, { color: COLORS.danger, fontWeight: '600' }]}>
+        <Text style={styles.eventDate}>
           {formatDate(eventDate)}
         </Text>
       </View>
 
-      <View style={styles.expiredAlert}>
-        <Ionicons name="alert-circle" size={16} color={COLORS.danger} />
-        <Text style={[styles.expiredAlertText, { color: COLORS.danger }]}>
-          {daysSinceExpired 
-            ? `Fecha de ejecución vencida hace ${daysSinceExpired} día${daysSinceExpired !== 1 ? 's' : ''}`
-            : 'Fecha de ejecución vencida'}
-        </Text>
-      </View>
-
+      {/* Título y descripción */}
       <Text style={styles.eventTitle} numberOfLines={2}>
         {event.nombreevento || 'Sin título'}
       </Text>
       
       {event.descripcion && (
-        <Text style={styles.eventDescription} numberOfLines={3}>
+        <Text style={styles.eventDescription} numberOfLines={2}>
           {event.descripcion}
         </Text>
       )}
 
-      <View style={styles.eventMeta}>
+      {/* Meta información en una sola fila */}
+      <View style={styles.metaRow}>
         <View style={styles.metaItem}>
           <Ionicons name="location-outline" size={14} color={COLORS.textTertiary} />
-          <Text style={styles.metaText}>{event.lugarevento || 'Sin ubicación'}</Text>
+          <Text style={styles.metaText} numberOfLines={1}>
+            {event.lugarevento || 'Sin ubicación'}
+          </Text>
         </View>
-        {event.facultad && (
+        {event.facultad && event.facultad !== 'Sin facultad' && (
           <View style={styles.metaItem}>
             <Ionicons name="school-outline" size={14} color={COLORS.textTertiary} />
-            <Text style={styles.metaText}>{event.facultad}</Text>
+            <Text style={styles.metaText} numberOfLines={1}>
+              {event.facultad}
+            </Text>
           </View>
         )}
       </View>
 
-      <View style={styles.eventFooter}>
+      {/* Footer con académico */}
+      <View style={styles.cardFooter}>
         <View style={styles.academicoInfo}>
-          <Ionicons name="person-circle-outline" size={16} color={COLORS.textSecondary} />
-          <Text style={styles.academicoName}>
+          <View style={styles.avatarCircle}>
+            <Ionicons name="person" size={14} color={COLORS.white} />
+          </View>
+          <Text style={styles.academicoName} numberOfLines={1}>
             {event.academico?.nombre || 'Académico'}
           </Text>
         </View>
         <Ionicons name="chevron-forward" size={18} color={COLORS.textTertiary} />
       </View>
+
+      {/* Línea indicadora de vencido (sutil) */}
+      <View style={[styles.expiredIndicator, { backgroundColor: COLORS.danger }]} />
     </TouchableOpacity>
   );
 };
-
-// ── Componente Principal ────────────────────────────────────────────────────
 const EventosVencidos = () => {
   const router = useRouter();
   const params = useLocalSearchParams();
@@ -463,7 +469,127 @@ const styles = StyleSheet.create({
   statNumber: { fontSize: 22, fontWeight: '800', color: COLORS.white },
   statLabel: { fontSize: 11, color: COLORS.white, opacity: 0.9, textAlign: 'center', includeFontPadding: false },
   listContent: { padding: 16, gap: 12 },
-  eventCard: { backgroundColor: COLORS.surface, borderRadius: 14, padding: 16, borderWidth: 1, borderColor: COLORS.border, borderLeftWidth: 4, borderLeftColor: COLORS.danger, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 },
+  
+  eventCard: { 
+    backgroundColor: COLORS.surface, 
+    borderRadius: 14, 
+    padding: 16, 
+    marginBottom: 12,
+    marginLeft: 16,
+    marginRight: 16,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderLeftWidth: 4,
+    borderLeftColor: COLORS.danger,
+    shadowColor: '#000', 
+    shadowOffset: { width: 0, height: 2 }, 
+    shadowOpacity: 0.08, 
+    shadowRadius: 6, 
+    elevation: 3,
+    position: 'relative',
+  },
+  cardHeader: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'center', 
+    marginBottom: 10 
+  },
+  badgeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  statusBadge: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    paddingHorizontal: 10, 
+    paddingVertical: 4, 
+    borderRadius: 12, 
+    gap: 4 
+  },
+  statusText: { 
+    fontSize: 12, 
+    fontWeight: '700' 
+  },
+  daysExpired: {
+    fontSize: 11,
+    color: COLORS.textTertiary,
+    fontWeight: '500',
+  },
+  eventDate: { 
+    fontSize: 12,
+    color: COLORS.textSecondary,
+    fontWeight: '500',
+  },
+  eventTitle: { 
+    fontSize: 16, 
+    fontWeight: '700', 
+    color: COLORS.textPrimary, 
+    marginBottom: 6, 
+    lineHeight: 22 
+  },
+  eventDescription: { 
+    fontSize: 13, 
+    color: COLORS.textSecondary, 
+    marginBottom: 10, 
+    lineHeight: 18 
+  },
+  metaRow: {
+    flexDirection: 'row',
+    gap: 16,
+    marginBottom: 12,
+    flexWrap: 'wrap',
+  },
+  metaItem: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    gap: 4,
+    flex: 1,
+    minWidth: 120,
+  },
+  metaText: { 
+    fontSize: 12, 
+    color: COLORS.textSecondary,
+    flex: 1,
+  },
+  cardFooter: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'center', 
+    paddingTop: 12, 
+    borderTopWidth: 1, 
+    borderTopColor: COLORS.border 
+  },
+  academicoInfo: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    gap: 8,
+    flex: 1,
+  },
+  avatarCircle: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: COLORS.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  academicoName: { 
+    fontSize: 12, 
+    color: COLORS.textSecondary, 
+    fontWeight: '500',
+    flex: 1,
+  },
+  expiredIndicator: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    bottom: 0,
+    width: 4,
+    borderTopLeftRadius: 14,
+    borderBottomLeftRadius: 14,
+    opacity: 0.8,
+  },
   eventHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
   statusBadge: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20, gap: 4 },
   statusText: { fontSize: 11, fontWeight: '700' },
