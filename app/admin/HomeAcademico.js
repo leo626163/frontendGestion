@@ -1671,6 +1671,17 @@ const styles = StyleSheet.create({
     paddingVertical: 40,
     paddingHorizontal: 20,
   },
+    eventDateContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 6,
+  },
+  eventDateText: {
+    fontSize: 12,
+    color: COLORS.textTertiary,
+    fontWeight: '500',
+  },
   emptyStateText: {
     marginTop: 12,
     fontSize: 14,
