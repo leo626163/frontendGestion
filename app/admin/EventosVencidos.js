@@ -213,7 +213,7 @@ const EventosVencidos = () => {
       console.log('🔍 Solicitando eventos aprobados para obtener los vencidos...');
       
       // El backend ya separa los eventos aprobados en 'activos' y 'vencidos'
-      const response = await axios.get(`${API_BASE_URL}/eventos/aprobados`, {
+      const response = await axios.get(`${API_BASE_URL}/eventos/vencidos`, {
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
