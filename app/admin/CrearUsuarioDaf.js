@@ -11,7 +11,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   SafeAreaView,
-  Switch,
   Dimensions
 } from 'react-native';
 import { useRouter, Stack } from 'expo-router';
@@ -21,11 +20,11 @@ import DropDownPicker from 'react-native-dropdown-picker';
 import axios from 'axios';
 
 const { width } = Dimensions.get('window');
-const API_BASE_URL =  'https://backendgestion-production-e2aa.up.railway.app';
+const API_BASE_URL = 'https://backendgestion-production-e2aa.up.railway.app';
+
 const CrearUsuarioDaf = () => {
   const router = useRouter();
-
-    const role = 'daf';
+  const role = 'daf';
 
   const [formData, setFormData] = useState({
     username: '',
@@ -35,7 +34,7 @@ const CrearUsuarioDaf = () => {
     email: '',
     contrasenia: '',
     habilitado: true,
-    role:'daf',
+    role: 'daf',
   });
 
   const [isLoading, setIsLoading] = useState(false);
@@ -44,15 +43,37 @@ const CrearUsuarioDaf = () => {
   const [currentStep, setCurrentStep] = useState(1);
   const totalSteps = 2;
 
-  const roleNeedsCarreras = (selectedRole) => {
-    return ['student', 'docente', 'academico'].includes(selectedRole);
+  // --- NUEVA FUNCIÓN AGREGADA ---
+  const capitalizeFirstLetter = (text) => {
+    if (!text) return '';
+    return text
+      .toLowerCase()
+      .split(' ')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
   };
 
-  const roleNeedsFacultad = (selectedRole) => {
-    return selectedRole === 'academico'; 
+  // --- FUNCIÓN ACTUALIZADA ---
+  const updateFormData = (field, value) => {
+    let formattedValue = value;
+    
+    // Aplicar capitalización solo a los campos de nombre y apellidos
+    if (['nombre', 'apellidopat', 'apellidomat'].includes(field)) {
+      formattedValue = capitalizeFirstLetter(value);
+    }
+
+    setFormData(prev => ({
+      ...prev,
+      [field]: formattedValue
+    }));
+    
+    if (errors[field]) {
+      setErrors(prev => ({
+        ...prev,
+        [field]: null
+      }));
+    }
   };
-
-
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -78,52 +99,37 @@ const CrearUsuarioDaf = () => {
     checkAuth();
   }, []);
 
-
-
-  const updateFormData = (field, value) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value
-    }));
-    if (errors[field]) {
-      setErrors(prev => ({
-        ...prev,
-        [field]: null
-      }));
+  const validateStep = (step) => {
+    const newErrors = {};
+    
+    switch (step) {
+      case 1: 
+        if (!formData.username.trim()) {
+          newErrors.username = 'El nombre de usuario es requerido.';
+        } else if (formData.username.length < 3) {
+          newErrors.username = 'El nombre de usuario debe tener al menos 3 caracteres.';
+        }
+        if (!formData.nombre.trim()) newErrors.nombre = 'El nombre es requerido.';
+        if (!formData.apellidopat.trim()) newErrors.apellidopat = 'El apellido paterno es requerido.';
+        break;
+        
+      case 2: 
+        if (!formData.email.trim()) {
+          newErrors.email = 'El email es requerido.';
+        } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+          newErrors.email = 'El formato del email no es válido.';
+        }
+        if (!formData.contrasenia) {
+          newErrors.contrasenia = 'La contraseña es requerida.';
+        } else if (formData.contrasenia.length < 6) {
+          newErrors.contrasenia = 'La contraseña debe tener al menos 6 caracteres.';
+        }
+        break;
     }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   };
-
-const validateStep = (step) => {
-  const newErrors = {};
-  
-  switch (step) {
-    case 1: 
-      if (!formData.username.trim()) {
-        newErrors.username = 'El nombre de usuario es requerido.';
-      } else if (formData.username.length < 3) {
-        newErrors.username = 'El nombre de usuario debe tener al menos 3 caracteres.';
-      }
-      if (!formData.nombre.trim()) newErrors.nombre = 'El nombre es requerido.';
-      if (!formData.apellidopat.trim()) newErrors.apellidopat = 'El apellido paterno es requerido.';
-      break;
-      
-    case 2: 
-      if (!formData.email.trim()) {
-        newErrors.email = 'El email es requerido.';
-      } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-        newErrors.email = 'El formato del email no es válido.';
-      }
-      if (!formData.contrasenia) {
-        newErrors.contrasenia = 'La contraseña es requerida.';
-      } else if (formData.contrasenia.length < 6) {
-        newErrors.contrasenia = 'La contraseña debe tener al menos 6 caracteres.';
-      }
-      break;
-  }
-
-  setErrors(newErrors);
-  return Object.keys(newErrors).length === 0;
-};
 
   const nextStep = () => {
     if (validateStep(currentStep)) {
@@ -135,92 +141,89 @@ const validateStep = (step) => {
     setCurrentStep(prev => Math.max(prev - 1, 1));
   };
 
-const handleAddUser = async () => {
-  if (!validateStep(2)) return;
-  
-  setIsLoading(true);
-  try {
-    const newUserPayload = {
-      username: formData.username.trim(),
-      nombre: formData.nombre.trim(),
-      apellidopat: formData.apellidopat.trim(),
-      apellidomat: formData.apellidomat.trim(),
-      email: formData.email.trim().toLowerCase(),
-      contrasenia: formData.contrasenia,
-      role: 'daf',
-      habilitado: formData.habilitado ? 1 : 0,
-    };
-
-    console.log("Enviando datos:", newUserPayload);
-    const response = await axios.post(`${API_BASE_URL}/auth/register`, newUserPayload);
-
-    setFormData({
-      username: '',
-      nombre: '',
-      apellidopat: '',
-      apellidomat: '',
-      email: '',
-      contrasenia: '',
-      habilitado: true,
-    });
-    setCurrentStep(1);
-    router.replace('/admin/Daf');
-
-  } catch (error) {
-    console.error("Error al crear usuario:", error);
+  const handleAddUser = async () => {
+    if (!validateStep(2)) return;
     
-    let errorMessage = 'Error desconocido al crear usuario.';
-    const newErrors = {};
-    let stepToRevert = 1;
+    setIsLoading(true);
+    try {
+      const newUserPayload = {
+        username: formData.username.trim(),
+        nombre: formData.nombre.trim(),
+        apellidopat: formData.apellidopat.trim(),
+        apellidomat: formData.apellidomat.trim(),
+        email: formData.email.trim().toLowerCase(),
+        contrasenia: formData.contrasenia,
+        role: 'daf',
+        habilitado: formData.habilitado ? 1 : 0,
+      };
 
-    if (error.response) {
-      console.error("Respuesta del servidor:", error.response.data);
-      console.error("Errores de validación:", error.response.data.errors);
+      console.log("Enviando datos:", newUserPayload);
+      const response = await axios.post(`${API_BASE_URL}/auth/register`, newUserPayload);
+
+      setFormData({
+        username: '',
+        nombre: '',
+        apellidopat: '',
+        apellidomat: '',
+        email: '',
+        contrasenia: '',
+        habilitado: true,
+      });
+      setCurrentStep(1);
+      router.replace('/admin/Daf');
+
+    } catch (error) {
+      console.error("Error al crear usuario:", error);
       
-      if (error.response.data?.message) {
-        errorMessage = error.response.data.message;
+      let errorMessage = 'Error desconocido al crear usuario.';
+      const newErrors = {};
+      let stepToRevert = 1;
 
-        if (error.response.data?.errors && Array.isArray(error.response.data.errors)) {
-          const backendErrors = error.response.data.errors;
-          const errorMessages = [];
+      if (error.response) {
+        console.error("Respuesta del servidor:", error.response.data);
+        console.error("Errores de validación:", error.response.data.errors);
+        
+        if (error.response.data?.message) {
+          errorMessage = error.response.data.message;
 
-          backendErrors.forEach(err => {
-            const fieldPath = err.path || err.param;
-            const message = err.message || err.msg;
+          if (error.response.data?.errors && Array.isArray(error.response.data.errors)) {
+            const backendErrors = error.response.data.errors;
+            const errorMessages = [];
 
-            if (fieldPath) {
-              newErrors[fieldPath] = message;
-              if (['username', 'nombre', 'apellidopat', 'apellidomat'].includes(fieldPath)) {
-                stepToRevert = Math.min(stepToRevert, 1);
-              } else if (['email', 'contrasenia'].includes(fieldPath)) {
-                stepToRevert = Math.min(stepToRevert, 2);
-              } else if (['role', 'carrera', 'facultad_id', 'idcarrera', 'facultad_id', 'carreras_ids'].some(f => fieldPath.includes(f))) {
-                stepToRevert = Math.min(stepToRevert, 3);
+            backendErrors.forEach(err => {
+              const fieldPath = err.path || err.param;
+              const message = err.message || err.msg;
+
+              if (fieldPath) {
+                newErrors[fieldPath] = message;
+                if (['username', 'nombre', 'apellidopat', 'apellidomat'].includes(fieldPath)) {
+                  stepToRevert = Math.min(stepToRevert, 1);
+                } else if (['email', 'contrasenia'].includes(fieldPath)) {
+                  stepToRevert = Math.min(stepToRevert, 2);
+                }
               }
-            }
-            errorMessages.push(message);
-          });
-          errorMessage = errorMessages.join('\n');
+              errorMessages.push(message);
+            });
+            errorMessage = errorMessages.join('\n');
+          }
+        } else if (error.response.status === 409) {
+          errorMessage = 'El usuario ya existe. Intenta con otro nombre de usuario o email.';
+          stepToRevert = 1;
+        } else if (error.response.status >= 500) {
+          errorMessage = 'Error del servidor. Intenta nuevamente más tarde.';
         }
-      } else if (error.response.status === 409) {
-        errorMessage = 'El usuario ya existe. Intenta con otro nombre de usuario o email.';
-        stepToRevert = 1;
-      } else if (error.response.status >= 500) {
-        errorMessage = 'Error del servidor. Intenta nuevamente más tarde.';
+      } else if (error.request) {
+        errorMessage = 'No se pudo conectar con el servidor. Verifica tu conexión a internet.';
       }
-    } else if (error.request) {
-      errorMessage = 'No se pudo conectar con el servidor. Verifica tu conexión a internet.';
+
+      setErrors(prev => ({ ...prev, ...newErrors }));
+      setCurrentStep(stepToRevert);
+
+      Alert.alert('Error', errorMessage);
+    } finally {
+      setIsLoading(false);
     }
-
-    setErrors(prev => ({ ...prev, ...newErrors }));
-    setCurrentStep(stepToRevert);
-
-    Alert.alert('Error', errorMessage);
-  } finally {
-    setIsLoading(false);
-  }
-};
-
+  };
 
   const renderProgressBar = () => (
     <View style={styles.progressContainer}>
@@ -365,16 +368,14 @@ const handleAddUser = async () => {
           Usa al menos 6 caracteres con mayúsculas y números para mayor seguridad
         </Text>
         <View style={styles.fixedRoleIndicator}>
-  <Text style={styles.fixedRoleLabel}>Rol del nuevo usuario:</Text>
-  <View style={styles.fixedRoleBadge}>
-    <Text style={styles.fixedRoleBadgeText}>DAF</Text>
-  </View>
-</View>
+          <Text style={styles.fixedRoleLabel}>Rol del nuevo usuario:</Text>
+          <View style={styles.fixedRoleBadge}>
+            <Text style={styles.fixedRoleBadgeText}>DAF</Text>
+          </View>
+        </View>
       </View>
     </View>
   );
-
- 
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -384,7 +385,7 @@ const handleAddUser = async () => {
       >
         <Stack.Screen 
           options={{ 
-            title: 'Nuevo Usuario',
+            title: 'Nuevo Usuario DAF',
             headerStyle: {
               backgroundColor: '#e95a0c',
             },
@@ -420,27 +421,27 @@ const handleAddUser = async () => {
               </TouchableOpacity>
             )}
 
-           <TouchableOpacity
-                style={[
-                    styles.primaryButton,
-                    isLoading && styles.buttonDisabled,
-                    currentStep === 1 && styles.fullWidthButton
-                ]}
-                onPress={currentStep === totalSteps ? handleAddUser : nextStep}
-                disabled={isLoading}
-                >
-                {isLoading ? (
-                    <ActivityIndicator color="#fff" size="small" />
-                ) : (
-                    <>
-                    <Text style={styles.primaryButtonText}>
-                        {currentStep === totalSteps ? 'Crear Usuario DAF' : 'Siguiente'}
-                    </Text>
-                    {currentStep < totalSteps && (
-                        <Ionicons name="arrow-forward" size={20} color="#fff" />
-                    )}
-                    </>
-                )}
+            <TouchableOpacity
+              style={[
+                styles.primaryButton,
+                isLoading && styles.buttonDisabled,
+                currentStep === 1 && styles.fullWidthButton
+              ]}
+              onPress={currentStep === totalSteps ? handleAddUser : nextStep}
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <ActivityIndicator color="#fff" size="small" />
+              ) : (
+                <>
+                  <Text style={styles.primaryButtonText}>
+                    {currentStep === totalSteps ? 'Crear Usuario DAF' : 'Siguiente'}
+                  </Text>
+                  {currentStep < totalSteps && (
+                    <Ionicons name="arrow-forward" size={20} color="#fff" />
+                  )}
+                </>
+              )}
             </TouchableOpacity>
           </View>
         </ScrollView>
@@ -500,12 +501,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#e0e0e0',
     marginHorizontal: 5,
   },
-  confirmationText: {
-    fontSize: 14,
-    color: '#27ae60',
-    marginTop: 5,
-    fontStyle: 'italic',
-  },
   progressLineActive: {
     backgroundColor: '#e95a0c',
   },
@@ -517,7 +512,7 @@ const styles = StyleSheet.create({
   },
   stepContainer: {
     paddingVertical: 20,
-     paddingBottom: 80,
+    paddingBottom: 80,
   },
   conditionalContainer: {
     marginTop: 20,
@@ -608,7 +603,7 @@ const styles = StyleSheet.create({
   },
   dropdownContainer: {
     marginBottom: 15,
-    zIndex:9999,
+    zIndex: 9999,
   },
   dropdown: {
     backgroundColor: '#fff',
@@ -622,8 +617,8 @@ const styles = StyleSheet.create({
     borderColor: '#ddd',
     borderWidth: 1,
     borderRadius: 12,
-    zIndex:9999,
-    elevation:9999,
+    zIndex: 9999,
+    elevation: 9999,
   },
   dropdownText: {
     fontSize: 16,
@@ -633,32 +628,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#999',
   },
-  switchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 20,
-    marginTop: 20,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.05,
-    shadowRadius: 3.84,
-    elevation: 2,
-  },
-  switchInfo: {
-    flex: 1,
-  },
-  switchLabel: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 5,
-  },
   roleInfoContainer: {
     backgroundColor: '#f8f9fa',
     borderRadius: 8,
@@ -666,10 +635,6 @@ const styles = StyleSheet.create({
     marginTop: 10,
     borderLeftWidth: 3,
     borderLeftColor: '#e95a0c',
-  },
-  switchDescription: {
-    fontSize: 14,
-    color: '#666',
   },
   buttonContainer: {
     flexDirection: 'row',
@@ -727,31 +692,31 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   fixedRoleIndicator: {
-  flexDirection: 'row',
-  alignItems: 'center',
-  justifyContent: 'space-between',
-  backgroundColor: '#fff9e6', // Un fondo amarillo muy suave para DAF
-  padding: 12,
-  borderRadius: 8,
-  marginBottom: 20,
-  borderWidth: 1,
-  borderColor: '#F59E0B',
-},
-fixedRoleLabel: {
-  fontSize: 14,
-  color: '#666',
-},
-fixedRoleBadge: {
-  backgroundColor: '#F59E0B',
-  paddingHorizontal: 12,
-  paddingVertical: 4,
-  borderRadius: 12,
-},
-fixedRoleBadgeText: {
-  color: 'white',
-  fontWeight: 'bold',
-  fontSize: 12,
-},
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#fff9e6',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#F59E0B',
+  },
+  fixedRoleLabel: {
+    fontSize: 14,
+    color: '#666',
+  },
+  fixedRoleBadge: {
+    backgroundColor: '#F59E0B',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  fixedRoleBadgeText: {
+    color: 'white',
+    fontWeight: 'bold',
+    fontSize: 12,
+  },
 });
 
 export default CrearUsuarioDaf;
