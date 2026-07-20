@@ -197,6 +197,7 @@ const EventDetailScreen = () => {
       const transformedEvent = {
         id: eventData.idevento || null,
         title: eventData.nombreevento || 'Sin título',
+           fechaEventoRaw: eventData.fechaevento, 
         date: formatDate(eventData.fechaevento),
         time: formatTime(eventData.horaevento),
         location: eventData.lugarevento || 'Ubicación no especificada',
