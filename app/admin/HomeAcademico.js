@@ -479,11 +479,23 @@ const [userProfile, setUserProfile] = useState({
 const [showTelegramModal, setShowTelegramModal] = useState(false);
 const [isTelegramLinked, setIsTelegramLinked] = useState(false);
 const [telegramUsername, setTelegramUsername] = useState('');
-const filteredCommitteeEvents = useMemo(() => {
-  if (committeeFilter === 'todos') return comiteeEvents;
-  return comiteeEvents.filter(e => e.estado === committeeFilter);
-}, [comiteeEvents, committeeFilter]);
 
+const currentMonthEvents = useMemo(() => {
+  const now = new Date();
+  const currentMonth = now.getMonth(); // 0-11
+  const currentYear = now.getFullYear();
+
+  return comiteeEvents.filter(e => {
+    if (!e.fechaevento) return false; // Excluye eventos sin fecha definida
+    const eventDate = new Date(e.fechaevento);
+    return eventDate.getMonth() === currentMonth && eventDate.getFullYear() === currentYear;
+  });
+}, [comiteeEvents]);
+
+const filteredCommitteeEvents = useMemo(() => {
+  if (committeeFilter === 'todos') return currentMonthEvents;
+  return currentMonthEvents.filter(e => e.estado === committeeFilter);
+}, [currentMonthEvents, committeeFilter]);
 
 const fetchEstudiantesInscritosFacultad = useCallback(async () => {
   setLoadingEventosFacultad(true);
@@ -1117,7 +1129,7 @@ const handleActionPress = (action) => {
     </Text>
   </View>
 
-   {/* Pestañas de filtro horizontal */}
+    {/* Pestañas de filtro horizontal */}
   <ScrollView 
     horizontal 
     showsHorizontalScrollIndicator={false}
@@ -1134,7 +1146,7 @@ const handleActionPress = (action) => {
         styles.committeeTabText,
         committeeFilter === 'todos' && styles.committeeTabTextActive
       ]}>
-        Todos ({comiteeEvents.length})
+        Todos ({currentMonthEvents.length})
       </Text>
     </TouchableOpacity>
     
@@ -1149,7 +1161,7 @@ const handleActionPress = (action) => {
         styles.committeeTabText,
         committeeFilter === 'aprobado' && styles.committeeTabTextActive
       ]}>
-        Aprobados ({comiteeEvents.filter(e => e.estado === 'aprobado').length})
+        Aprobados ({currentMonthEvents.filter(e => e.estado === 'aprobado').length})
       </Text>
     </TouchableOpacity>
     
@@ -1164,7 +1176,7 @@ const handleActionPress = (action) => {
         styles.committeeTabText,
         committeeFilter === 'pendiente' && styles.committeeTabTextActive
       ]}>
-        Pendientes ({comiteeEvents.filter(e => e.estado === 'pendiente').length})
+        Pendientes ({currentMonthEvents.filter(e => e.estado === 'pendiente').length})
       </Text>
     </TouchableOpacity>
 
@@ -1179,7 +1191,7 @@ const handleActionPress = (action) => {
         styles.committeeTabText,
         committeeFilter === 'rechazado' && styles.committeeTabTextActive
       ]}>
-        Rechazados ({comiteeEvents.filter(e => e.estado === 'rechazado').length})
+        Rechazados ({currentMonthEvents.filter(e => e.estado === 'rechazado').length})
       </Text>
     </TouchableOpacity>
 
@@ -1194,12 +1206,11 @@ const handleActionPress = (action) => {
         styles.committeeTabText,
         committeeFilter === 'vencido' && styles.committeeTabTextActive
       ]}>
-        Vencidos ({comiteeEvents.filter(e => e.estado === 'vencido').length})
+        Vencidos ({currentMonthEvents.filter(e => e.estado === 'vencido').length})
       </Text>
     </TouchableOpacity>
   </ScrollView>
 
-  {/* Lista de eventos (usando .map para evitar conflictos de scroll anidado) */}
   {loadingComitee ? (
     <View style={styles.loadingContainer}>
       <ActivityIndicator size="large" color={COLORS.primary} />
