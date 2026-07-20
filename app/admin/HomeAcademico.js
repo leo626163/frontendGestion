@@ -648,13 +648,27 @@ const navigateByNotification = useCallback((notification) => {
   
   switch (tipo) {
     case 'nuevo_evento':
-    case 'evento_aprobado':
-    case 'evento_rechazado':
     case 'recordatorio':
       if (idRelacionado) {
         router.push(`/admin/EventDetailScreen?eventId=${idRelacionado}`);
       } else {
         router.push('/admin/EventosPendientes');
+      }
+      break;
+      
+    case 'evento_aprobado':
+      if (idRelacionado) {
+        router.push(`/admin/EventDetailScreen?eventId=${idRelacionado}`);
+      } else {
+        router.push('/admin/EventosAprobados');
+      }
+      break;
+      
+    case 'evento_rechazado':
+      if (idRelacionado) {
+        router.push(`/admin/EventDetailScreen?eventId=${idRelacionado}`);
+      } else {
+        router.push('/admin/EventosRechazados'); 
       }
       break;
       
@@ -676,8 +690,7 @@ const navigateByNotification = useCallback((notification) => {
       }
       break;
   }
-}, [router]);
-const fetchCommitteeEvents = useCallback(async () => {
+}, [router]);itteeEvents = useCallback(async () => {
   setLoadingComitee(true);
   try {
     const token = await getTokenAsync();
