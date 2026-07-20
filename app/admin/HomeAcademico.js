@@ -11,7 +11,6 @@ import {
   Animated,
   useWindowDimensions,
   Platform,
-  Modal,
   TextInput,
   KeyboardAvoidingView,
   ActivityIndicator,
