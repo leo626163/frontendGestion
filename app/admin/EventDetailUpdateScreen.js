@@ -110,19 +110,20 @@ const EventDetailScreen = () => {
   const [error, setError] = useState(null);
   const [user, setUser] = useState(null);
 
-   const isEventExpired = useCallback(() => {
+  // 1. Lógica para verificar si el evento ya venció
+  const isEventExpired = useCallback(() => {
     if (!event || !event.fechaEventoRaw) return false;
     try {
       const eventDate = new Date(event.fechaEventoRaw);
       const today = new Date();
-      // Comparamos solo las fechas (ignorando la hora) para determinar si ya pasó el día del evento
       today.setHours(0, 0, 0, 0);
       eventDate.setHours(0, 0, 0, 0);
       return eventDate < today;
     } catch (error) {
-      return false; // Si hay error al parsear, asumimos que no está vencido por seguridad
+      return false; 
     }
   }, [event]);
+
   const getCurrentPhaseFromFases = useCallback((fases) => {
     if (!Array.isArray(fases) || fases.length === 0) {
       return {
@@ -135,7 +136,6 @@ const EventDetailScreen = () => {
     }
 
     const faseToShow = fases[0];
-
     const phaseConfig = {
       1: { label: 'Planeación', icon: 'document-text-outline', color: COLORS.info },
       2: { label: 'Revisión y aprobación', icon: 'clipboard-outline', color: COLORS.secondary },
@@ -181,6 +181,7 @@ const EventDetailScreen = () => {
         router.replace('/LoginAdmin');
         return;
       }
+      
       const [eventResponse] = await Promise.all([
         axios.get(`${API_BASE_URL}/eventos/${numericId}`, {
           headers: { Authorization: `Bearer ${token}` },
@@ -197,7 +198,7 @@ const EventDetailScreen = () => {
       const transformedEvent = {
         id: eventData.idevento || null,
         title: eventData.nombreevento || 'Sin título',
-           fechaEventoRaw: eventData.fechaevento, 
+        fechaEventoRaw: eventData.fechaevento, // ⚠️ CLAVE: Se guarda la fecha cruda para la validación
         date: formatDate(eventData.fechaevento),
         time: formatTime(eventData.horaevento),
         location: eventData.lugarevento || 'Ubicación no especificada',
@@ -212,21 +213,17 @@ const EventDetailScreen = () => {
         serviciosContratados: eventData.serviciosContratados || [],
         ambientes: eventData.ambientes || [],
         layout: eventData.layout || (eventData.idlayout ? { idlayout: eventData.idlayout } : null),
-
         Clasificacion: eventData.Clasificacion || null,
         subcategoria: eventData.subcategoria || null,
         tiposEvento: eventData.TiposDeEvento || [],
-
         objetivos: eventData.Objetivos || [],
         objetivosPDI: Array.isArray(eventData.ObjetivosPDI)
           ? eventData.ObjetivosPDI
           : typeof eventData.objetivos_pdi === 'string'
             ? JSON.parse(eventData.objetivos_pdi || '[]')
             : [],
-
         segmentos: eventData.segmentos || [],
         argumentacion: eventData.argumentacion || 'Sin argumentación',
-
         resultados: (eventData.Resultados && eventData.Resultados.length > 0)
           ? eventData.Resultados[0]
           : {
@@ -241,7 +238,6 @@ const EventDetailScreen = () => {
         egresos: eventData.Egresos || [],
         ingresos: eventData.Ingresos || [],
         tags: eventData.tags || [],
-
         creador: eventData.creador ? {
           nombre: `${eventData.creador.nombre} ${eventData.creador.apellidopat} ${eventData.creador.apellidomat}`,
           email: eventData.creador.email,
@@ -262,7 +258,7 @@ const EventDetailScreen = () => {
         router.replace('/LoginAdmin');
         errorMessage = 'Sesión expirada. Redirigiendo...';
       } else if (err.response?.status === 404) {
-        errorMessage = 'Evento no encontrado. Verifica si el ID es correcto (ej: 12345).';
+        errorMessage = 'Evento no encontrado. Verifica si el ID es correcto.';
       }
       setError(errorMessage);
     } finally {
@@ -303,7 +299,7 @@ const EventDetailScreen = () => {
         { headers: { Authorization: `Bearer ${token}` } }
       );
       Alert.alert('Éxito', 'Evento aprobado correctamente');
-      router.replace('./eventosPendientes');
+      router.replace('./eventosPendientes'); // Verifica que esta ruta exista en tu proyecto
     } catch (error) {
       console.error('Approve error:', error);
       Alert.alert('Error', 'No se pudo aprobar el evento: ' + error.message);
@@ -344,7 +340,6 @@ const EventDetailScreen = () => {
       ]
     );
   };
-
   const buildEventHtml = () => {
     const actividadesHtml = (titulo, lista) => {
       if (!lista || lista.length === 0) return '';
@@ -581,7 +576,6 @@ const EventDetailScreen = () => {
 
         <View style={styles.card}>
           <Text style={styles.eventTitle}>{event.title}</Text>
-
           {event && (() => {
             const phaseInfo = getCurrentPhaseFromFases([{ nrofase: event.idfase }]);
             return (
@@ -1063,19 +1057,14 @@ const EventDetailScreen = () => {
           </View>
         )}
 
-               <View style={styles.actionButtonsContainer}>
-          {/* IMPRIMIR EVENTO (visible siempre que el evento esté aprobado) */}
+            <View style={styles.actionButtonsContainer}>
           {event.status === 'aprobado' && (
-            <TouchableOpacity
-              style={styles.nextStepButton}
-              onPress={generateEventPDF}
-            >
+            <TouchableOpacity style={styles.nextStepButton} onPress={generateEventPDF}>
               <Ionicons name="print-outline" size={20} color={COLORS.white} />
               <Text style={styles.nextStepButtonText}>Imprimir Evento</Text>
             </TouchableOpacity>
           )}
 
-          {/* IR A PROGRAMACIÓN (académicos, evento aprobado en fase 1) */}
           {user?.role !== 'admin' && event.status === 'aprobado' && event.idfase === 1 && (
             <TouchableOpacity
               style={styles.nextStepButton}
@@ -1085,6 +1074,7 @@ const EventDetailScreen = () => {
               <Text style={styles.nextStepButtonText}>Ir a Programación del Evento</Text>
             </TouchableOpacity>
           )}
+
 
           {/* ✅ APROBAR / RECHAZAR (admin, evento pendiente y NO vencido) */}
           {user?.role === 'admin' && event.status === 'pendiente' && !isEventExpired() && (
@@ -1106,7 +1096,6 @@ const EventDetailScreen = () => {
             </View>
           )}
 
-          {/* ✅ Mensaje de advertencia si el evento está vencido y pendiente */}
           {user?.role === 'admin' && event.status === 'pendiente' && isEventExpired() && (
             <View style={[styles.sectionCard, { backgroundColor: COLORS.grayLight, marginTop: 10, borderLeftWidth: 4, borderLeftColor: COLORS.warning }]}>
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -1118,7 +1107,6 @@ const EventDetailScreen = () => {
             </View>
           )}
 
-          {/* EDITAR EVENTO (académicos, evento pendiente) */}
           {event.status === 'pendiente' && user?.role !== 'admin' && (
             <TouchableOpacity
               style={styles.editButton}
