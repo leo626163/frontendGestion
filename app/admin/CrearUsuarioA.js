@@ -305,7 +305,7 @@ const CrearUsuarioA = () => {
     setCurrentStep(prev => Math.max(prev - 1, 1));
   };
 
-  const handleAddUser = async () => {
+    const handleAddUser = async () => {
     if (!validateStep(3)) return;
     
     setIsLoading(true);
@@ -344,12 +344,15 @@ const CrearUsuarioA = () => {
       }
      
       console.log("FRONTEND - Payload enviado:", JSON.stringify(newUserPayload, null, 2));
-            console.log("=== ENVIANDO AL BACKEND ===");
+      
+      // ✅ CORRECCIÓN: Declarar 'endpoint' ANTES de usarlo en los console.log
+      const endpoint = role === 'student' ? '/auth/registerStudent' : '/auth/register';
+      
+      console.log("=== ENVIANDO AL BACKEND ===");
       console.log("Endpoint:", `${API_BASE_URL}${endpoint}`);
       console.log("Payload completo:", newUserPayload);
-      console.log("Valor de 'role' que se envía:", newUserPayload.role); // Debe decir 'admin'
-      // Endpoint dinámico según el rol
-      const endpoint = role === 'student' ? '/auth/registerStudent' : '/auth/register';
+      console.log("Valor de 'role' que se envía:", newUserPayload.role);
+      
       const response = await axios.post(`${API_BASE_URL}${endpoint}`, newUserPayload, {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -360,20 +363,20 @@ const CrearUsuarioA = () => {
 
       if (response.status === 201 || response.status === 200) {
         setSuccessMessage(role === 'student' ? '¡Estudiante creado correctamente!' : '¡Usuario creado correctamente!');
-          setTimeout(() => {
-            setFormData({
-              username: '', nombre: '', apellidopat: '',
-              apellidomat: '', email: '', contrasenia: '', habilitado: true,
-            });
-            setRole(null);
-            setCarreraSeleccionada(null);
-            setFacultadSeleccionada(null);
-            setCarrerasDocente([]);
-            setCurrentStep(1);
-            setSuccessMessage(null);
-            router.replace('Login');
-          }, 2000);
-          return;
+        setTimeout(() => {
+          setFormData({
+            username: '', nombre: '', apellidopat: '',
+            apellidomat: '', email: '', contrasenia: '', habilitado: true,
+          });
+          setRole(null);
+          setCarreraSeleccionada(null);
+          setFacultadSeleccionada(null);
+          setCarrerasDocente([]);
+          setCurrentStep(1);
+          setSuccessMessage(null);
+          router.replace('/Login'); // Ajusta esta ruta si deseas redirigir a otro lado (ej: '/admin/Usuarios')
+        }, 2000);
+        return;
       }
       
     } catch (error) {

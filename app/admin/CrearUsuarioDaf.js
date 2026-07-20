@@ -170,7 +170,7 @@ const CrearUsuarioDaf = () => {
         habilitado: true,
       });
       setCurrentStep(1);
-      router.replace('/admin/Daf');
+      router.replace('/Login');
 
     } catch (error) {
       console.error("Error al crear usuario:", error);
