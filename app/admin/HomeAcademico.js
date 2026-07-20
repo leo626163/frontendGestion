@@ -660,7 +660,7 @@ const navigateByNotification = useCallback((notification) => {
       if (idRelacionado) {
         router.push(`/admin/EventDetailScreen?eventId=${idRelacionado}`);
       } else {
-        router.push('/admin/EventosAprobados');
+        router.push('/admin/EventosAprobados'); // ✅ Cambiado a Aprobados
       }
       break;
       
@@ -668,7 +668,7 @@ const navigateByNotification = useCallback((notification) => {
       if (idRelacionado) {
         router.push(`/admin/EventDetailScreen?eventId=${idRelacionado}`);
       } else {
-        router.push('/admin/EventosRechazados'); 
+        router.push('/admin/EventosRechazados'); // ✅ Cambiado a Rechazados
       }
       break;
       
@@ -690,7 +690,9 @@ const navigateByNotification = useCallback((notification) => {
       }
       break;
   }
-}, [router]);itteeEvents = useCallback(async () => {
+}, [router]);
+
+const fetchCommitteeEvents = useCallback(async () => {
   setLoadingComitee(true);
   try {
     const token = await getTokenAsync();
