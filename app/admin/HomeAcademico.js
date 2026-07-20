@@ -11,8 +11,6 @@ import {
   Animated,
   useWindowDimensions,
   Platform,
-  TextInput,
-  KeyboardAvoidingView,
   ActivityIndicator,
   Modal, TextInput, KeyboardAvoidingView
 } from 'react-native';
