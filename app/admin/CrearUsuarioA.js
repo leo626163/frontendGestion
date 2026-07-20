@@ -25,23 +25,9 @@ const isWeb = Platform.OS === 'web';
 const API_BASE_URL = 'https://backendgestion-production-e2aa.up.railway.app';
 
 const CARRERA_A_FACULTAD = {
-  '1':'1',  
-  '2':'2',  
-  '3':'2',  
-  '4':'2',  
-  '5':'2',  
-  '6':'2',  
-  '7':'2',  
-  '8':'3',  
-  '9':'3',  
-  '10':'3', 
-  '11':'3', 
-  '12':'4', 
-  '13':'4', 
-  '14':'4', 
-  '15':'5', 
-  '16':'5', 
-  '17':'5', 
+  '1':'1', '2':'2', '3':'2', '4':'2', '5':'2', '6':'2', '7':'2', 
+  '8':'3', '9':'3', '10':'3', '11':'3', '12':'4', '13':'4', '14':'4', 
+  '15':'5', '16':'5', '17':'5', 
 };
 
 const NOMBRES_FACULTADES = {
@@ -137,7 +123,6 @@ const CrearUsuarioA = () => {
     return ['student', 'docente', 'academico'].includes(selectedRole);
   };
 
-  // Fetch facultades desde la API
   useEffect(() => {
     const fetchFacultades = async () => {
       try {
@@ -283,7 +268,6 @@ const CrearUsuarioA = () => {
               newErrors.carrera = 'Debe seleccionar al menos una carrera donde enseñará.';
             }
           }
-          // Validación de facultad solo para estudiantes
           if (role === 'student' && !facultadSeleccionada) {
             newErrors.facultad = 'La facultad es requerida.';
           }
@@ -305,7 +289,7 @@ const CrearUsuarioA = () => {
     setCurrentStep(prev => Math.max(prev - 1, 1));
   };
 
-    const handleAddUser = async () => {
+  const handleAddUser = async () => {
     if (!validateStep(3)) return;
     
     setIsLoading(true);
@@ -345,7 +329,6 @@ const CrearUsuarioA = () => {
      
       console.log("FRONTEND - Payload enviado:", JSON.stringify(newUserPayload, null, 2));
       
-      // ✅ CORRECCIÓN: Declarar 'endpoint' ANTES de usarlo en los console.log
       const endpoint = role === 'student' ? '/auth/registerStudent' : '/auth/register';
       
       console.log("=== ENVIANDO AL BACKEND ===");
@@ -374,7 +357,7 @@ const CrearUsuarioA = () => {
           setCarrerasDocente([]);
           setCurrentStep(1);
           setSuccessMessage(null);
-          router.replace('/Login'); // Ajusta esta ruta si deseas redirigir a otro lado (ej: '/admin/Usuarios')
+          router.replace('/admin/Usuarios'); // Ajustado a una ruta más lógica que Login
         }, 2000);
         return;
       }
@@ -477,6 +460,7 @@ const CrearUsuarioA = () => {
     return <Text style={styles.stepTitle}>{titles[currentStep - 1]}</Text>;
   };
 
+  // ✅ ACTUALIZADO: Se agregaron propiedades de seguridad al TextInput
   const renderInputField = (label, field, placeholder, options = {}) => (
     <View style={styles.inputContainer}>
       <Text style={styles.label}>
@@ -501,6 +485,11 @@ const CrearUsuarioA = () => {
           autoCapitalize={options.autoCapitalize || 'none'}
           placeholderTextColor="#999"
           onFocus={closeAllDropdowns}
+          // Propiedades de seguridad para evitar autocompletado inseguro
+          autoComplete={options.autoComplete || 'off'}
+          textContentType={options.textContentType || 'none'}
+          autoCorrect={options.autoCorrect !== undefined ? options.autoCorrect : false}
+          spellCheck={options.spellCheck !== undefined ? options.spellCheck : false}
         />
         {field === 'contrasenia' && (
           <TouchableOpacity
@@ -522,7 +511,13 @@ const CrearUsuarioA = () => {
   const renderStep1 = () => (
     <View style={styles.stepContainer}>
       {renderInputField('Nombre de Usuario', 'username', 'Ej: jperez', {
-        required: true, icon: 'person-outline', autoCapitalize: 'none'
+        required: true, 
+        icon: 'person-outline', 
+        autoCapitalize: 'none',
+        autoComplete: 'new-username', // Indica que es un usuario nuevo
+        textContentType: 'none',
+        autoCorrect: false,
+        spellCheck: false
       })}
       {renderInputField('Nombre(s)', 'nombre', 'Ej: Juan Carlos', {
         required: true, icon: 'card-outline', autoCapitalize: 'words'
@@ -539,10 +534,22 @@ const CrearUsuarioA = () => {
   const renderStep2 = () => (
     <View style={styles.stepContainer}>
       {renderInputField('Correo Electrónico', 'email', 'ejemplo@correo.com', {
-        required: true, icon: 'mail-outline', keyboardType: 'email-address', autoCapitalize: 'none'
+        required: true, 
+        icon: 'mail-outline', 
+        keyboardType: 'email-address', 
+        autoCapitalize: 'none',
+        autoComplete: 'off', // Desactiva sugerencias de correo
+        textContentType: 'none', // iOS: no sugerir
+        autoCorrect: false,
+        spellCheck: false
       })}
       {renderInputField('Contraseña', 'contrasenia', 'Mínimo 6 caracteres', {
-        required: true, icon: 'lock-closed-outline'
+        required: true, 
+        icon: 'lock-closed-outline',
+        autoComplete: 'new-password', // Indica al gestor que es una contraseña nueva
+        textContentType: 'newPassword', // iOS: trata como nueva contraseña
+        autoCorrect: false,
+        spellCheck: false
       })}
       <View style={styles.passwordStrengthContainer}>
         <View style={styles.passwordStrength}>
@@ -597,7 +604,6 @@ const CrearUsuarioA = () => {
             <Text style={styles.required}> *</Text>
           </Text>
           
-          {/* Badge verde SOLO para Estudiante */}
           {role === 'student' && (
             <View style={styles.roleBadgeContainerStudent}>
               <View style={styles.roleBadgeStudent}>
@@ -610,7 +616,6 @@ const CrearUsuarioA = () => {
             </View>
           )}
           
-          {/* Badge morado para Director de Carrera */}
           {role === 'academico' && (
             <View style={styles.roleBadgeContainer}>
               <View style={styles.roleBadge}>
@@ -671,7 +676,6 @@ const CrearUsuarioA = () => {
             </Text>
           </View>
 
-          {/* Dropdown de Facultad SOLO para Estudiante */}
           {role === 'student' && (
             <View style={[styles.conditionalContainer, { zIndex: 1000, marginTop: 25 }]}>
               <Text style={styles.label}>
@@ -840,7 +844,6 @@ const styles = StyleSheet.create({
     marginTop: 10, borderLeftWidth: 3, borderLeftColor: '#e95a0c',
   },
   roleInfoText: { fontSize: 14, color: '#666' },
-  // Badge morado para Director de Carrera
   roleBadgeContainer: {
     backgroundColor: '#f5f0ff', borderRadius: 12, padding: 15,
     marginBottom: 20, alignItems: 'center', borderLeftWidth: 4, borderLeftColor: '#8e44ad',
@@ -850,7 +853,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, marginBottom: 8,
   },
   roleBadgeText: { color: '#fff', fontSize: 16, fontWeight: '600', marginLeft: 8 },
-  // Badge verde para Estudiante
   roleBadgeContainerStudent: {
     backgroundColor: '#e8f5e9', borderRadius: 12, padding: 15,
     marginBottom: 20, alignItems: 'center', borderLeftWidth: 4, borderLeftColor: '#2ecc71',
@@ -861,7 +863,6 @@ const styles = StyleSheet.create({
   },
   roleBadgeTextStudent: { color: '#fff', fontSize: 16, fontWeight: '600', marginLeft: 8 },
   roleInfoTextStudent: { fontSize: 14, color: '#27ae60', textAlign: 'center', marginTop: 5 },
-  // Badge de asignación automática
   autoSelectionBadge: {
     flexDirection: 'row', alignItems: 'center', backgroundColor: '#e8f8f5',
     padding: 10, borderRadius: 8, marginTop: 10, borderLeftWidth: 3, borderLeftColor: '#27ae60',
