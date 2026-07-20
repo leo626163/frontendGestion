@@ -110,6 +110,20 @@ const EventDetailScreen = () => {
   const [error, setError] = useState(null);
   const [user, setUser] = useState(null);
 
+   const isEventExpired = useCallback(() => {
+    if (!event || !event.fechaEventoRaw) return false;
+    try {
+      const eventDate = new Date(event.fechaEventoRaw);
+      const today = new Date();
+      // Comparamos solo las fechas (ignorando la hora) para determinar si ya pasó el día del evento
+      today.setHours(0, 0, 0, 0);
+      eventDate.setHours(0, 0, 0, 0);
+      return eventDate < today;
+    } catch (error) {
+      return false; // Si hay error al parsear, asumimos que no está vencido por seguridad
+    }
+  }, [event]);
+
   const getCurrentPhaseFromFases = useCallback((fases) => {
     if (!Array.isArray(fases) || fases.length === 0) {
       return {
@@ -1071,7 +1085,36 @@ const EventDetailScreen = () => {
               <Text style={styles.nextStepButtonText}>Ir a Programación del Evento</Text>
             </TouchableOpacity>
           )}
+          {user?.role === 'admin' && event.status === 'pendiente' && !isEventExpired() && (
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 10 }}>
+              <TouchableOpacity
+                style={[styles.editButton, { backgroundColor: COLORS.success, flex: 1, marginRight: 8 }]}
+                onPress={handleApproveEvent}
+              >
+                <Ionicons name="checkmark-circle-outline" size={20} color={COLORS.white} />
+                <Text style={styles.editButtonText}>Aprobar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.editButton, { backgroundColor: COLORS.logout, flex: 1, marginLeft: 8 }]}
+                onPress={handleRejectEvent}
+              >
+                <Ionicons name="close-circle-outline" size={20} color={COLORS.white} />
+                <Text style={styles.editButtonText}>Rechazar</Text>
+              </TouchableOpacity>
+            </View>
+          )}
 
+          {/* CAMBIO 4: Mensaje de advertencia si el evento está vencido y pendiente */}
+          {user?.role === 'admin' && event.status === 'pendiente' && isEventExpired() && (
+            <View style={[styles.sectionCard, { backgroundColor: COLORS.grayLight, marginTop: 10, borderLeftWidth: 4, borderLeftColor: COLORS.warning }]}>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Ionicons name="time-outline" size={24} color={COLORS.warning} />
+                <Text style={{ fontSize: 15, color: COLORS.warning, fontWeight: '600', marginLeft: 10, flex: 1 }}>
+                  Este evento ha vencido y ya no puede ser aprobado.
+                </Text>
+              </View>
+            </View>
+          )}
           {/* APROBAR / RECHAZAR (admin, evento pendiente) */}
           {user?.role === 'admin' && event.status === 'pendiente' && (
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 10 }}>
