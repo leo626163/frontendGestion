@@ -75,6 +75,46 @@ const COLORS = {
   notificationRead: '#ffffff',
   border: '#e2e8f0',
 };
+const DIAS_MINIMOS_APROBACION = 7;
+
+const getDaysRemainingDetail = (eventDate) => {
+  if (!eventDate) return null;
+  const today = new Date(); 
+  today.setHours(0, 0, 0, 0);
+  let eventDateObj;
+  
+  if (typeof eventDate === 'string') {
+    if (/^\d{4}-\d{2}-\d{2}/.test(eventDate)) {
+      const datePart = eventDate.substring(0, 10);
+      const [year, month, day] = datePart.split('-').map(Number);
+      eventDateObj = new Date(year, month - 1, day);
+    } else if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(eventDate)) {
+      const [day, month, year] = eventDate.split('/').map(Number);
+      eventDateObj = new Date(year, month - 1, day);
+    } else { 
+      eventDateObj = new Date(eventDate); 
+    }
+  } else { 
+    eventDateObj = new Date(eventDate); 
+  }
+  
+  if (isNaN(eventDateObj.getTime())) return null;
+  
+  eventDateObj.setHours(0, 0, 0, 0);
+  const diffDays = Math.ceil((eventDateObj - today) / (1000 * 60 * 60 * 24));
+  return diffDays;
+};
+
+const canApproveEventDetail = (eventDate) => {
+  const days = getDaysRemainingDetail(eventDate);
+  return days !== null && days >= DIAS_MINIMOS_APROBACION;
+};
+
+const isEventExpiredDetail = (eventDate) => {
+  if (!eventDate) return false;
+  const days = getDaysRemainingDetail(eventDate);
+  return days !== null && days < 0;
+};
 
 const formatDate = (dateString) => {
   if (!dateString) return 'No especificada';
@@ -110,19 +150,7 @@ const EventDetailScreen = () => {
   const [error, setError] = useState(null);
   const [user, setUser] = useState(null);
 
-  // 1. Lógica para verificar si el evento ya venció
-  const isEventExpired = useCallback(() => {
-    if (!event || !event.fechaEventoRaw) return false;
-    try {
-      const eventDate = new Date(event.fechaEventoRaw);
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      eventDate.setHours(0, 0, 0, 0);
-      return eventDate < today;
-    } catch (error) {
-      return false; 
-    }
-  }, [event]);
+
 
   const getCurrentPhaseFromFases = useCallback((fases) => {
     if (!Array.isArray(fases) || fases.length === 0) {
@@ -1076,23 +1104,59 @@ const EventDetailScreen = () => {
           )}
 
 
-          {/* ✅ APROBAR / RECHAZAR (admin, evento pendiente y NO vencido) */}
-          {user?.role === 'admin' && event.status === 'pendiente' && !isEventExpired() && (
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 10 }}>
-              <TouchableOpacity
-                style={[styles.editButton, { backgroundColor: COLORS.success, flex: 1, marginRight: 8 }]}
-                onPress={handleApproveEvent}
-              >
-                <Ionicons name="checkmark-circle-outline" size={20} color={COLORS.white} />
-                <Text style={styles.editButtonText}>Aprobar</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.editButton, { backgroundColor: COLORS.logout, flex: 1, marginLeft: 8 }]}
-                onPress={handleRejectEvent}
-              >
-                <Ionicons name="close-circle-outline" size={20} color={COLORS.white} />
-                <Text style={styles.editButtonText}>Rechazar</Text>
-              </TouchableOpacity>
+          {user?.role === 'admin' && event.status === 'pendiente' && (
+            <View style={{ marginTop: 10 }}>
+              {/* Verificamos si se puede aprobar (faltan >= 7 días) */}
+              {canApproveEventDetail(event.fechaEventoRaw) ? (
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                  <TouchableOpacity
+                    style={[styles.editButton, { backgroundColor: COLORS.success, flex: 1, marginRight: 8 }]}
+                    onPress={handleApproveEvent}
+                  >
+                    <Ionicons name="checkmark-circle-outline" size={20} color={COLORS.white} />
+                    <Text style={styles.editButtonText}>Aprobar</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.editButton, { backgroundColor: COLORS.logout, flex: 1, marginLeft: 8 }]}
+                    onPress={handleRejectEvent}
+                  >
+                    <Ionicons name="close-circle-outline" size={20} color={COLORS.white} />
+                    <Text style={styles.editButtonText}>Rechazar</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <View style={[styles.editButton, { backgroundColor: COLORS.grayLight, flex: 1, marginRight: 8, borderWidth: 1, borderColor: COLORS.grayText, opacity: 0.7 }]}>
+                    <Ionicons name="lock-closed-outline" size={20} color={COLORS.grayText} />
+                    <Text style={[styles.editButtonText, { color: COLORS.grayText }]}>Cerrado</Text>
+                  </View>
+                  <TouchableOpacity
+                    style={[styles.editButton, { backgroundColor: COLORS.logout, flex: 1, marginLeft: 8 }]}
+                    onPress={handleRejectEvent}
+                  >
+                    <Ionicons name="close-circle-outline" size={20} color={COLORS.white} />
+                    <Text style={styles.editButtonText}>Rechazar</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+              
+              {!canApproveEventDetail(event.fechaEventoRaw) && !isEventExpiredDetail(event.fechaEventoRaw) && (
+                <View style={[styles.sectionCard, { backgroundColor: '#E3F2FD', marginTop: 15, borderLeftWidth: 4, borderLeftColor: COLORS.info, flexDirection: 'row', alignItems: 'center', padding: 12 }]}>
+                  <Ionicons name="lock-closed" size={20} color={COLORS.info} />
+                  <Text style={{ fontSize: 14, color: COLORS.info, fontWeight: '600', marginLeft: 10, flex: 1 }}>
+                    Aprobación cerrada: faltan menos de {DIAS_MINIMOS_APROBACION} días para el evento.
+                  </Text>
+                </View>
+              )}
+
+              {isEventExpiredDetail(event.fechaEventoRaw) && (
+                <View style={[styles.sectionCard, { backgroundColor: COLORS.grayLight, marginTop: 15, borderLeftWidth: 4, borderLeftColor: COLORS.warning, flexDirection: 'row', alignItems: 'center', padding: 12 }]}>
+                  <Ionicons name="time-outline" size={20} color={COLORS.warning} />
+                  <Text style={{ fontSize: 14, color: COLORS.warning, fontWeight: '600', marginLeft: 10, flex: 1 }}>
+                    Este evento ha vencido y ya no puede ser aprobado.
+                  </Text>
+                </View>
+              )}
             </View>
           )}
 
