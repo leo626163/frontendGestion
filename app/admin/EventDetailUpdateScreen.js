@@ -338,78 +338,45 @@ const EventDetailScreen = () => {
     }
   };
 
-  const handleRejectEvent = async () => {
-    if (!event || !event.id) {
-      Alert.alert('Error', 'No hay evento cargado para rechazar.');
-      return;
-    }
-      const openRejectModal = () => {
-    setRejectReason('');
-    setShowRejectModal(true);
-  };
+ 
+  const openRejectModal = () => {
+  setRejectReason('');
+  setShowRejectModal(true);
+};
 
-  const closeRejectModal = () => {
-    setShowRejectModal(false);
-    setRejectReason('');
-  };
+const closeRejectModal = () => {
+  setShowRejectModal(false);
+  setRejectReason('');
+};
 
-  const handleRejectSubmit = async () => {
-    if (!rejectReason.trim()) {
-      Alert.alert('Campo requerido', 'Por favor ingresa el motivo del rechazo');
-      return;
-    }
+const handleRejectSubmit = async () => {
+  if (!rejectReason.trim()) {
+    Alert.alert('Campo requerido', 'Por favor ingresa el motivo del rechazo');
+    return;
+  }
 
-    setIsSubmitting(true);
-    try {
-      const token = await getTokenAsync();
-      if (!token) throw new Error('Token inválido');
+  setIsSubmitting(true);
+  try {
+    const token = await getTokenAsync();
+    if (!token) throw new Error('Token inválido');
 
-      // ✅ AQUÍ ESTÁ LA CLAVE: Enviamos el motivo al backend
-      await axios.put(
-        `${API_BASE_URL}/eventos/${event.id}/reject`,
-        { razon_rechazo: rejectReason.trim() },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-
-      closeRejectModal();
-      Alert.alert('Éxito', 'Evento rechazado correctamente');
-      router.back();
-    } catch (error) {
-      console.error('Reject error:', error);
-      Alert.alert('Error', 'No se pudo rechazar el evento: ' + error.message);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-    Alert.alert(
-      'Rechazar Evento',
-      '¿Estás seguro de que quieres rechazar este evento?',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Rechazar',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              const token = await getTokenAsync();
-              if (!token) throw new Error('Token inválido');
-              await axios.put(
-                `${API_BASE_URL}/eventos/${event.id}/reject`,
-                {},
-                { headers: { Authorization: `Bearer ${token}` } }
-              );
-              Alert.alert('Evento Rechazado', 'El evento ha sido rechazado');
-              router.back();
-            } catch (error) {
-              console.error('Reject error:', error);
-              Alert.alert('Error', 'No se pudo rechazar el evento: ' + error.message);
-            }
-          },
-        },
-      ]
+    // ✅ AQUÍ ESTÁ LA CLAVE: Enviamos el motivo al backend
+    await axios.put(
+      `${API_BASE_URL}/eventos/${event.id}/reject`,
+      { razon_rechazo: rejectReason.trim() },
+      { headers: { Authorization: `Bearer ${token}` } }
     );
 
-  };
+    closeRejectModal();
+    Alert.alert('Éxito', 'Evento rechazado correctamente');
+    router.back();
+  } catch (error) {
+    console.error('Reject error:', error);
+    Alert.alert('Error', 'No se pudo rechazar el evento: ' + error.message);
+  } finally {
+    setIsSubmitting(false);
+  }
+};
   const buildEventHtml = () => {
     const actividadesHtml = (titulo, lista) => {
       if (!lista || lista.length === 0) return '';
