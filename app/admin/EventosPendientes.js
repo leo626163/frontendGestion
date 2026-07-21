@@ -25,7 +25,12 @@ const COLORS = {
   pendingLight: '#FFF3E0',
 };
 
-  
+  const DIAS_MINIMOS_APROBACION = 7;
+
+const canApproveEvent = (eventDate) => {
+  const days = getDaysRemaining(eventDate);
+  return days !== null && days >= DIAS_MINIMOS_APROBACION;
+};
 const getDaysRemaining = (eventDate) => {
   if (!eventDate) return null;
   const today = new Date(); 
@@ -64,7 +69,6 @@ const isEventExpired = (eventDate) => {
   return daysRemaining !== null && daysRemaining < 0;
 };
 
-// ✅ FIX: formatSubmittedDate con manejo de diff negativo y formato dd/mm/yyyy
 const formatSubmittedDate = (date) => {
   if (!date) return 'Sin fecha';
   const now = new Date();
@@ -110,12 +114,13 @@ const PendingEventCard = ({ event,userRole, onView, onApprove, onReject, onMarkE
   const daysRemaining = getDaysRemaining(fechaEvento);
   const isAlreadyExpired = daysRemaining !== null && daysRemaining < 0;
   const isUrgent = daysRemaining !== null && daysRemaining >= 0 && daysRemaining <= 3;
-
+  const isApprovalAllowed = canApproveEvent(fechaEvento);
   console.log(`🔍 Evento ${event.idevento}:`, {
     fecha: fechaEvento,
     daysRemaining,
     isExpired: isAlreadyExpired,
-    isUrgent
+    isUrgent,
+    isApprovalAllowed
   });
 
   const getStatusBadge = () => {
@@ -157,7 +162,14 @@ const PendingEventCard = ({ event,userRole, onView, onApprove, onReject, onMarkE
           </Text>
         </View>
       )}
-
+      {!isAlreadyExpired && !isApprovalAllowed && daysRemaining !== null && daysRemaining >= 0 && (
+        <View style={[styles.expiredAlert, { backgroundColor: '#E3F2FD', borderLeftColor: COLORS.info }]}>
+          <Ionicons name="lock-closed" size={16} color={COLORS.info} />
+          <Text style={[styles.expiredAlertText, { color: COLORS.info }]}>
+            Aprobación cerrada: faltan menos de {DIAS_MINIMOS_APROBACION} días.
+          </Text>
+        </View>
+      )}
       {(event.descripcion || event.description) && (event.descripcion || event.description) !== 'Sin descripción' && (
         <Text style={styles.eventDescription} numberOfLines={2}>
           {event.descripcion || event.description}
@@ -198,18 +210,26 @@ const PendingEventCard = ({ event,userRole, onView, onApprove, onReject, onMarkE
           <Text style={[styles.actionButtonText, { color: COLORS.blue }]}>Ver</Text>
         </TouchableOpacity>
         
-        {/* Si NO está vencido, mostrar Aprobar, Rechazar, Cancelar */}
+               {/* Si NO está vencido, mostrar Aprobar, Rechazar */}
         {!isAlreadyExpired && (
           <>
-            <TouchableOpacity style={[styles.actionButton, styles.approveButton]} onPress={() => onApprove(event)}>
-              <Ionicons name="checkmark" size={18} color={COLORS.white} />
-              <Text style={[styles.actionButtonText, { color: COLORS.white }]}>Aprobar</Text>
-            </TouchableOpacity>
+            {/* ✅ MODIFICADO: Botón Aprobar condicional */}
+            {isApprovalAllowed ? (
+              <TouchableOpacity style={[styles.actionButton, styles.approveButton]} onPress={() => onApprove(event)}>
+                <Ionicons name="checkmark" size={18} color={COLORS.white} />
+                <Text style={[styles.actionButtonText, { color: COLORS.white }]}>Aprobar</Text>
+              </TouchableOpacity>
+            ) : (
+              <View style={[styles.actionButton, styles.disabledButton]}>
+                <Ionicons name="lock-closed-outline" size={18} color={COLORS.grayMedium} />
+                <Text style={[styles.actionButtonText, { color: COLORS.grayMedium }]}>Cerrado</Text>
+              </View>
+            )}
+
             <TouchableOpacity style={[styles.actionButton, styles.rejectButton]} onPress={() => onReject(event)}>
               <Ionicons name="close" size={18} color={COLORS.danger} />
               <Text style={[styles.actionButtonText, { color: COLORS.danger }]}>Rechazar</Text>
             </TouchableOpacity>
-            
           </>
         )}
         
@@ -645,7 +665,12 @@ const styles = StyleSheet.create({
   approveButton:{backgroundColor:COLORS.success},
   rejectButton:{backgroundColor:COLORS.background,borderWidth:1,borderColor:COLORS.danger},
   actionButtonText:{fontSize:13,fontWeight:'600'},
-  
+   disabledButton: { 
+    backgroundColor: COLORS.grayLight, 
+    borderWidth: 1, 
+    borderColor: COLORS.grayMedium, 
+    opacity: 0.7 
+  },
   // Empty
   emptyContainer:{flex:1,justifyContent:'center',alignItems:'center',paddingVertical:80,paddingHorizontal:32},
   emptyIconContainer:{width:120,height:120,borderRadius:60,backgroundColor:COLORS.background,justifyContent:'center',alignItems:'center',marginBottom:20},
