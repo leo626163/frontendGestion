@@ -221,7 +221,7 @@ const EventDetailScreen = () => {
         fetchUserDetails(token)
       ]);
 
-      const eventData = eventResponse.data;
+      const eventData = evento ? evento.toJSON() : null;
 
       if (!eventData || typeof eventData !== 'object' || Object.keys(eventData).length === 0) {
         throw new Error('Datos de evento vacíos o inválidos del servidor.');
