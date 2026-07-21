@@ -221,7 +221,7 @@ const EventDetailScreen = () => {
         fetchUserDetails(token)
       ]);
 
-      const eventData = evento ? evento.toJSON() : null;
+      const eventData = eventResponse.data;
 
       if (!eventData || typeof eventData !== 'object' || Object.keys(eventData).length === 0) {
         throw new Error('Datos de evento vacíos o inválidos del servidor.');
@@ -360,7 +360,6 @@ const handleRejectSubmit = async () => {
     const token = await getTokenAsync();
     if (!token) throw new Error('Token inválido');
 
-    // ✅ AQUÍ ESTÁ LA CLAVE: Enviamos el motivo al backend
     await axios.put(
       `${API_BASE_URL}/eventos/${event.id}/reject`,
       { razon_rechazo: rejectReason.trim() },
