@@ -1160,16 +1160,7 @@ const EventDetailScreen = () => {
             </View>
           )}
 
-          {user?.role === 'admin' && event.status === 'pendiente' && isEventExpired() && (
-            <View style={[styles.sectionCard, { backgroundColor: COLORS.grayLight, marginTop: 10, borderLeftWidth: 4, borderLeftColor: COLORS.warning }]}>
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <Ionicons name="time-outline" size={24} color={COLORS.warning} />
-                <Text style={{ fontSize: 15, color: COLORS.warning, fontWeight: '600', marginLeft: 10, flex: 1 }}>
-                  Este evento ha vencido y ya no puede ser aprobado ni rechazado.
-                </Text>
-              </View>
-            </View>
-          )}
+        
 
           {event.status === 'pendiente' && user?.role !== 'admin' && (
             <TouchableOpacity
