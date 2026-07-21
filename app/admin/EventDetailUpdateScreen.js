@@ -9,6 +9,7 @@ import {
   Image,
   TouchableOpacity,
   Platform,
+  TextInput
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -149,6 +150,9 @@ const EventDetailScreen = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [user, setUser] = useState(null);
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [rejectReason, setRejectReason] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
 
 
@@ -339,7 +343,44 @@ const EventDetailScreen = () => {
       Alert.alert('Error', 'No hay evento cargado para rechazar.');
       return;
     }
+      const openRejectModal = () => {
+    setRejectReason('');
+    setShowRejectModal(true);
+  };
 
+  const closeRejectModal = () => {
+    setShowRejectModal(false);
+    setRejectReason('');
+  };
+
+  const handleRejectSubmit = async () => {
+    if (!rejectReason.trim()) {
+      Alert.alert('Campo requerido', 'Por favor ingresa el motivo del rechazo');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const token = await getTokenAsync();
+      if (!token) throw new Error('Token inválido');
+
+      // ✅ AQUÍ ESTÁ LA CLAVE: Enviamos el motivo al backend
+      await axios.put(
+        `${API_BASE_URL}/eventos/${event.id}/reject`,
+        { razon_rechazo: rejectReason.trim() },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      closeRejectModal();
+      Alert.alert('Éxito', 'Evento rechazado correctamente');
+      router.back();
+    } catch (error) {
+      console.error('Reject error:', error);
+      Alert.alert('Error', 'No se pudo rechazar el evento: ' + error.message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
     Alert.alert(
       'Rechazar Evento',
       '¿Estás seguro de que quieres rechazar este evento?',
@@ -367,6 +408,7 @@ const EventDetailScreen = () => {
         },
       ]
     );
+
   };
   const buildEventHtml = () => {
     const actividadesHtml = (titulo, lista) => {
@@ -1118,7 +1160,7 @@ const EventDetailScreen = () => {
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={[styles.editButton, { backgroundColor: COLORS.logout, flex: 1, marginLeft: 8 }]}
-                    onPress={handleRejectEvent}
+                    onPress={openRejectModal}
                   >
                     <Ionicons name="close-circle-outline" size={20} color={COLORS.white} />
                     <Text style={styles.editButtonText}>Rechazar</Text>
@@ -1132,7 +1174,7 @@ const EventDetailScreen = () => {
                   </View>
                   <TouchableOpacity
                     style={[styles.editButton, { backgroundColor: COLORS.logout, flex: 1, marginLeft: 8 }]}
-                    onPress={handleRejectEvent}
+                    onPress={openRejectModal}
                   >
                     <Ionicons name="close-circle-outline" size={20} color={COLORS.white} />
                     <Text style={styles.editButtonText}>Rechazar</Text>
@@ -1173,6 +1215,66 @@ const EventDetailScreen = () => {
           )}
         </View>
       </ScrollView>
+            {/* Modal de Rechazo */}
+      {showRejectModal && (
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Ionicons name="close-circle" size={48} color={COLORS.logout} />
+              <Text style={styles.modalTitle}>Rechazar Evento</Text>
+              <Text style={styles.modalEventName} numberOfLines={2}>
+                {event?.title || 'Sin título'}
+              </Text>
+            </View>
+            
+            <View style={styles.modalBody}>
+              <Text style={styles.modalLabel}>
+                Motivo del rechazo <Text style={styles.required}>*</Text>
+              </Text>
+              <TextInput
+                style={styles.reasonInput}
+                placeholder="Ingresa el motivo del rechazo..."
+                placeholderTextColor={COLORS.grayText}
+                value={rejectReason}
+                onChangeText={setRejectReason}
+                multiline
+                numberOfLines={4}
+                textAlignVertical="top"
+                autoFocus
+              />
+              <Text style={styles.modalHint}>
+                {rejectReason.length} caracteres
+              </Text>
+            </View>
+            
+            <View style={styles.modalFooter}>
+              <TouchableOpacity 
+                style={[styles.modalButton, styles.cancelButton]} 
+                onPress={closeRejectModal}
+                disabled={isSubmitting}
+              >
+                <Text style={[styles.modalButtonText, {color: COLORS.grayText}]}>Cancelar</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={[styles.modalButton, styles.confirmButton, isSubmitting && styles.buttonDisabled]} 
+                onPress={handleRejectSubmit}
+                disabled={isSubmitting || !rejectReason.trim()}
+              >
+                {isSubmitting ? (
+                  <ActivityIndicator size="small" color={COLORS.white} />
+                ) : (
+                  <>
+                    <Ionicons name="close" size={18} color={COLORS.white} />
+                    <Text style={[styles.modalButtonText, {color: COLORS.white}]}>Rechazar</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      )}
+   
     </View>
   );
 };
@@ -1227,6 +1329,99 @@ const styles = StyleSheet.create({
   },
   activityDetails: {
     paddingLeft: 5,
+  },
+   modalOverlay: {
+    position: 'absolute',
+    top: 0, left: 0, right: 0, bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: COLORS.white,
+    borderRadius: 20,
+    width: '100%',
+    maxWidth: 400,
+    maxHeight: '80%',
+    overflow: 'hidden',
+    ...Platform.select({
+      ios: { shadowColor: COLORS.cardShadow, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 12 },
+      android: { elevation: 10 },
+    }),
+  },
+  modalHeader: {
+    alignItems: 'center',
+    padding: 24,
+    backgroundColor: '#FFEBEE',
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: COLORS.logout,
+    marginTop: 8,
+  },
+  modalEventName: {
+    fontSize: 14,
+    color: COLORS.grayText,
+    textAlign: 'center',
+    marginTop: 8,
+    paddingHorizontal: 16,
+  },
+  modalBody: { padding: 20 },
+  modalLabel: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: COLORS.darkText,
+    marginBottom: 8,
+  },
+  required: { color: COLORS.logout },
+  reasonInput: {
+    backgroundColor: COLORS.background,
+    borderRadius: 12,
+    padding: 12,
+    fontSize: 14,
+    color: COLORS.darkText,
+    minHeight: 100,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    textAlignVertical: 'top',
+  },
+  modalHint: {
+    fontSize: 12,
+    color: COLORS.grayText,
+    marginTop: 6,
+    textAlign: 'right',
+  },
+  modalFooter: {
+    flexDirection: 'row',
+    padding: 16,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
+    gap: 12,
+  },
+  modalButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    borderRadius: 12,
+    gap: 8,
+  },
+  cancelButton: {
+    backgroundColor: COLORS.background,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  confirmButton: { backgroundColor: COLORS.logout },
+  buttonDisabled: { opacity: 0.6 },
+  modalButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
   },
   activityDetailRow: {
     flexDirection: 'row',
