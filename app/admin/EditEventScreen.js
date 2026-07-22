@@ -95,10 +95,7 @@ const EditEventScreen = () => {
           const token = await getTokenAsync();
           if (!token) throw new Error('Token no encontrado');
           
-          const response = await axios.get(`${API_BASE_URL}/eventos/${eventId}`, {
-            headers: { Authorization: `Bearer ${token}` },
-            timeout: 15000,
-          });
+          
           
           const apiData = response.data;
           const transformed = transformApiToForm(apiData);
@@ -220,7 +217,7 @@ const EditEventScreen = () => {
         lugarevento: form.lugarevento.trim(),
         
          ...(mode === 'reprogramar' && { estado: 'pendiente' }),
-         
+
         idclasificacion: form.idclasificacion || null,
         idsubcategoria: form.idsubcategoria || null,
         
@@ -254,14 +251,6 @@ const EditEventScreen = () => {
           timeout: 20000,
         }
       );
-
-      if (mode === 'reprogramar' && response.data.estado !== 'pendiente') {
-        await axios.put(
-          `${API_BASE_URL}/eventos/${form.idevento}/status`,
-          { estado: 'pendiente' },
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-      }
 
       Alert.alert(
         '✓ Actualizado',
