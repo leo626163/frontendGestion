@@ -284,11 +284,17 @@ const EventosPendientes = () => {
          email: responseP.data.email,
         role: userRole });
 
-      const response = await axios.get(`${API_BASE_URL}/eventos/pendientes`, {
+            const response = await axios.get(`${API_BASE_URL}/eventos/pendientes`, {
         headers: { 'Authorization': `Bearer ${token}` }, timeout: 15000 });
       
       const allPending = Array.isArray(response.data) ? response.data : [];
-      const sorted = allPending.sort((a,b) => {
+      
+      const pendingNoVencidos = allPending.filter(event => {
+        const days = getDaysRemaining(event.fechaevento || event.date);
+        return days === null || days >= 0; 
+      });
+
+      const sorted = pendingNoVencidos.sort((a,b) => {
         const da = getDaysRemaining(a.fechaevento || a.date) ?? 999;
         const db = getDaysRemaining(b.fechaevento || b.date) ?? 999;
         return da - db;
