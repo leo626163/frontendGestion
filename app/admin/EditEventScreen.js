@@ -199,10 +199,9 @@ const EditEventScreen = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSave = async () => {
+   const handleSave = async () => {
     if (!validateForm()) {
       Alert.alert('Campos requeridos', 'Por favor completa los campos obligatorios marcados.');
-      // Scroll al primer error
       const firstError = Object.keys(errors)[0];
       if (firstError) setActiveSection('general');
       return;
@@ -219,7 +218,8 @@ const EditEventScreen = () => {
         horaevento: form.horaevento,
         lugarevento: form.lugarevento.trim(),
         
-         ...(mode === 'reprogramar' && { estado: 'pendiente' }),
+        // ✅ Si es reprogramación, forzamos el estado a pendiente
+        ...(mode === 'reprogramar' && { estado: 'pendiente' }),
 
         idclasificacion: form.idclasificacion || null,
         idsubcategoria: form.idsubcategoria || null,
@@ -235,13 +235,14 @@ const EditEventScreen = () => {
           otros_resultados: form.otros_resultados || null,
         }],
         
-        // Recursos, comité, presupuesto
         Recursos: parseJSONSafe(form.recursos),
         Comite: parseJSONSafe(form.comite),
         Egresos: parseJSONSafe(form.egresos),
         Ingresos: parseJSONSafe(form.ingresos),
         Presupuesto: parseJSONSafe(form.presupuesto),
       };
+
+      console.log('📤 Enviando payload al backend:', payload);
 
       const response = await axios.put(
         `${API_BASE_URL}/eventos/${form.idevento}`,
@@ -255,33 +256,43 @@ const EditEventScreen = () => {
         }
       );
 
+      console.log('✅ Respuesta del backend:', response.data);
+
+      // ✅ ALERTA CON NAVEGACIÓN CONFIABLE (Usando string en lugar de objeto)
       Alert.alert(
         '✓ Actualizado',
         mode === 'reprogramar' 
-          ? 'El evento ha sido reprogramado exitosamente'
-          : 'Los cambios han sido guardados',
+          ? 'El evento ha sido reprogramado exitosamente.'
+          : 'Los cambios han sido guardados correctamente.',
         [
-          { 
-            text: 'Ver evento', 
-            onPress: () => router.replace({ 
-              pathname: '/admin/EventDetailScreen', 
-              params: { eventId: form.idevento } 
-            }) 
+          {
+            text: 'Ver detalles',
+            onPress: () => {
+              // ✅ Formato string con query param es más confiable en Expo Router
+              router.replace(`/admin/EventDetailScreen?eventId=${form.idevento}`);
+            }
           },
-          { 
-            text: 'Volver a pendientes', 
+          {
+            text: 'Volver a pendientes',
             onPress: () => router.replace('/admin/EventosPendientes'),
             style: 'cancel'
           }
         ]
       );
+
     } catch (error) {
-      console.error('❌ Error al guardar:', error);
+      console.error('❌ Error detallado al guardar:', error);
+      
+      // ✅ Extraer el mensaje de error de forma segura
+      const errorMsg = error.response?.data?.message || 
+                       error.response?.data?.error || 
+                       error.message || 
+                       'No se pudieron guardar los cambios. Verifica tu conexión.';
+      
       Alert.alert(
-        'Error',
-        error.response?.data?.message || 
-        error.response?.data?.error ||
-        'No se pudieron guardar los cambios. Intenta nuevamente.'
+        'Error al guardar',
+        errorMsg,
+        [{ text: 'Entendido' }]
       );
     } finally {
       setSaving(false);
