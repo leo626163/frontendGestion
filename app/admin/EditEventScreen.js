@@ -255,14 +255,6 @@ const EditEventScreen = () => {
         }
       );
 
-      if (mode === 'reprogramar' && response.data.estado !== 'pendiente') {
-        await axios.put(
-          `${API_BASE_URL}/eventos/${form.idevento}/status`,
-          { estado: 'pendiente' },
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-      }
-
       Alert.alert(
         '✓ Actualizado',
         mode === 'reprogramar' 
