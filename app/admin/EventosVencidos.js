@@ -163,6 +163,7 @@ const EventosVencidos = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFacultad, setSelectedFacultad] = useState(null);
+  const [userRole, setUserRole] = useState('');
 
   const fetchExpiredEvents = useCallback(async () => {
     try {
@@ -179,25 +180,19 @@ const EventosVencidos = () => {
       });
 
       const data = response.data;
+      setUserRole(data.userRole || '');
       let rawMisEventos = [];
       let rawEventosComite = [];
 
-      // ✅ 1. Nuevo formato del backend (2 listas separadas)
-      if (data && data.misEventosCreados && data.eventosDondeSoyComite) {
-        rawMisEventos = data.misEventosCreados;
-        rawEventosComite = data.eventosDondeSoyComite;
-      } 
-      // ✅ 2. Fallback: Formato array plano con bandera 'esCreador'
-      else if (Array.isArray(data)) {
-        rawMisEventos = data.filter(e => e.esCreador === true);
-        rawEventosComite = data.filter(e => e.esCreador === false);
-      }
-      // ✅ 3. Fallback extremo: Formato antiguo (data.vencidos)
-      else if (data && Array.isArray(data.vencidos)) {
-        rawMisEventos = data.vencidos; 
-      }
-
-      // Función helper para mapear eventos a la estructura que usa la UI
+     if (data && data.misEventosCreados && data.eventosDondeSoyComite) {
+      rawMisEventos = data.misEventosCreados;
+      rawEventosComite = data.eventosDondeSoyComite;
+    } else if (Array.isArray(data)) {
+      rawMisEventos = data.filter(e => e.esCreador === true);
+      rawEventosComite = data.filter(e => e.esCreador === false);
+    } else if (data && Array.isArray(data.vencidos)) {
+      rawMisEventos = data.vencidos; 
+    }
       const mapEvent = (event) => ({
         idevento: event.idevento || event.id,
         nombreevento: event.nombreevento || event.title || 'Sin título',
@@ -236,6 +231,24 @@ const EventosVencidos = () => {
       setRefreshing(false);
     }
   }, [router]);
+  const sections = useMemo(() => {
+  const secs = [];
+  
+  if (filteredMisEventos.length > 0) {
+    // ✅ Si es admin, el título es "Todos los Eventos", si no, "Mis Eventos Creados"
+    const title = (userRole === 'admin' || userRole === 'daf') 
+      ? 'Todos los Eventos' 
+      : 'Mis Eventos Creados';
+    secs.push({ title, data: filteredMisEventos });
+  }
+  
+  // ✅ Solo mostramos la sección de Comité si el usuario es académico
+  if (userRole === 'academico' && filteredEventosComite.length > 0) {
+    secs.push({ title: 'Eventos donde soy Comité', data: filteredEventosComite });
+  }
+  
+  return secs;
+}, [filteredMisEventos, filteredEventosComite, userRole]);
 
   useEffect(() => {
     fetchExpiredEvents();
