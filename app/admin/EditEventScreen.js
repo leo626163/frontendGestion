@@ -81,7 +81,7 @@ const EditEventScreen = () => {
   const [activeSection, setActiveSection] = useState('general');
   const [errors, setErrors] = useState({});
 
-  useEffect(() => {
+    useEffect(() => {
     const loadEventData = async () => {
       try {
         if (eventData) {
@@ -95,7 +95,11 @@ const EditEventScreen = () => {
           const token = await getTokenAsync();
           if (!token) throw new Error('Token no encontrado');
           
-          
+          // ✅ PETICIÓN RESTAURADA: Obtenemos los datos del evento desde el backend
+          const response = await axios.get(`${API_BASE_URL}/eventos/${eventId}`, {
+            headers: { Authorization: `Bearer ${token}` },
+            timeout: 15000,
+          });
           
           const apiData = response.data;
           const transformed = transformApiToForm(apiData);
@@ -114,7 +118,6 @@ const EditEventScreen = () => {
               : `No se pudieron cargar los datos: ${error.message}`
         );
         if (error.response?.status === 401) {
-          await deleteTokenAsync();
           router.replace('/LoginAdmin');
         }
       } finally {
@@ -251,6 +254,14 @@ const EditEventScreen = () => {
           timeout: 20000,
         }
       );
+
+      if (mode === 'reprogramar' && response.data.estado !== 'pendiente') {
+        await axios.put(
+          `${API_BASE_URL}/eventos/${form.idevento}/status`,
+          { estado: 'pendiente' },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+      }
 
       Alert.alert(
         '✓ Actualizado',
