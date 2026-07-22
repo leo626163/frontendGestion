@@ -159,11 +159,11 @@ const EventosVencidos = () => {
 
   const [misEventos, setMisEventos] = useState([]);
   const [eventosComite, setEventosComite] = useState([]);
+  const [userRole, setUserRole] = useState(''); // ✅ Agregado para controlar la UI
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFacultad, setSelectedFacultad] = useState(null);
-  const [userRole, setUserRole] = useState('');
 
   const fetchExpiredEvents = useCallback(async () => {
     try {
@@ -180,19 +180,23 @@ const EventosVencidos = () => {
       });
 
       const data = response.data;
+      
+      // ✅ Capturamos el rol que envía el backend
       setUserRole(data.userRole || '');
+
       let rawMisEventos = [];
       let rawEventosComite = [];
 
-     if (data && data.misEventosCreados && data.eventosDondeSoyComite) {
-      rawMisEventos = data.misEventosCreados;
-      rawEventosComite = data.eventosDondeSoyComite;
-    } else if (Array.isArray(data)) {
-      rawMisEventos = data.filter(e => e.esCreador === true);
-      rawEventosComite = data.filter(e => e.esCreador === false);
-    } else if (data && Array.isArray(data.vencidos)) {
-      rawMisEventos = data.vencidos; 
-    }
+      if (data && data.misEventosCreados && data.eventosDondeSoyComite) {
+        rawMisEventos = data.misEventosCreados;
+        rawEventosComite = data.eventosDondeSoyComite;
+      } else if (Array.isArray(data)) {
+        rawMisEventos = data.filter(e => e.esCreador === true);
+        rawEventosComite = data.filter(e => e.esCreador === false);
+      } else if (data && Array.isArray(data.vencidos)) {
+        rawMisEventos = data.vencidos; 
+      }
+
       const mapEvent = (event) => ({
         idevento: event.idevento || event.id,
         nombreevento: event.nombreevento || event.title || 'Sin título',
@@ -231,24 +235,6 @@ const EventosVencidos = () => {
       setRefreshing(false);
     }
   }, [router]);
-  const sections = useMemo(() => {
-  const secs = [];
-  
-  if (filteredMisEventos.length > 0) {
-    // ✅ Si es admin, el título es "Todos los Eventos", si no, "Mis Eventos Creados"
-    const title = (userRole === 'admin' || userRole === 'daf') 
-      ? 'Todos los Eventos' 
-      : 'Mis Eventos Creados';
-    secs.push({ title, data: filteredMisEventos });
-  }
-  
-  // ✅ Solo mostramos la sección de Comité si el usuario es académico
-  if (userRole === 'academico' && filteredEventosComite.length > 0) {
-    secs.push({ title: 'Eventos donde soy Comité', data: filteredEventosComite });
-  }
-  
-  return secs;
-}, [filteredMisEventos, filteredEventosComite, userRole]);
 
   useEffect(() => {
     fetchExpiredEvents();
@@ -281,17 +267,25 @@ const EventosVencidos = () => {
   const filteredMisEventos = useMemo(() => filterEvents(misEventos), [misEventos, filterEvents]);
   const filteredEventosComite = useMemo(() => filterEvents(eventosComite), [eventosComite, filterEvents]);
 
-  // Construir secciones para SectionList (solo mostrar las que tengan datos)
+  // ✅ Construir secciones para SectionList (ADAPTADO AL ROL)
   const sections = useMemo(() => {
     const secs = [];
+    
     if (filteredMisEventos.length > 0) {
-      secs.push({ title: 'Mis Eventos Creados', data: filteredMisEventos });
+      // Si es admin, el título es "Todos los Eventos", si no, "Mis Eventos Creados"
+      const title = (userRole === 'admin' || userRole === 'daf') 
+        ? 'Todos los Eventos' 
+        : 'Mis Eventos Creados';
+      secs.push({ title, data: filteredMisEventos });
     }
-    if (filteredEventosComite.length > 0) {
+    
+    // Solo mostramos la sección de Comité si el usuario es académico
+    if (userRole === 'academico' && filteredEventosComite.length > 0) {
       secs.push({ title: 'Eventos donde soy Comité', data: filteredEventosComite });
     }
+    
     return secs;
-  }, [filteredMisEventos, filteredEventosComite]);
+  }, [filteredMisEventos, filteredEventosComite, userRole]);
 
   // Estadísticas
   const allFilteredEvents = useMemo(() => [...filteredMisEventos, ...filteredEventosComite], [filteredMisEventos, filteredEventosComite]);
@@ -415,14 +409,14 @@ const EventosVencidos = () => {
         <Text style={styles.resultsCount}>{totalEvents} eventos encontrados</Text>
       </View>
 
-      {/* ✅ SECTIONLIST PARA MOSTRAR LAS 2 LISTAS CON ENCABEZADOS */}
+      {/* ✅ SECTIONLIST PARA MOSTRAR LAS LISTAS CON ENCABEZADOS */}
       <SectionList
         sections={sections}
         keyExtractor={(item) => `event-${item.idevento || item.id}`}
         renderItem={({ item }) => <ExpiredEventCard event={item} onPress={handleEventPress} />}
         renderSectionHeader={({ section: { title } }) => (
           <View style={styles.sectionHeader}>
-            <Ionicons name={title.includes('Mis') ? "briefcase-outline" : "people-outline"} size={16} color={COLORS.primary} />
+            <Ionicons name={title.includes('Todos') || title.includes('Mis') ? "briefcase-outline" : "people-outline"} size={16} color={COLORS.primary} />
             <Text style={styles.sectionHeaderText}>{title}</Text>
           </View>
         )}
@@ -494,7 +488,6 @@ const styles = StyleSheet.create({
 
   listContent: { paddingBottom: 16 },
   
-  // ✅ NUEVOS ESTILOS PARA LOS ENCABEZADOS DE SECCIÓN
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
