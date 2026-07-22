@@ -219,6 +219,8 @@ const EditEventScreen = () => {
         horaevento: form.horaevento,
         lugarevento: form.lugarevento.trim(),
         
+         ...(mode === 'reprogramar' && { estado: 'pendiente' }),
+         
         idclasificacion: form.idclasificacion || null,
         idsubcategoria: form.idsubcategoria || null,
         
