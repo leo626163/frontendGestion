@@ -9,8 +9,8 @@ import * as Sharing from 'expo-sharing';
 import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
 import { useRouter } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PieChart } from 'react-native-chart-kit';
+import Svg, { Rect, Text as SvgText, G, Line } from 'react-native-svg';
 
 const COLORS = {
   primary: '#E95A0C',
@@ -21,9 +21,6 @@ const COLORS = {
   warning: '#F59E0B',
   info: '#3B82F6',
   purple: '#8B5CF6',
-  gold: '#F4B400',
-  silver: '#9CA3AF',
-  bronze: '#C97A3D',
   background: '#F9FAFB',
   surface: '#FFFFFF',
   textPrimary: '#1F2937',
@@ -40,6 +37,7 @@ const API_BASE_URL = 'https://backendgestion-production-e2aa.up.railway.app';
 
 const TOKEN_KEY = 'adminAuthToken';
 
+// ✅ getTokenAsync — sin las líneas sueltas de "reporte" que causaban el crash
 const getTokenAsync = async () => {
   if (Platform.OS === 'web') {
     try { return localStorage.getItem(TOKEN_KEY); } catch { return null; }
@@ -51,6 +49,73 @@ const getTokenAsync = async () => {
 const MONTH_NAMES_SHORT = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
 const MONTH_NAMES_FULL  = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 
+const HorizontalBarChart = ({ data, width }) => {
+  if (!data?.length) return null;
+  const max = Math.max(...data.map(d => d.value), 1);
+  const barHeight = 32;
+  const spacing = 12;
+  const totalHeight = data.length * (barHeight + spacing) + 20;
+  const CHART_COLORS = ['#3B82F6', '#6366F1', '#8B5CF6', '#A855F7', '#D946EF', '#EC4899'];
+  const labelWidth = 110; // Espacio reservado para el nombre a la izquierda
+
+  return (
+    <Svg width={width} height={totalHeight}>
+      {data.map((d, i) => {
+        const barMaxWidth = width - labelWidth - 50; // espacio para el número a la derecha
+        const barWidth = (d.value / max) * barMaxWidth;
+        const y = 10 + i * (barHeight + spacing);
+        const color = CHART_COLORS[i % CHART_COLORS.length];
+
+        return (
+          <G key={i}>
+            {/* Nombre de la facultad (izquierda) */}
+            <SvgText
+              x={0}
+              y={y + barHeight / 2 + 4}
+              fontSize="11"
+              fill={COLORS.textPrimary}
+              fontWeight="500"
+            >
+              {d.label.length > 22 ? d.label.slice(0, 22) + '…' : d.label}
+            </SvgText>
+
+            {/* Barra de fondo */}
+            <Rect
+              x={labelWidth}
+              y={y}
+              width={barMaxWidth}
+              height={barHeight}
+              fill={COLORS.divider}
+              rx={6}
+            />
+
+            {/* Barra de valor */}
+            <Rect
+              x={labelWidth}
+              y={y}
+              width={barWidth}
+              height={barHeight}
+              fill={color}
+              rx={6}
+            />
+
+            {/* Número a la derecha */}
+            <SvgText
+              x={width - 10}
+              y={y + barHeight / 2 + 4}
+              fontSize="13"
+              fill={color}
+              fontWeight="700"
+              textAnchor="end"
+            >
+              {d.value}
+            </SvgText>
+          </G>
+        );
+      })}
+    </Svg>
+  );
+};
 const KpiCard = ({ label, value, icon, color, sub }) => (
   <View style={[styles.kpiCard, { borderTopColor: color }]}>
     <View style={[styles.kpiIconWrap, { backgroundColor: color + '15' }]}>
@@ -72,33 +137,9 @@ const SectionHeader = ({ title, subtitle, icon }) => (
   </View>
 );
 
-// ── Tarjeta de acción reutilizable (exportar, reportes, etc.) ──
-const ActionCard = ({ icon, color, bg, title, subtitle, onPress, loading }) => (
-  <TouchableOpacity
-    style={[styles.actionCard, { backgroundColor: bg, borderColor: color + '30' }]}
-    onPress={onPress}
-    activeOpacity={0.85}
-    disabled={loading}
-  >
-    <View style={[styles.actionIconWrap, { backgroundColor: color + '20' }]}>
-      <Ionicons name={icon} size={20} color={color} />
-    </View>
-    <View style={{ flex: 1, marginLeft: 12 }}>
-      <Text style={[styles.actionTitle, { color }]}>{title}</Text>
-      <Text style={styles.actionSub}>{subtitle}</Text>
-    </View>
-    {loading ? (
-      <ActivityIndicator size="small" color={color} />
-    ) : (
-      <Ionicons name="chevron-forward" size={18} color={color} />
-    )}
-  </TouchableOpacity>
-);
-
 const ReportesAvanzadosScreen = () => {
   const router = useRouter();
   const { width: windowWidth } = useWindowDimensions();
-  const insets = useSafeAreaInsets();
 
   const [loading, setLoading]             = useState(false);
   const [loadingMain, setLoadingMain]     = useState(true);
@@ -120,7 +161,8 @@ const ReportesAvanzadosScreen = () => {
   const [eventosDelMesSeleccionado, setEventosDelMesSeleccionado] = useState([]);
   const [eventosSeleccionados, setEventosSeleccionados] = useState([]);
   const [mesParaReporte, setMesParaReporte] = useState(null);
-
+  
+  // 🆕 ESTADOS PARA REPORTE POR EVENTO
   const [showEventPicker, setShowEventPicker] = useState(false);
   const [todosLosEventos, setTodosLosEventos] = useState([]);
 
@@ -143,6 +185,7 @@ const ReportesAvanzadosScreen = () => {
       const data = statsRes.data;
       setStats(data);
 
+      // Pie chart estados
       if (data.estadoCounts) {
         const colorMap = { aprobado: COLORS.success, pendiente: COLORS.warning, rechazado: COLORS.accent };
         const pie = Object.entries(data.estadoCounts)
@@ -160,7 +203,7 @@ const ReportesAvanzadosScreen = () => {
       if (Array.isArray(data.eventosPorFacultad)) {
         setRankingFacultades(
           data.eventosPorFacultad
-            .map(f => ({ label: f.facultad || 'N/A', value: f.aprobados || 0 }))
+            .map(f => ({ label: f.facultad || 'N/A', value: f.aprobados || 0 })) // ← Cambia f.total por f.aprobados
             .sort((a, b) => b.value - a.value)
             .slice(0, 6)
         );
@@ -179,47 +222,48 @@ const ReportesAvanzadosScreen = () => {
     }
   }, []);
 
-  const cargarEventos = useCallback(async () => {
-    setLoadingEvents(true);
-    try {
-      const token = await getTokenAsync();
-      if (!token) return;
-      const params = filtroEstado !== 'todos' ? { estado: filtroEstado } : {};
-      const res = await axios.get(`${API_BASE_URL}/eventos`, {
-        headers: { Authorization: `Bearer ${token}` },
-        params,
-      });
-      const lista = Array.isArray(res.data) ? res.data : [];
-
-      const añoActual = new Date().getFullYear();
-      const eventosFiltrados = lista.filter(ev => {
-        if (!ev.fechaevento) return false;
-
-        const fechaEvento = new Date(ev.fechaevento);
-        const fechaCreacion = ev.created_at ? new Date(ev.created_at) : fechaEvento;
-
-        const añoEvento = fechaEvento.getFullYear();
-        if (añoEvento !== añoActual) {
-          return false;
-        }
-
-        const diffMs = fechaEvento.getTime() - fechaCreacion.getTime();
-        const diffDias = diffMs / (1000 * 60 * 60 * 24);
-        if (diffDias > 30) {
-          return false;
-        }
-
-        return true;
-      });
-
-      setEventosRecientes(eventosFiltrados.slice(0, 10));
-    } catch (err) {
-      console.error(err);
-      setEventosRecientes([]);
-    } finally {
-      setLoadingEvents(false);
-    }
-  }, [filtroEstado]);
+const cargarEventos = useCallback(async () => {
+  setLoadingEvents(true);
+  try {
+    const token = await getTokenAsync();
+    if (!token) return;
+    const params = filtroEstado !== 'todos' ? { estado: filtroEstado } : {};
+    const res = await axios.get(`${API_BASE_URL}/eventos`, {
+      headers: { Authorization: `Bearer ${token}` },
+      params,
+    });
+    const lista = Array.isArray(res.data) ? res.data : [];
+    
+    const añoActual = new Date().getFullYear();
+    const eventosFiltrados = lista.filter(ev => {
+      if (!ev.fechaevento) return false;
+      
+      const fechaEvento = new Date(ev.fechaevento);
+      const fechaCreacion = ev.created_at ? new Date(ev.created_at) : fechaEvento;
+      
+      const añoEvento = fechaEvento.getFullYear();
+      if (añoEvento !== añoActual) {
+        return false;
+      }
+      
+      const diffMs = fechaEvento.getTime() - fechaCreacion.getTime();
+      const diffDias = diffMs / (1000 * 60 * 60 * 24);
+      if (diffDias > 30) {
+        return false;
+      }
+      
+      return true;
+    });
+    
+    console.log(`✅ Eventos recientes: ${eventosFiltrados.length} de ${lista.length} (solo ${añoActual})`);
+    setEventosRecientes(eventosFiltrados.slice(0, 10));
+  } catch (err) {
+    console.error(err);
+    setEventosRecientes([]);
+  } finally {
+    setLoadingEvents(false);
+  }
+}, [filtroEstado]);
 
   useEffect(() => { cargarDatos(); },   [cargarDatos]);
   useEffect(() => { cargarEventos(); }, [cargarEventos]);
@@ -273,21 +317,22 @@ const ReportesAvanzadosScreen = () => {
       const [yearStr, monthStr] = mesFormato.split('-');
       const yearNum = parseInt(yearStr);
       const monthNum = parseInt(monthStr);
-
+      
       const res = await axios.get(`${API_BASE_URL}/eventos`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const todosEventos = Array.isArray(res.data) ? res.data : [];
-
+      
+      // Filtrar eventos del mes seleccionado
       const eventosFiltrados = todosEventos.filter(ev => {
         if (!ev.fechaevento) return false;
         const fechaEvento = new Date(ev.fechaevento);
-        return fechaEvento.getFullYear() === yearNum &&
+        return fechaEvento.getFullYear() === yearNum && 
               (fechaEvento.getMonth() + 1) === monthNum;
       });
-
+      
       setEventosDelMesSeleccionado(eventosFiltrados);
-      setEventosSeleccionados(eventosFiltrados.map(e => e.idevento));
+      setEventosSeleccionados(eventosFiltrados.map(e => e.idevento)); // Seleccionar todos por defecto
       setMesParaReporte(mesFormato);
       setShowEventSelector(true);
     } catch (err) {
@@ -298,31 +343,32 @@ const ReportesAvanzadosScreen = () => {
     }
   };
 
-  const cargarEventosParaPicker = async () => {
-    setLoading(true);
-    try {
-      const token = await getTokenAsync();
-      if (!token) return;
-      const res = await axios.get(`${API_BASE_URL}/eventos`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const lista = Array.isArray(res.data) ? res.data : [];
+const cargarEventosParaPicker = async () => {
+  setLoading(true);
+  try {
+    const token = await getTokenAsync();
+    if (!token) return;
+    const res = await axios.get(`${API_BASE_URL}/eventos`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const lista = Array.isArray(res.data) ? res.data : [];
 
-      const eventosFase2 = lista.filter(ev => ev.idfase === 2);
+    const eventosFase2 = lista.filter(ev => ev.idfase === 2);
 
-      eventosFase2.sort((a, b) => new Date(b.fechaevento || 0) - new Date(a.fechaevento || 0));
-      setTodosLosEventos(eventosFase2);
-      setShowEventPicker(true);
-    } catch (err) {
-      console.error(err);
-      showError('Error al cargar eventos');
-    } finally {
-      setLoading(false);
-    }
-  };
+    eventosFase2.sort((a, b) => new Date(b.fechaevento || 0) - new Date(a.fechaevento || 0));
+    setTodosLosEventos(eventosFase2);
+    setShowEventPicker(true);
+  } catch (err) {
+    console.error(err);
+    showError('Error al cargar eventos');
+  } finally {
+    setLoading(false);
+  }
+};
 
   const navegarADetalleEvento = (evento) => {
     setShowEventPicker(false);
+    // Navegar a la pantalla de detalles del evento
     router.push(`/admin/EventoDetalleImp?eventId=${evento.idevento}`);
   };
 
@@ -339,8 +385,9 @@ const ReportesAvanzadosScreen = () => {
       const mesNombre = MONTH_NAMES_FULL[parseInt(monthNum) - 1];
 
       let eventosDelMes = [];
-      const eventosIds = undefined;
+      const eventosIds = undefined; // 🔧 CORRECCIÓN: Se declara para evitar ReferenceError
       if (eventosIds && Array.isArray(eventosIds)) {
+        // Usar solo los eventos seleccionados
         const res = await axios.get(`${API_BASE_URL}/eventos`, {
           headers: { Authorization: `Bearer ${token}` },
         });
@@ -349,16 +396,17 @@ const ReportesAvanzadosScreen = () => {
       } else {
         const res = await axios.get(`${API_BASE_URL}/eventos`, {
           headers: { Authorization: `Bearer ${token}` },
-          params: { mes: mesFormato }
+          params: { mes: mesFormato } // Filtrar por mes
         });
         const todosEventos = Array.isArray(res.data) ? res.data : [];
-
+        
         const [yearStr, monthStr] = mesFormato.split('-');
         const yearNum = parseInt(yearStr);
         const monthNum2 = parseInt(monthStr);
-        const fechaLimite = new Date(yearNum, monthNum2, 0);
-        fechaLimite.setMonth(fechaLimite.getMonth() + 1);
-
+        const fechaLimite = new Date(yearNum, monthNum2, 0); // último día del mes
+        fechaLimite.setMonth(fechaLimite.getMonth() + 1); // +1 mes
+        
+        
         eventosDelMes = todosEventos.filter(ev => {
               if (!ev.fechaevento) return false;
               const fechaEvento = new Date(ev.fechaevento);
@@ -371,7 +419,7 @@ const ReportesAvanzadosScreen = () => {
               if (fechaEvento > fechaLimite) return false;
               return true;
             });
-
+        
       }
       const aprobado       = reporte.aprobado  || 0;
       const pendiente      = reporte.pendiente || 0;
@@ -401,6 +449,7 @@ const ReportesAvanzadosScreen = () => {
         `;
       }).join('');
 
+      // ✅ USAR eventosDelMes en lugar de eventosRecientes
       const eventosRows = eventosDelMes.slice(0, 10).map(ev => {
         const estadoColors = {
           aprobado: { bg: '#d1fae5', text: '#059669' },
@@ -409,7 +458,7 @@ const ReportesAvanzadosScreen = () => {
         };
         const estadoStyle = estadoColors[(ev.estado || '').toLowerCase()] || { bg: '#f3f4f6', text: '#6b7280' };
         const fecha = ev.fechaevento?.split('T')[0] || '–';
-
+        
         return `
           <tr>
             <td style="padding:10px;border-bottom:1px solid #e5e7eb;">
@@ -463,7 +512,7 @@ const ReportesAvanzadosScreen = () => {
           .badge{display:inline-block;padding:4px 12px;border-radius:12px;font-size:11px;font-weight:700}
           @media print{body{padding:0}.wrap{box-shadow:none}}
         </style></head><body><div class="wrap">
-
+        
         <div class="header">
           <h1>Reporte Mensual de Actividad</h1>
           <p class="sub">${mesNombre} ${year} · Generado el ${new Date().toLocaleDateString('es-ES', {day:'2-digit',month:'2-digit',year:'numeric'})}</p>
@@ -570,15 +619,15 @@ const ReportesAvanzadosScreen = () => {
         <div class="footer">
           Panel de Administración UFT · Sistema de Gestión de Eventos
         </div>
-
+        
         </div></body></html>`;
 
       if (Platform.OS === 'web') {
         const w = window.open('', '_blank');
-        if (w) {
-          w.document.write(html);
-          w.document.close();
-          setTimeout(() => w.print(), 800);
+        if (w) { 
+          w.document.write(html); 
+          w.document.close(); 
+          setTimeout(() => w.print(), 800); 
         }
         else showError('Permite ventanas emergentes para ver el reporte.');
       } else {
@@ -591,34 +640,38 @@ const ReportesAvanzadosScreen = () => {
       setLoading(false);
     }
   };
-
   const generarReporteAnual = async (year) => {
     setLoading(true);
     try {
       const token = await getTokenAsync();
       if (!token) return;
 
+      // Obtener TODOS los eventos del año
       const res = await axios.get(`${API_BASE_URL}/eventos`, {
         headers: { Authorization: `Bearer ${token}` },
         params: { year: year }
       });
       const todosEventos = Array.isArray(res.data) ? res.data : [];
 
+      // Filtrar solo los del año seleccionado
       const eventosAnuales = todosEventos.filter(ev => {
         if (!ev.fechaevento) return false;
         return new Date(ev.fechaevento).getFullYear() === year;
       });
 
+      // Contar por estado
       const aprobados = eventosAnuales.filter(e => e.estado === 'aprobado').length;
       const pendientes = eventosAnuales.filter(e => e.estado === 'pendiente').length;
       const rechazados = eventosAnuales.filter(e => e.estado === 'rechazado').length;
       const total = eventosAnuales.length;
 
+      // Obtener TODAS las facultades (sin límite)
       const statsRes = await axios.get(`${API_BASE_URL}/dashboard/stats`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       const todasFacultades = statsRes.data.eventosPorFacultad || [];
 
+      // Generar filas de facultades
       const facultadesRows = todasFacultades.map((f, i) => {
         const maxVal = todasFacultades[0]?.aprobados || 1;
         const width = Math.round((f.aprobados / maxVal) * 100);
@@ -639,6 +692,7 @@ const ReportesAvanzadosScreen = () => {
         `;
       }).join('');
 
+      // Generar filas de eventos (todos)
       const eventosRows = eventosAnuales.map(ev => {
         const estadoColors = {
           aprobado: { bg: '#d1fae5', text: '#059669' },
@@ -647,7 +701,7 @@ const ReportesAvanzadosScreen = () => {
         };
         const estadoStyle = estadoColors[(ev.estado || '').toLowerCase()] || { bg: '#f3f4f6', text: '#6b7280' };
         const fecha = ev.fechaevento?.split('T')[0] || '–';
-
+        
         return `
           <tr>
             <td style="padding:10px;border-bottom:1px solid #e5e7eb;font-size:11px;color:#6b7280">${ev.idevento}</td>
@@ -694,7 +748,7 @@ const ReportesAvanzadosScreen = () => {
           .page-break{page-break-after:always}
           @media print{body{padding:0}.wrap{box-shadow:none}}
         </style></head><body><div class="wrap">
-
+        
         <div class="header">
           <h1>📊 Reporte Anual Completo ${year}</h1>
           <p class="sub">Sistema de Gestión de Eventos · Generado el ${new Date().toLocaleDateString('es-ES', {day:'2-digit',month:'2-digit',year:'numeric'})}</p>
@@ -776,15 +830,15 @@ const ReportesAvanzadosScreen = () => {
         <div class="footer">
           <strong>Panel de Administración UFT</strong> · Sistema de Gestión de Eventos · Año ${year}
         </div>
-
+        
         </div></body></html>`;
 
       if (Platform.OS === 'web') {
         const w = window.open('', '_blank');
-        if (w) {
-          w.document.write(html);
-          w.document.close();
-          setTimeout(() => w.print(), 800);
+        if (w) { 
+          w.document.write(html); 
+          w.document.close(); 
+          setTimeout(() => w.print(), 800); 
         }
         else showError('Permite ventanas emergentes para ver el reporte.');
       } else {
@@ -797,7 +851,6 @@ const ReportesAvanzadosScreen = () => {
       setLoading(false);
     }
   };
-
   const estadoBadge = (estado) => {
     const map = {
       aprobado:  { bg: '#D1FAE5', text: '#059669' },
@@ -815,16 +868,13 @@ const ReportesAvanzadosScreen = () => {
   };
 
   const chartW = windowWidth - 48;
-  const totalEventosPie = eventosPorEstado
-    ? eventosPorEstado.reduce((acc, e) => acc + e.population, 0)
-    : 0;
 
   return (
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
 
         {/* ── HEADER ── */}
-        <View style={[styles.topHeader, { paddingTop: insets.top + 12 }]}>
+        <View style={styles.topHeader}>
           <Text style={styles.topTitle}>Reportes</Text>
           <Text style={styles.topSub}>Análisis y métricas del sistema</Text>
         </View>
@@ -851,11 +901,7 @@ const ReportesAvanzadosScreen = () => {
 
             {/* ── DISTRIBUCIÓN PIE ── */}
             <View style={styles.section}>
-              <SectionHeader
-                icon="pie-chart-outline"
-                title="Distribución por Estado"
-                subtitle={eventosPorEstado ? `${totalEventosPie} eventos evaluados` : undefined}
-              />
+              <SectionHeader icon="pie-chart-outline" title="Distribución por Estado" />
               <View style={styles.card}>
                 {eventosPorEstado ? (
                   <PieChart
@@ -877,26 +923,21 @@ const ReportesAvanzadosScreen = () => {
               </View>
             </View>
 
-            {/* ── RANKING FACULTADES ── */}
             <View style={styles.section}>
-              <SectionHeader icon="school-outline" title="Ranking de Facultades" subtitle="Eventos aprobados" />
+              <SectionHeader icon="school-outline" title="Ranking de Facultades" subtitle="Eventos creados" />
               <View style={styles.card}>
                 {rankingFacultades.length > 0 ? (
-                  <View style={{ marginTop: 4 }}>
+                  <View style={{ marginTop: 8 }}>
                     {rankingFacultades.map((f, i) => {
                       const maxVal = rankingFacultades[0]?.value || 1;
                       const pct = Math.round((f.value / maxVal) * 100);
-                      const podiumColors = [COLORS.gold, COLORS.silver, COLORS.bronze];
-                      const rankColor = i < 3 ? podiumColors[i] : COLORS.info;
-
+                      const RANK_COLORS = ['#28B8CE', '#FFCC00', '#E84E0F', '#D3D800', '#E6007E'];
+                      const rankColor = RANK_COLORS[i % RANK_COLORS.length];
+                      
                       return (
                         <View key={i} style={styles.rankRowNew}>
                           <View style={[styles.rankBadgeNew, { backgroundColor: rankColor }]}>
-                            {i < 3 ? (
-                              <Ionicons name="trophy" size={13} color={COLORS.white} />
-                            ) : (
-                              <Text style={styles.rankNumNew}>{i + 1}</Text>
-                            )}
+                            <Text style={styles.rankNumNew}>{i + 1}</Text>
                           </View>
                           <View style={{ flex: 1 }}>
                             <Text style={styles.rankLabelNew}>{f.label}</Text>
@@ -917,7 +958,6 @@ const ReportesAvanzadosScreen = () => {
                 )}
               </View>
             </View>
-
             {/* ── HISTÓRICO MENSUAL ── */}
             {reportesMensuales.length > 0 && (
               <View style={styles.section}>
@@ -930,6 +970,7 @@ const ReportesAvanzadosScreen = () => {
                   </View>
                   {reportesMensuales.map((r, i) => {
                     const [y, m] = r.mes.split('-');
+                    // ✅ Calcular totales en tabla también
                     const ap = r.aprobado  || 0;
                     const pe = r.pendiente || 0;
                     const re = r.rechazado || 0;
@@ -991,48 +1032,52 @@ const ReportesAvanzadosScreen = () => {
               </View>
             </View>
 
-            {/* ── EXPORTAR Y REPORTES ── */}
             <View style={styles.section}>
               <SectionHeader icon="settings-outline" title="Exportar y Reportes" />
-
-              <ActionCard
-                icon="albums-outline"
-                color={COLORS.warning}
-                bg="#FEF3C7"
-                title={`Reporte Anual Completo ${new Date().getFullYear()}`}
-                subtitle="PDF con todos los eventos y facultades del año"
+               <TouchableOpacity 
+                style={[styles.actionBtn, { backgroundColor: '#FEF3C7', borderColor: '#F59E0B' }]} 
                 onPress={() => generarReporteAnual(new Date().getFullYear())}
-                loading={loading}
-              />
+              >
+                <Ionicons name="document-lock-outline" size={22} color="#F59E0B" />
+                <View style={{ flex: 1, marginLeft: 12 }}>
+                  <Text style={[styles.actionTitle, { color: '#F59E0B' }]}>Reporte Anual Completo {new Date().getFullYear()}</Text>
+                  <Text style={styles.actionSub}>PDF con TODOS los eventos y facultades del año</Text>
+                </View>
+                {loading && <ActivityIndicator size="small" color="#F59E0B" />}
+                <Ionicons name="chevron-forward" size={18} color="#F59E0B" />
+              </TouchableOpacity>
 
-              <ActionCard
-                icon="list-circle-outline"
-                color={COLORS.purple}
-                bg="#F3E8FF"
-                title="Ver Detalle de Evento"
-                subtitle="Selecciona 1 evento para ver toda su información completa"
+              {/* 🆕 BOTÓN REPORTE POR EVENTO - AHORA NAVEGA A DETALLES */}
+              <TouchableOpacity 
+                style={[styles.actionBtn, { backgroundColor: '#F3E8FF', borderColor: '#8B5CF6' }]} 
                 onPress={cargarEventosParaPicker}
-                loading={loading}
-              />
+              >
+                <Ionicons name="list-circle-outline" size={22} color={COLORS.purple} />
+                <View style={{ flex: 1, marginLeft: 12 }}>
+                  <Text style={[styles.actionTitle, { color: COLORS.purple }]}>Ver Detalle de Evento</Text>
+                  <Text style={styles.actionSub}>Selecciona 1 evento para ver toda su información completa</Text>
+                </View>
+                {loading && <ActivityIndicator size="small" color={COLORS.purple} />}
+                <Ionicons name="chevron-forward" size={18} color={COLORS.purple} />
+              </TouchableOpacity>
 
-              <ActionCard
-                icon="document-text-outline"
-                color={COLORS.primary}
-                bg={COLORS.primaryLight}
-                title="Reporte Mensual PDF"
-                subtitle="Selecciona mes y año para generar"
-                onPress={() => setShowSelector(true)}
-                loading={loading}
-              />
-
-              <ActionCard
-                icon="download-outline"
-                color={COLORS.info}
-                bg="#EFF6FF"
-                title="Exportar Eventos CSV"
-                subtitle="Descarga todos los eventos en formato Excel/CSV"
-                onPress={exportarCSV}
-              />
+              <TouchableOpacity style={[styles.actionBtn, { backgroundColor: COLORS.primaryLight }]} onPress={() => setShowSelector(true)}>
+                <Ionicons name="document-text-outline" size={22} color={COLORS.primary} />
+                <View style={{ flex: 1, marginLeft: 12 }}>
+                  <Text style={[styles.actionTitle, { color: COLORS.primary }]}>Reporte Mensual PDF</Text>
+                  <Text style={styles.actionSub}>Selecciona mes y año para generar</Text>
+                </View>
+                {loading && <ActivityIndicator size="small" color={COLORS.primary} />}
+                <Ionicons name="chevron-forward" size={18} color={COLORS.primary} />
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.actionBtn, { backgroundColor: '#EFF6FF' }]} onPress={exportarCSV}>
+                <Ionicons name="download-outline" size={22} color={COLORS.info} />
+                <View style={{ flex: 1, marginLeft: 12 }}>
+                  <Text style={[styles.actionTitle, { color: COLORS.info }]}>Exportar Eventos CSV</Text>
+                  <Text style={styles.actionSub}>Descarga todos los eventos en formato Excel/CSV</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color={COLORS.info} />
+              </TouchableOpacity>
             </View>
           </>
         )}
@@ -1097,7 +1142,7 @@ const ReportesAvanzadosScreen = () => {
         </View>
       )}
 
-      {/* ── MODAL SELECTOR DE EVENTO ── */}
+      {/* 🆕 MODAL SELECTOR DE EVENTO - AHORA NAVEGA A DETALLES */}
       {showEventPicker && (
         <View style={styles.overlay}>
           <View style={[styles.modal, { width: '90%', maxWidth: 420, maxHeight: '85%' }]}>
@@ -1105,7 +1150,7 @@ const ReportesAvanzadosScreen = () => {
             <Text style={{ fontSize: 13, color: COLORS.textSecondary, marginBottom: 12, textAlign: 'center' }}>
               Toca un evento para ver todos sus detalles completos
             </Text>
-
+            
             <ScrollView style={{ maxHeight: 400 }} nestedScrollEnabled>
               {todosLosEventos.length === 0 ? (
                 <View style={styles.emptyChart}>
@@ -1117,7 +1162,7 @@ const ReportesAvanzadosScreen = () => {
                   <TouchableOpacity
                     key={ev.idevento || i}
                     style={[
-                      styles.dropItem,
+                      styles.dropItem, 
                       { paddingVertical: 12, paddingHorizontal: 14 },
                       i === todosLosEventos.length - 1 && { borderBottomWidth: 0 }
                     ]}
@@ -1157,7 +1202,7 @@ const styles = StyleSheet.create({
   centered: { alignItems: 'center', paddingVertical: 40 },
   loadingText: { marginTop: 12, color: COLORS.textSecondary, fontSize: 14 },
 
-  topHeader: { paddingHorizontal: 20, paddingBottom: 20, backgroundColor: COLORS.surface, borderBottomWidth: 1, borderColor: COLORS.border },
+  topHeader: { paddingHorizontal: 20, paddingTop: 56, paddingBottom: 20, backgroundColor: COLORS.surface, borderBottomWidth: 1, borderColor: COLORS.border },
   topTitle: { fontSize: 28, fontWeight: '800', color: COLORS.textPrimary },
   topSub: { fontSize: 14, color: COLORS.textSecondary, marginTop: 2 },
 
@@ -1176,6 +1221,12 @@ const styles = StyleSheet.create({
   kpiLabel: { fontSize: 12, fontWeight: '600', color: COLORS.textSecondary },
   kpiSub: { fontSize: 11, color: COLORS.textTertiary, marginTop: 2 },
 
+  rankRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 8, borderBottomWidth: 1, borderColor: COLORS.divider, gap: 10 },
+  rankBadge: { width: 26, height: 26, borderRadius: 13, backgroundColor: COLORS.divider, justifyContent: 'center', alignItems: 'center' },
+  rankNum: { fontSize: 12, fontWeight: '700', color: COLORS.textSecondary },
+  rankLabel: { flex: 1, fontSize: 13, color: COLORS.textPrimary },
+  rankValue: { fontSize: 12, fontWeight: '600', color: COLORS.textSecondary },
+
   tableRow: { flexDirection: 'row', paddingVertical: 10, paddingHorizontal: 4, alignItems: 'center' },
   tableHead: { borderBottomWidth: 2, borderColor: COLORS.border, marginBottom: 2 },
   tableHeadText: { fontSize: 11, fontWeight: '700', color: COLORS.textSecondary, textTransform: 'uppercase' },
@@ -1191,8 +1242,7 @@ const styles = StyleSheet.create({
   eventName: { fontSize: 14, fontWeight: '600', color: COLORS.textPrimary, marginBottom: 3 },
   eventMeta: { fontSize: 12, color: COLORS.textSecondary },
 
-  actionCard: { flexDirection: 'row', alignItems: 'center', padding: 14, borderRadius: 12, marginBottom: 12, borderWidth: 1 },
-  actionIconWrap: { width: 40, height: 40, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
+  actionBtn: { flexDirection: 'row', alignItems: 'center', padding: 16, borderRadius: 12, marginBottom: 12, borderWidth: 1, borderColor: COLORS.border },
   actionTitle: { fontSize: 15, fontWeight: '700', marginBottom: 2 },
   actionSub: { fontSize: 12, color: COLORS.textSecondary },
 
@@ -1212,7 +1262,6 @@ const styles = StyleSheet.create({
   modalBtns: { flexDirection: 'row', gap: 10, marginTop: 20 },
   modalBtn: { flex: 1, paddingVertical: 12, borderRadius: 8, alignItems: 'center' },
   modalBtnText: { color: COLORS.white, fontWeight: '700', fontSize: 14 },
-
   rankRowNew: {
     flexDirection: 'row',
     alignItems: 'center',
