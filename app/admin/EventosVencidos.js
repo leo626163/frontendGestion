@@ -11,16 +11,14 @@ import {
   ActivityIndicator,
   StatusBar,
   RefreshControl,
-  FlatList,
+  SectionList,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
 
-//const API_BASE_URL = 'https://evento.cidtec-uc.com';
 const API_BASE_URL = 'https://backendgestion-production-e2aa.up.railway.app';
-//const API_BASE_URL =  'https://unifrontend.onrender.com';
 const TOKEN_KEY = 'adminAuthToken';
 
 const COLORS = {
@@ -39,7 +37,7 @@ const COLORS = {
   white: '#FFFFFF',
 };
 
-// ── Helpers de fecha (Zona horaria local) ────────────────────────
+// ── Helpers de fecha ────────────────────────
 const getDaysRemaining = (eventDate) => {
   if (!eventDate) return null;
   const today = new Date();
@@ -48,8 +46,7 @@ const getDaysRemaining = (eventDate) => {
 
   if (typeof eventDate === 'string') {
     if (/^\d{4}-\d{2}-\d{2}/.test(eventDate)) {
-      const datePart = eventDate.substring(0, 10);
-      const [year, month, day] = datePart.split('-').map(Number);
+      const [year, month, day] = eventDate.substring(0, 10).split('-').map(Number);
       eventDateObj = new Date(year, month - 1, day);
     } else if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(eventDate)) {
       const [day, month, year] = eventDate.split('/').map(Number);
@@ -62,10 +59,8 @@ const getDaysRemaining = (eventDate) => {
   }
 
   if (isNaN(eventDateObj.getTime())) return null;
-
   eventDateObj.setHours(0, 0, 0, 0);
-  const diffDays = Math.ceil((eventDateObj - today) / (1000 * 60 * 60 * 24));
-  return diffDays;
+  return Math.ceil((eventDateObj - today) / (1000 * 60 * 60 * 24));
 };
 
 const isEventExpired = (eventDate) => {
@@ -100,16 +95,13 @@ const formatDate = (dateString) => {
       date = new Date(dateString);
     }
     if (isNaN(date.getTime())) return 'Sin fecha';
-    return date.toLocaleDateString('es-ES', {
-      year: 'numeric', month: 'short', day: 'numeric',
-    });
+    return date.toLocaleDateString('es-ES', { year: 'numeric', month: 'short', day: 'numeric' });
   } catch (error) {
-    console.error('Error formateando fecha:', error);
     return 'Sin fecha';
   }
 };
 
-// ── Tarjeta de evento vencido ────────────────────────────────────
+// ── Tarjeta de evento ────────────────────────
 const ExpiredEventCard = ({ event, onPress }) => {
   const eventDate = event.fechaevento || event.date || event.fecha;
   const daysSinceExpired = getDaysSinceExpired(eventDate);
@@ -117,13 +109,8 @@ const ExpiredEventCard = ({ event, onPress }) => {
   const hasFacultad = event.facultad && event.facultad !== 'Sin facultad';
 
   return (
-    <TouchableOpacity
-      style={styles.eventCard}
-      onPress={() => onPress(event)}
-      activeOpacity={0.85}
-    >
+    <TouchableOpacity style={styles.eventCard} onPress={() => onPress(event)} activeOpacity={0.85}>
       <View style={styles.expiredIndicator} />
-
       <View style={styles.cardHeader}>
         <View style={styles.badgeContainer}>
           <View style={styles.statusBadge}>
@@ -131,37 +118,24 @@ const ExpiredEventCard = ({ event, onPress }) => {
             <Text style={styles.statusText}>Vencido</Text>
           </View>
           {daysSinceExpired !== null && (
-            <Text style={styles.daysExpired}>
-              Hace {daysSinceExpired} día{daysSinceExpired !== 1 ? 's' : ''}
-            </Text>
+            <Text style={styles.daysExpired}>Hace {daysSinceExpired} día{daysSinceExpired !== 1 ? 's' : ''}</Text>
           )}
         </View>
         <Text style={styles.eventDate}>{formatDate(eventDate)}</Text>
       </View>
 
-      <Text style={styles.eventTitle} numberOfLines={2}>
-        {event.nombreevento || 'Sin título'}
-      </Text>
-
-      {hasDescription && (
-        <Text style={styles.eventDescription} numberOfLines={2}>
-          {event.descripcion}
-        </Text>
-      )}
+      <Text style={styles.eventTitle} numberOfLines={2}>{event.nombreevento || 'Sin título'}</Text>
+      {hasDescription && <Text style={styles.eventDescription} numberOfLines={2}>{event.descripcion}</Text>}
 
       <View style={styles.metaRow}>
         <View style={styles.metaItem}>
           <Ionicons name="location-outline" size={14} color={COLORS.textTertiary} />
-          <Text style={styles.metaText} numberOfLines={1}>
-            {event.lugarevento || 'Sin ubicación'}
-          </Text>
+          <Text style={styles.metaText} numberOfLines={1}>{event.lugarevento || 'Sin ubicación'}</Text>
         </View>
         {hasFacultad && (
           <View style={styles.metaItem}>
             <Ionicons name="school-outline" size={14} color={COLORS.textTertiary} />
-            <Text style={styles.metaText} numberOfLines={1}>
-              {event.facultad}
-            </Text>
+            <Text style={styles.metaText} numberOfLines={1}>{event.facultad}</Text>
           </View>
         )}
       </View>
@@ -171,9 +145,7 @@ const ExpiredEventCard = ({ event, onPress }) => {
           <View style={styles.avatarCircle}>
             <Ionicons name="person" size={14} color={COLORS.white} />
           </View>
-          <Text style={styles.academicoName} numberOfLines={1}>
-            {event.academico?.nombre || 'Académico'}
-          </Text>
+          <Text style={styles.academicoName} numberOfLines={1}>{event.academico?.nombre || 'Académico'}</Text>
         </View>
         <Ionicons name="chevron-forward" size={18} color={COLORS.textTertiary} />
       </View>
@@ -185,7 +157,8 @@ const EventosVencidos = () => {
   const router = useRouter();
   const params = useLocalSearchParams();
 
-  const [events, setEvents] = useState([]);
+  const [misEventos, setMisEventos] = useState([]);
+  const [eventosComite, setEventosComite] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -201,26 +174,31 @@ const EventosVencidos = () => {
       }
 
       const response = await axios.get(`${API_BASE_URL}/eventos/vencidos`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         timeout: 10000,
       });
 
       const data = response.data;
-      let rawExpiredEvents = [];
+      let rawMisEventos = [];
+      let rawEventosComite = [];
 
-      if (data && Array.isArray(data.vencidos)) {
-        rawExpiredEvents = data.vencidos;
-      } else if (Array.isArray(data)) {
-        rawExpiredEvents = data.filter(event => {
-          const fecha = event.fechaevento || event.date;
-          return isEventExpired(fecha);
-        });
+      // ✅ 1. Nuevo formato del backend (2 listas separadas)
+      if (data && data.misEventosCreados && data.eventosDondeSoyComite) {
+        rawMisEventos = data.misEventosCreados;
+        rawEventosComite = data.eventosDondeSoyComite;
+      } 
+      // ✅ 2. Fallback: Formato array plano con bandera 'esCreador'
+      else if (Array.isArray(data)) {
+        rawMisEventos = data.filter(e => e.esCreador === true);
+        rawEventosComite = data.filter(e => e.esCreador === false);
+      }
+      // ✅ 3. Fallback extremo: Formato antiguo (data.vencidos)
+      else if (data && Array.isArray(data.vencidos)) {
+        rawMisEventos = data.vencidos; 
       }
 
-      const expiredEvents = rawExpiredEvents.map(event => ({
+      // Función helper para mapear eventos a la estructura que usa la UI
+      const mapEvent = (event) => ({
         idevento: event.idevento || event.id,
         nombreevento: event.nombreevento || event.title || 'Sin título',
         descripcion: event.descripcion || event.description || '',
@@ -230,27 +208,23 @@ const EventosVencidos = () => {
         estado: event.estado,
         idfase: event.idfase,
         idacademico: event.idacademico,
-        academico: event.academicoCreador ? {
-          nombre: `${event.academicoCreador.nombre || ''} ${event.academicoCreador.apellidopat || ''}`.trim() || 'Académico'
-        } : (event.academico || null),
+        esCreador: event.esCreador,
+        academico: event.academico ? { nombre: event.academico.nombre } : 
+                   (event.academicoCreador ? { nombre: `${event.academicoCreador.nombre || ''} ${event.academicoCreador.apellidopat || ''}`.trim() || 'Académico' } : null),
         facultad: event.facultad || event.faculty || null,
-      }));
+      });
 
-      setEvents(expiredEvents);
+      setMisEventos(rawMisEventos.map(mapEvent));
+      setEventosComite(rawEventosComite.map(mapEvent));
+
     } catch (error) {
       console.error('❌ Error fetching expired events:', error);
-
       let message = 'No se pudieron cargar los eventos vencidos.';
-
       if (error.response?.status === 401) {
         message = 'Sesión expirada. Inicia sesión nuevamente.';
         router.replace('/');
       } else if (error.response?.status === 403) {
         message = 'No tienes permisos para ver esta sección.';
-      } else if (error.response?.status === 404) {
-        message = 'Endpoint no encontrado.';
-      } else if (error.code === 'ECONNABORTED') {
-        message = 'Tiempo de espera agotado.';
       }
 
       Alert.alert('Error', message, [
@@ -272,17 +246,12 @@ const EventosVencidos = () => {
     fetchExpiredEvents();
   }, [fetchExpiredEvents]);
 
-  const facultades = useMemo(() => {
-    return [...new Set(events.map(e => e.facultad).filter(Boolean))];
-  }, [events]);
-
-  const filteredEvents = useMemo(() => {
-    let result = events;
-
+  // ── Lógica de Filtrado ────────────────────────
+  const filterEvents = useCallback((eventsList) => {
+    let result = eventsList;
     if (selectedFacultad) {
       result = result.filter(event => event.facultad === selectedFacultad);
     }
-
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
       result = result.filter(event =>
@@ -293,23 +262,38 @@ const EventosVencidos = () => {
         event.academico?.nombre?.toLowerCase().includes(query)
       );
     }
-
     return result;
-  }, [events, searchQuery, selectedFacultad]);
+  }, [searchQuery, selectedFacultad]);
+
+  const filteredMisEventos = useMemo(() => filterEvents(misEventos), [misEventos, filterEvents]);
+  const filteredEventosComite = useMemo(() => filterEvents(eventosComite), [eventosComite, filterEvents]);
+
+  // Construir secciones para SectionList (solo mostrar las que tengan datos)
+  const sections = useMemo(() => {
+    const secs = [];
+    if (filteredMisEventos.length > 0) {
+      secs.push({ title: 'Mis Eventos Creados', data: filteredMisEventos });
+    }
+    if (filteredEventosComite.length > 0) {
+      secs.push({ title: 'Eventos donde soy Comité', data: filteredEventosComite });
+    }
+    return secs;
+  }, [filteredMisEventos, filteredEventosComite]);
+
+  // Estadísticas
+  const allFilteredEvents = useMemo(() => [...filteredMisEventos, ...filteredEventosComite], [filteredMisEventos, filteredEventosComite]);
+  const totalEvents = allFilteredEvents.length;
+  const uniqueFacultades = useMemo(() => [...new Set(allFilteredEvents.map(e => e.facultad).filter(Boolean))], [allFilteredEvents]);
+  const uniqueAcademicos = useMemo(() => [...new Set(allFilteredEvents.map(e => e.idacademico).filter(Boolean))].length, [allFilteredEvents]);
 
   const handleEventPress = (event) => {
     router.push({
       pathname: '/admin/EventDetailScreenVencido',
-      params: {
-        id: event.idevento || event.id,
-        from: 'vencidos',
-      },
+      params: { id: event.idevento || event.id, from: 'vencidos' },
     });
   };
 
-  const handleBack = () => {
-    router.back();
-  };
+  const handleBack = () => router.back();
 
   if (loading) {
     return (
@@ -321,7 +305,7 @@ const EventosVencidos = () => {
     );
   }
 
-  if (events.length === 0) {
+  if (totalEvents === 0 && !refreshing) {
     return (
       <View style={styles.container}>
         <StatusBar barStyle="light-content" backgroundColor={COLORS.primary} />
@@ -333,13 +317,9 @@ const EventosVencidos = () => {
           <View style={{ width: 24 }} />
         </View>
         <View style={styles.emptyContainer}>
-          <View style={styles.emptyIcon}>
-            <Ionicons name="close-circle-outline" size={80} color={COLORS.textTertiary} />
-          </View>
+          <Ionicons name="close-circle-outline" size={80} color={COLORS.textTertiary} />
           <Text style={styles.emptyTitle}>Sin eventos vencidos</Text>
-          <Text style={styles.emptyText}>
-            No hay eventos pendientes con fecha de ejecución vencida
-          </Text>
+          <Text style={styles.emptyText}>No hay eventos pendientes con fecha de ejecución vencida</Text>
           <TouchableOpacity style={styles.emptyButton} onPress={onRefresh}>
             <Ionicons name="refresh-outline" size={18} color={COLORS.white} />
             <Text style={styles.emptyButtonText}>Actualizar</Text>
@@ -359,32 +339,25 @@ const EventosVencidos = () => {
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Eventos Vencidos</Text>
         <TouchableOpacity style={styles.refreshButton} onPress={onRefresh} disabled={refreshing}>
-          <Ionicons name="refresh-outline" size={22} color={COLORS.white} />
+          <Ionicons name={refreshing ? "sync" : "refresh-outline"} size={22} color={COLORS.white} style={refreshing ? { transform: [{ rotate: '90deg' }] } : {}} />
         </TouchableOpacity>
       </View>
 
-      {/* Stats siempre visibles arriba, fuera del scroll de la lista */}
       <View style={styles.statsWrapper}>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.statsScroll}
-        >
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.statsScroll}>
           <View style={[styles.statCard, { backgroundColor: COLORS.danger }]}>
             <Ionicons name="close-circle-outline" size={18} color={COLORS.white} />
-            <Text style={styles.statNumber}>{events.length}</Text>
+            <Text style={styles.statNumber}>{totalEvents}</Text>
             <Text style={styles.statLabel}>Vencidos</Text>
           </View>
           <View style={[styles.statCard, { backgroundColor: COLORS.warning }]}>
             <Ionicons name="school-outline" size={18} color={COLORS.white} />
-            <Text style={styles.statNumber}>{facultades.length}</Text>
+            <Text style={styles.statNumber}>{uniqueFacultades.length}</Text>
             <Text style={styles.statLabel}>Facultades</Text>
           </View>
           <View style={[styles.statCard, { backgroundColor: COLORS.primary }]}>
             <Ionicons name="person-outline" size={18} color={COLORS.white} />
-            <Text style={styles.statNumber}>
-              {[...new Set(events.map(e => e.idacademico).filter(Boolean))].length}
-            </Text>
+            <Text style={styles.statNumber}>{uniqueAcademicos}</Text>
             <Text style={styles.statLabel}>Académicos</Text>
           </View>
         </ScrollView>
@@ -408,77 +381,57 @@ const EventosVencidos = () => {
           )}
         </View>
 
-        {facultades.length > 0 && (
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.chipsScroll}
-          >
-            <TouchableOpacity
-              style={[styles.chip, !selectedFacultad && styles.chipActive]}
-              onPress={() => setSelectedFacultad(null)}
-            >
-              <Text style={[styles.chipText, !selectedFacultad && styles.chipTextActive]}>
-                Todas
-              </Text>
+        {uniqueFacultades.length > 0 && (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipsScroll}>
+            <TouchableOpacity style={[styles.chip, !selectedFacultad && styles.chipActive]} onPress={() => setSelectedFacultad(null)}>
+              <Text style={[styles.chipText, !selectedFacultad && styles.chipTextActive]}>Todas</Text>
             </TouchableOpacity>
-            {facultades.map((facultad) => (
+            {uniqueFacultades.map((facultad) => (
               <TouchableOpacity
                 key={facultad}
                 style={[styles.chip, selectedFacultad === facultad && styles.chipActive]}
                 onPress={() => setSelectedFacultad(facultad === selectedFacultad ? null : facultad)}
               >
-                <Text
-                  style={[
-                    styles.chipText,
-                    selectedFacultad === facultad && styles.chipTextActive,
-                  ]}
-                  numberOfLines={1}
-                >
+                <Text style={[styles.chipText, selectedFacultad === facultad && styles.chipTextActive]} numberOfLines={1}>
                   {facultad}
                 </Text>
               </TouchableOpacity>
             ))}
           </ScrollView>
         )}
-
-        <Text style={styles.resultsCount}>
-          {filteredEvents.length} de {events.length} eventos
-        </Text>
+        <Text style={styles.resultsCount}>{totalEvents} eventos encontrados</Text>
       </View>
 
-      <FlatList
-        data={filteredEvents}
+      {/* ✅ SECTIONLIST PARA MOSTRAR LAS 2 LISTAS CON ENCABEZADOS */}
+      <SectionList
+        sections={sections}
         keyExtractor={(item) => `event-${item.idevento || item.id}`}
         renderItem={({ item }) => <ExpiredEventCard event={item} onPress={handleEventPress} />}
+        renderSectionHeader={({ section: { title } }) => (
+          <View style={styles.sectionHeader}>
+            <Ionicons name={title.includes('Mis') ? "briefcase-outline" : "people-outline"} size={16} color={COLORS.primary} />
+            <Text style={styles.sectionHeaderText}>{title}</Text>
+          </View>
+        )}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
+        stickySectionHeadersEnabled={true}
         refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            colors={[COLORS.primary]}
-            tintColor={COLORS.primary}
-          />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[COLORS.primary]} tintColor={COLORS.primary} />
         }
         ListEmptyComponent={
           <View style={styles.emptySearch}>
             <Ionicons name="search-outline" size={48} color={COLORS.textTertiary} />
             <Text style={styles.emptySearchTitle}>Sin resultados</Text>
             <Text style={styles.emptySearchText}>
-              {selectedFacultad
-                ? `No hay eventos vencidos en "${selectedFacultad}"`
-                : `No se encontraron eventos que coincidan con "${searchQuery}"`}
+              {selectedFacultad ? `No hay eventos en "${selectedFacultad}"` : `No se encontraron eventos que coincidan con "${searchQuery}"`}
             </Text>
-            <TouchableOpacity
-              style={styles.clearSearchButton}
-              onPress={() => { setSearchQuery(''); setSelectedFacultad(null); }}
-            >
+            <TouchableOpacity style={styles.clearSearchButton} onPress={() => { setSearchQuery(''); setSelectedFacultad(null); }}>
               <Text style={styles.clearSearchText}>Limpiar filtros</Text>
             </TouchableOpacity>
           </View>
         }
-        ListFooterComponent={<View style={{ height: 20 }} />}
+        ListFooterComponent={<View style={{ height: 40 }} />}
       />
     </View>
   );
@@ -490,114 +443,78 @@ const styles = StyleSheet.create({
   loadingText: { marginTop: 12, fontSize: 14, color: COLORS.textSecondary },
 
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    backgroundColor: COLORS.primary,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 16, paddingVertical: 14, backgroundColor: COLORS.primary,
   },
   backButton: { padding: 4 },
   headerTitle: { fontSize: 18, fontWeight: '700', color: COLORS.white },
   refreshButton: { padding: 4 },
 
-  statsWrapper: {
-    backgroundColor: COLORS.primary,
-    paddingBottom: 14,
-  },
+  statsWrapper: { backgroundColor: COLORS.primary, paddingBottom: 14 },
   statsScroll: { paddingHorizontal: 16, gap: 10 },
   statCard: {
-    width: 104,
-    paddingVertical: 10,
-    paddingHorizontal: 8,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 2,
+    width: 104, paddingVertical: 10, paddingHorizontal: 8, borderRadius: 12,
+    alignItems: 'center', justifyContent: 'center', gap: 2,
   },
   statNumber: { fontSize: 20, fontWeight: '800', color: COLORS.white },
   statLabel: { fontSize: 10, color: COLORS.white, opacity: 0.9, textAlign: 'center', includeFontPadding: false },
 
   searchContainer: {
-    paddingHorizontal: 16,
-    paddingTop: 14,
-    paddingBottom: 10,
-    backgroundColor: COLORS.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
+    paddingHorizontal: 16, paddingTop: 14, paddingBottom: 10,
+    backgroundColor: COLORS.surface, borderBottomWidth: 1, borderBottomColor: COLORS.border,
   },
   searchInputWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.background,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    gap: 8,
+    flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.background,
+    borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8, gap: 8,
   },
   searchInput: { flex: 1, fontSize: 14, color: COLORS.textPrimary, padding: 0 },
   resultsCount: { fontSize: 12, color: COLORS.textTertiary, marginTop: 8, textAlign: 'right' },
 
-  chipsScroll: {
-    gap: 8,
-    paddingVertical: 10,
-  },
+  chipsScroll: { gap: 8, paddingVertical: 10 },
   chip: {
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: 20,
-    backgroundColor: COLORS.background,
-    borderWidth: 1,
-    borderColor: COLORS.border,
+    paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20,
+    backgroundColor: COLORS.background, borderWidth: 1, borderColor: COLORS.border,
   },
-  chipActive: {
-    backgroundColor: COLORS.primary,
-    borderColor: COLORS.primary,
-  },
+  chipActive: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
   chipText: { fontSize: 12, color: COLORS.textSecondary, fontWeight: '600' },
   chipTextActive: { color: COLORS.white },
 
-  listContent: { padding: 16, gap: 12 },
+  listContent: { paddingBottom: 16 },
+  
+  // ✅ NUEVOS ESTILOS PARA LOS ENCABEZADOS DE SECCIÓN
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: COLORS.background,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+    marginTop: 8,
+  },
+  sectionHeaderText: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: COLORS.primary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
 
   eventCard: {
-    backgroundColor: COLORS.surface,
-    borderRadius: 14,
-    padding: 16,
-    paddingLeft: 18,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 6,
-    elevation: 2,
-    position: 'relative',
-    overflow: 'hidden',
+    backgroundColor: COLORS.surface, borderRadius: 14, padding: 16, paddingLeft: 18,
+    marginHorizontal: 16, marginTop: 12, marginBottom: 0,
+    borderWidth: 1, borderColor: COLORS.border,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06, shadowRadius: 6, elevation: 2,
+    position: 'relative', overflow: 'hidden',
   },
-  expiredIndicator: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    bottom: 0,
-    width: 4,
-    backgroundColor: COLORS.danger,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
+  expiredIndicator: { position: 'absolute', top: 0, left: 0, bottom: 0, width: 4, backgroundColor: COLORS.danger },
+  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
   badgeContainer: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   statusBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-    gap: 4,
-    backgroundColor: COLORS.danger + '15',
+    flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 4,
+    borderRadius: 12, gap: 4, backgroundColor: COLORS.danger + '15',
   },
   statusText: { fontSize: 12, fontWeight: '700', color: COLORS.danger },
   daysExpired: { fontSize: 11, color: COLORS.textTertiary, fontWeight: '500' },
@@ -611,36 +528,22 @@ const styles = StyleSheet.create({
   metaText: { fontSize: 12, color: COLORS.textSecondary, flex: 1 },
 
   cardFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.border,
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    paddingTop: 12, borderTopWidth: 1, borderTopColor: COLORS.border,
   },
   academicoInfo: { flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 },
   avatarCircle: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: COLORS.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
+    width: 24, height: 24, borderRadius: 12, backgroundColor: COLORS.primary,
+    justifyContent: 'center', alignItems: 'center',
   },
   academicoName: { fontSize: 12, color: COLORS.textSecondary, fontWeight: '500', flex: 1 },
 
   emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32 },
-  emptyIcon: { marginBottom: 20 },
   emptyTitle: { fontSize: 18, fontWeight: '700', color: COLORS.textPrimary, marginBottom: 8, textAlign: 'center' },
   emptyText: { fontSize: 14, color: COLORS.textSecondary, textAlign: 'center', marginBottom: 24, lineHeight: 20 },
   emptyButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: COLORS.primary,
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 10,
+    flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: COLORS.primary,
+    paddingHorizontal: 20, paddingVertical: 12, borderRadius: 10,
   },
   emptyButtonText: { color: COLORS.white, fontSize: 14, fontWeight: '600' },
 
