@@ -194,9 +194,6 @@ const EditEventScreen = () => {
     if (!form.lugarevento?.trim()) {
       newErrors.lugarevento = 'La ubicación es obligatoria';
     }
-    if (!form.responsable_evento?.trim()) {
-      newErrors.responsable_evento = 'El responsable es obligatorio';
-    }
     
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -221,9 +218,6 @@ const EditEventScreen = () => {
         fechaevento: form.fechaevento,
         horaevento: form.horaevento,
         lugarevento: form.lugarevento.trim(),
-        responsable_evento: form.responsable_evento.trim(),
-        participantes_esperados: parseInt(form.participantes_esperados) || null,
-        argumentacion: form.argumentacion?.trim() || null,
         
         idclasificacion: form.idclasificacion || null,
         idsubcategoria: form.idsubcategoria || null,
@@ -505,9 +499,6 @@ const EditEventScreen = () => {
               {renderDatePicker('Fecha *', 'fechaevento', true)}
               {renderTimePicker('Hora *', 'horaevento', true)}
               {renderInput('Ubicación *', 'lugarevento', 'Ej: Auditorio Principal', false, true)}
-              {renderInput('Responsable *', 'responsable_evento', 'Nombre completo', false, true)}
-              {renderInput('Participantes esperados', 'participantes_esperados', 'Ej: 150', false, false)}
-              {renderInput('Argumentación / Justificación', 'argumentacion', 'Describe brevemente el propósito...', true, false)}
             </View>
           )}
 
