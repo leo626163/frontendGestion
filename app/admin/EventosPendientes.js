@@ -343,10 +343,13 @@ const openRejectModal = (event) => {
       }
       
       const eventId = eventToReject.idevento || eventToReject.id;
-      
+      const today = new Date();
+      const localDate = new Date(today.getTime() - (today.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
       await axios.put(
         `${API_BASE_URL}/eventos/${eventId}/reject`,
-        { razon_rechazo: rejectReason.trim() },
+        { razon_rechazo: rejectReason.trim(),
+          fecha_rechazo: localDate
+         },
         { headers: { 'Authorization': `Bearer ${token}` }}
       );
       

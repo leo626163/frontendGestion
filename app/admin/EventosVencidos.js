@@ -39,57 +39,44 @@ const COLORS = {
   white: '#FFFFFF',
 };
 
-// ── Helpers de fecha ────────────────────────────────────────────────────────
-const isEventExpired = (eventDate) => {
-  if (!eventDate) return false;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  
-  let eventDateObj;
-  if (typeof eventDate === 'string') {
-    if (/^\d{4}-\d{2}-\d{2}/.test(eventDate)) {
-      eventDateObj = new Date(eventDate);
-    } else if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(eventDate)) {
-      const [day, month, year] = eventDate.split('/').map(Number);
-      eventDateObj = new Date(year, month - 1, day);
-    } else {
-      eventDateObj = new Date(eventDate);
-    }
-  } else {
-    eventDateObj = new Date(eventDate);
-  }
-  
-  if (isNaN(eventDateObj.getTime())) return false;
-  eventDateObj.setHours(0, 0, 0, 0);
-  
-  const diffDays = Math.ceil((eventDateObj - today) / (1000 * 60 * 60 * 24));
-  return diffDays < 0; // Ya pasó la fecha
-};
-
-const getDaysSinceExpired = (eventDate) => {
+// ── Helpers de fecha CORREGIDOS (Zona horaria local) ────────────────────────
+const getDaysRemaining = (eventDate) => {
   if (!eventDate) return null;
-  const today = new Date();
+  const today = new Date(); 
   today.setHours(0, 0, 0, 0);
-  
   let eventDateObj;
+  
   if (typeof eventDate === 'string') {
     if (/^\d{4}-\d{2}-\d{2}/.test(eventDate)) {
-      eventDateObj = new Date(eventDate);
+      // ✅ Parseo local para evitar desfase de zona horaria
+      const datePart = eventDate.substring(0, 10);
+      const [year, month, day] = datePart.split('-').map(Number);
+      eventDateObj = new Date(year, month - 1, day);
     } else if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(eventDate)) {
       const [day, month, year] = eventDate.split('/').map(Number);
       eventDateObj = new Date(year, month - 1, day);
-    } else {
-      eventDateObj = new Date(eventDate);
+    } else { 
+      eventDateObj = new Date(eventDate); 
     }
-  } else {
-    eventDateObj = new Date(eventDate);
+  } else { 
+    eventDateObj = new Date(eventDate); 
   }
   
   if (isNaN(eventDateObj.getTime())) return null;
-  eventDateObj.setHours(0, 0, 0, 0);
   
-  const diffDays = Math.ceil((today - eventDateObj) / (1000 * 60 * 60 * 24));
-  return diffDays > 0 ? diffDays : null;
+  eventDateObj.setHours(0, 0, 0, 0);
+  const diffDays = Math.ceil((eventDateObj - today) / (1000 * 60 * 60 * 24));
+  return diffDays;
+};
+
+const isEventExpired = (eventDate) => {
+  const days = getDaysRemaining(eventDate);
+  return days !== null && days < 0;
+};
+
+const getDaysSinceExpired = (eventDate) => {
+  const days = getDaysRemaining(eventDate);
+  return days !== null && days < 0 ? Math.abs(days) : null;
 };
 
 const getTokenAsync = async () => {
