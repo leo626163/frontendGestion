@@ -932,15 +932,20 @@ const cargarEventosParaPicker = async () => {
                       const maxVal = rankingFacultades[0]?.value || 1;
                       const pct = Math.round((f.value / maxVal) * 100);
                       const RANK_COLORS = ['#28B8CE', '#FFCC00', '#E84E0F', '#D3D800', '#E6007E'];
-                      const rankColor = RANK_COLORS[i % RANK_COLORS.length];
+                      const colorIndex = i % RANK_COLORS.length;
+                      const rankColor = RANK_COLORS[colorIndex];
                       
+                      // ✅ Corrección: Texto oscuro para fondos claros (índices 1 y 3 son amarillos/verdes claros)
+                      const isLightColor = colorIndex === 1 || colorIndex === 3;
+                      const textColor = isLightColor ? COLORS.textPrimary : COLORS.white;
+
                       return (
                         <View key={i} style={styles.rankRowNew}>
                           <View style={[styles.rankBadgeNew, { backgroundColor: rankColor }]}>
-                            <Text style={styles.rankNumNew}>{i + 1}</Text>
+                            <Text style={[styles.rankNumNew, { color: textColor }]}>{i + 1}</Text>
                           </View>
                           <View style={{ flex: 1 }}>
-                            <Text style={styles.rankLabelNew}>{f.label}</Text>
+                            <Text numberOfLines={1} ellipsizeMode="tail" style={styles.rankLabelNew}>{f.label}</Text>
                             <View style={styles.rankBarBg}>
                               <View style={[styles.rankBarFill, { width: `${pct}%`, backgroundColor: rankColor }]} />
                             </View>
@@ -970,18 +975,22 @@ const cargarEventosParaPicker = async () => {
                   </View>
                   {reportesMensuales.map((r, i) => {
                     const [y, m] = r.mes.split('-');
-                    // ✅ Calcular totales en tabla también
-                    const ap = r.aprobado  || 0;
+                    const ap = r.aprobado || 0;
                     const pe = r.pendiente || 0;
                     const re = r.rechazado || 0;
-                    const tot  = r.totalEvents    || (ap + pe + re);
+                    const tot = r.totalEvents || (ap + pe + re);
                     const tasa = r.tasaAprobacion || (tot > 0 ? Math.round((ap / tot) * 100) : 0);
+                    const mesTexto = `${MONTH_NAMES_SHORT[parseInt(m) - 1]} ${y}`;
+
                     return (
                       <View key={i} style={[styles.tableRow, i % 2 === 0 && { backgroundColor: COLORS.divider }]}>
-                        <Text style={[styles.tableCell, { flex: 2 }]}>{MONTH_NAMES_SHORT[parseInt(m)-1]} {y}</Text>
-                        <Text style={[styles.tableCell, { flex: 1, textAlign: 'center' }]}>{tot}</Text>
-                        <Text style={[styles.tableCell, { flex: 1, textAlign: 'center', color: COLORS.success, fontWeight: '600' }]}>{ap}</Text>
-                        <Text style={[styles.tableCell, { flex: 1, textAlign: 'center' }]}>{tasa}%</Text>
+                        {/* ✅ Corrección: Limitar a 1 línea con puntos suspensivos si es muy largo */}
+                        <Text numberOfLines={1} ellipsizeMode="tail" style={[styles.tableCell, { flex: 2 }]}>
+                          {mesTexto}
+                        </Text>
+                        <Text numberOfLines={1} style={[styles.tableCell, { flex: 1, textAlign: 'center' }]}>{tot}</Text>
+                        <Text numberOfLines={1} style={[styles.tableCell, { flex: 1, textAlign: 'center', color: COLORS.success, fontWeight: '600' }]}>{ap}</Text>
+                        <Text numberOfLines={1} style={[styles.tableCell, { flex: 1, textAlign: 'center' }]}>{tasa}%</Text>
                         <TouchableOpacity style={{ flex: 1, alignItems: 'center' }} onPress={() => generarPDF(r.mes)}>
                           <Ionicons name="download-outline" size={18} color={COLORS.primary} />
                         </TouchableOpacity>
