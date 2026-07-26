@@ -239,11 +239,11 @@ const st = StyleSheet.create({
 
   dropZone: {
     backgroundColor: C.surface, borderRadius: 14, borderWidth: 1.5, borderStyle: 'dashed',
-    borderColor: C.border, paddingVertical: 36, alignItems: 'center', gap: 6, marginBottom: 24,
+    borderColor: C.border, paddingVertical: 20, alignItems: 'center', gap: 4, marginBottom: 20,
   },
   dropIconWrap: {
-    width: 52, height: 52, borderRadius: 14, backgroundColor: C.primaryLight,
-    justifyContent: 'center', alignItems: 'center', marginBottom: 6,
+    width: 44, height: 44, borderRadius: 12, backgroundColor: C.primaryLight,
+    justifyContent: 'center', alignItems: 'center', marginBottom: 4,
   },
   dropTitle: { fontSize: 14, fontWeight: '600', color: C.t1 },
   dropSub: { fontSize: 12, color: C.t3 },
