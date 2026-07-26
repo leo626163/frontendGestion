@@ -28,17 +28,22 @@ const C = {
   t1: '#111827', t2: '#6B7280', t3: '#9CA3AF', border: '#E5E7EB',
 };
 
-// Mismos colores que tu CrearRecurso.js
+// Mismos colores que tu CrearRecurso.js, con icono agregado por tipo
 const TIPO_COLORS = {
-  tecnologico: { color: '#3B82F6', bg: '#DBEAFE', label: 'Tecnológico' },
-  mobiliario:  { color: '#8B5CF6', bg: '#EDE9FE', label: 'Mobiliario'  },
-  vajilla:     { color: '#F59E0B', bg: '#FEF3C7', label: 'Vajilla'     },
+  tecnologico: { color: '#3B82F6', bg: '#DBEAFE', label: 'Tecnológico', icon: 'hardware-chip-outline' },
+  mobiliario:  { color: '#8B5CF6', bg: '#EDE9FE', label: 'Mobiliario',  icon: 'cube-outline' },
+  vajilla:     { color: '#F59E0B', bg: '#FEF3C7', label: 'Vajilla',     icon: 'restaurant-outline' },
 };
 const tipoStyle = (tipo) =>
-  TIPO_COLORS[tipo] || { color: C.t3, bg: C.bg, label: tipo || 'Otro' };
+  TIPO_COLORS[tipo] || { color: C.t3, bg: C.bg, label: tipo || 'Otro', icon: 'ellipse-outline' };
 
 // Categorías para el filtro (incluye todos los tipos de tu Picker)
-const CATEGORIAS = ['Todos', 'Tecnológico', 'Mobiliario', 'Vajilla'];
+const CATEGORIAS = [
+  { label: 'Todos', icon: 'apps-outline' },
+  { label: 'Tecnológico', icon: 'hardware-chip-outline' },
+  { label: 'Mobiliario', icon: 'cube-outline' },
+  { label: 'Vajilla', icon: 'restaurant-outline' },
+];
 const categoriaToTipo = {
   'Tecnológico': 'tecnologico',
   'Mobiliario':  'mobiliario',
@@ -54,27 +59,33 @@ const RecursoCard = ({ item, onEdit }) => {
 
   return (
     <View style={st.card}>
-      <View style={st.cardTop}>
-        {/* Badge tipo — mismo estilo que CrearRecurso.js */}
-        <View style={[st.tipoBadge, { backgroundColor: ts.bg }]}>
-          <Text style={[st.tipoBadgeText, { color: ts.color }]}>{ts.label}</Text>
-        </View>
-        <TouchableOpacity style={st.editBtn} onPress={() => onEdit(item)}>
-          <Ionicons name="pencil-outline" size={15} color={C.primary} />
-        </TouchableOpacity>
+      <View style={[st.cardIcon, { backgroundColor: ts.bg }]}>
+        <Ionicons name={ts.icon} size={20} color={ts.color} />
       </View>
 
-      <Text style={st.cardName}>{item.nombre_recurso}</Text>
+      <View style={{ flex: 1 }}>
+        <View style={st.cardTop}>
+          <Text style={st.cardName} numberOfLines={1}>{item.nombre_recurso}</Text>
+          <TouchableOpacity style={st.editBtn} onPress={() => onEdit(item)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <Ionicons name="pencil-outline" size={15} color={C.primary} />
+          </TouchableOpacity>
+        </View>
 
-      {item.descripcion ? (
-        <Text style={st.cardDesc} numberOfLines={2}>{item.descripcion}</Text>
-      ) : null}
+        {item.descripcion ? (
+          <Text style={st.cardDesc} numberOfLines={2}>{item.descripcion}</Text>
+        ) : null}
 
-      {/* Estado habilitado / deshabilitado — mismo estilo que CrearRecurso.js */}
-      <View style={[st.estadoBadge, { backgroundColor: habilitado ? '#D1FAE5' : '#FEE2E2' }]}>
-        <Text style={[st.estadoBadgeText, { color: habilitado ? '#065F46' : '#991B1B' }]}>
-          {habilitado ? '● Habilitado' : '● Deshabilitado'}
-        </Text>
+        <View style={st.cardFooter}>
+          <View style={[st.tipoBadge, { backgroundColor: ts.bg }]}>
+            <Text style={[st.tipoBadgeText, { color: ts.color }]}>{ts.label}</Text>
+          </View>
+          <View style={st.estadoRow}>
+            <View style={[st.dot, { backgroundColor: habilitado ? C.success : C.danger }]} />
+            <Text style={[st.estadoText, { color: habilitado ? '#065F46' : '#991B1B' }]}>
+              {habilitado ? 'Habilitado' : 'Deshabilitado'}
+            </Text>
+          </View>
+        </View>
       </View>
     </View>
   );
@@ -103,7 +114,7 @@ const InventarioDAF = () => {
         raw = raw.recursos;
       } else if (!Array.isArray(raw)) {
         raw = raw.data || [];
-}
+      }
       setRecursos(raw);
     } catch (err) {
       console.error('cargarRecursos:', err);
@@ -154,105 +165,125 @@ const InventarioDAF = () => {
         </TouchableOpacity>
       </View>
 
-      {/* Banner informativo */}
-      <View style={st.infoBanner}>
-        <Ionicons name="information-circle-outline" size={16} color={C.info} />
-        <Text style={st.infoBannerText}>
-          Para crear o editar recursos ve a{' '}
-          <Text
-            style={{ fontWeight: '700', color: C.primary }}
-            onPress={() => router.push('/admin/Recursos')}
-          >
-            Creación de Recursos
+      {/* Contenido scrollable: todo dentro de un único ScrollView vertical
+          para evitar que el ScrollView horizontal de chips colapse su altura
+          (la causa del solape que se veía antes). */}
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 40 }}
+        stickyHeaderIndices={loading || filtered.length === 0 ? undefined : undefined}
+      >
+        {/* Banner informativo */}
+        <View style={st.infoBanner}>
+          <Ionicons name="information-circle-outline" size={16} color={C.info} />
+          <Text style={st.infoBannerText}>
+            Para crear o editar recursos ve a{' '}
+            <Text
+              style={{ fontWeight: '700', color: C.primary }}
+              onPress={() => router.push('/admin/Recursos')}
+            >
+              Creación de Recursos
+            </Text>
           </Text>
-        </Text>
-      </View>
+        </View>
 
-      {/* Buscador */}
-      <View style={st.searchWrap}>
-        <Ionicons name="search-outline" size={17} color={C.t3} />
-        <TextInput
-          style={st.searchInput}
-          placeholder="Buscar recurso…"
-          placeholderTextColor={C.t3}
-          value={search}
-          onChangeText={setSearch}
-        />
-        {search ? (
-          <TouchableOpacity onPress={() => setSearch('')}>
-            <Ionicons name="close-circle" size={17} color={C.t3} />
-          </TouchableOpacity>
-        ) : null}
-      </View>
+        {/* Buscador */}
+        <View style={st.searchWrap}>
+          <Ionicons name="search-outline" size={17} color={C.t3} />
+          <TextInput
+            style={st.searchInput}
+            placeholder="Buscar recurso…"
+            placeholderTextColor={C.t3}
+            value={search}
+            onChangeText={setSearch}
+          />
+          {search ? (
+            <TouchableOpacity onPress={() => setSearch('')}>
+              <Ionicons name="close-circle" size={17} color={C.t3} />
+            </TouchableOpacity>
+          ) : null}
+        </View>
 
-      {/* Filtros por tipo */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={st.chipsRow}>
-        {CATEGORIAS.map(c => (
-          <TouchableOpacity
-            key={c}
-            style={[st.chip, filtro === c && { backgroundColor: C.primary, borderColor: C.primary }]}
-            onPress={() => setFiltro(c)}
+        {/* Filtros por tipo — altura fija en el wrapper para que nunca colapse */}
+        <View style={st.chipsWrap}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={st.chipsRow}
           >
-            <Text style={[st.chipText, filtro === c && { color: C.surface }]}>{c}</Text>
-          </TouchableOpacity>
-        ))}
+            {CATEGORIAS.map(c => {
+              const active = filtro === c.label;
+              return (
+                <TouchableOpacity
+                  key={c.label}
+                  style={[st.chip, active && st.chipActive]}
+                  onPress={() => setFiltro(c.label)}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name={c.icon} size={14} color={active ? C.surface : C.t2} />
+                  <Text style={[st.chipText, active && { color: C.surface }]}>{c.label}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </View>
+
+        {/* Resumen rápido por tipo */}
+        {!loading && (
+          <View style={st.summaryRow}>
+            {Object.entries(TIPO_COLORS).map(([tipo, ts]) => {
+              const count = recursos.filter(r => r.recurso_tipo === tipo && r.habilitado == 1).length;
+              return (
+                <View key={tipo} style={st.summaryCard}>
+                  <View style={[st.summaryIconWrap, { backgroundColor: ts.bg }]}>
+                    <Ionicons name={ts.icon} size={16} color={ts.color} />
+                  </View>
+                  <Text style={[st.summaryCount, { color: ts.color }]}>{count}</Text>
+                  <Text style={st.summaryLabel}>{ts.label}</Text>
+                </View>
+              );
+            })}
+          </View>
+        )}
+
+        {/* Lista */}
+        {loading ? (
+          <View style={st.centerBox}>
+            <ActivityIndicator color={C.primary} />
+            <Text style={st.loadText}>Cargando inventario…</Text>
+          </View>
+        ) : filtered.length === 0 ? (
+          <View style={st.centerBox}>
+            <Ionicons name="cube-outline" size={42} color={C.t3} />
+            <Text style={st.emptyTitle}>Sin recursos</Text>
+            <Text style={st.emptyText}>
+              {search ? 'No hay recursos que coincidan con tu búsqueda.' : 'No hay recursos para este tipo.'}
+            </Text>
+            <TouchableOpacity
+              style={st.goCreateBtn}
+              onPress={() => router.push('/admin/Recursos')}
+            >
+              <Ionicons name="add-circle-outline" size={16} color={C.surface} />
+              <Text style={st.goCreateText}>Ir a Creación de Recursos</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <View style={{ paddingHorizontal: 16 }}>
+            {filtered.map(item => (
+              <RecursoCard key={String(item.idrecurso)} item={item} onEdit={handleEdit} />
+            ))}
+
+            {/* Botón ir a crear */}
+            <TouchableOpacity
+              style={st.createFloatBtn}
+              onPress={() => router.push('/admin/Recursos')}
+            >
+              <Ionicons name="add-circle-outline" size={18} color={C.primary} />
+              <Text style={st.createFloatText}>Agregar nuevo recurso en Creación de Recursos</Text>
+            </TouchableOpacity>
+          </View>
+        )}
       </ScrollView>
-
-      {/* Resumen rápido por tipo */}
-      {!loading && (
-        <View style={st.summaryRow}>
-          {Object.entries(TIPO_COLORS).map(([tipo, ts]) => {
-            const count = recursos.filter(r => r.recurso_tipo === tipo && r.habilitado == 1).length;
-            return (
-              <View key={tipo} style={[st.summaryCard, { borderTopColor: ts.color, borderTopWidth: 2 }]}>
-                <Text style={[st.summaryCount, { color: ts.color }]}>{count}</Text>
-                <Text style={st.summaryLabel}>{ts.label}</Text>
-              </View>
-            );
-          })}
-        </View>
-      )}
-
-      {/* Lista */}
-      {loading ? (
-        <View style={st.centerBox}>
-          <ActivityIndicator color={C.primary} />
-          <Text style={st.loadText}>Cargando inventario…</Text>
-        </View>
-      ) : filtered.length === 0 ? (
-        <View style={st.centerBox}>
-          <Ionicons name="cube-outline" size={42} color={C.t3} />
-          <Text style={st.emptyTitle}>Sin recursos</Text>
-          <Text style={st.emptyText}>
-            {search ? 'No hay recursos que coincidan con tu búsqueda.' : 'No hay recursos para este tipo.'}
-          </Text>
-          <TouchableOpacity
-            style={st.goCreateBtn}
-            onPress={() => router.push('/admin/Recursos')}
-          >
-            <Ionicons name="add-circle-outline" size={16} color={C.surface} />
-            <Text style={st.goCreateText}>Ir a Creación de Recursos</Text>
-          </TouchableOpacity>
-        </View>
-      ) : (
-        <ScrollView
-          contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
-          showsVerticalScrollIndicator={false}
-        >
-          {filtered.map(item => (
-            <RecursoCard key={String(item.idrecurso)} item={item} onEdit={handleEdit} />
-          ))}
-
-          {/* Botón ir a crear */}
-          <TouchableOpacity
-            style={st.createFloatBtn}
-            onPress={() => router.push('/admin/Recursos')}
-          >
-            <Ionicons name="add-circle-outline" size={18} color={C.primary} />
-            <Text style={st.createFloatText}>Agregar nuevo recurso en Creación de Recursos</Text>
-          </TouchableOpacity>
-        </ScrollView>
-      )}
     </View>
   );
 }
@@ -278,33 +309,56 @@ const st = StyleSheet.create({
   },
   infoBannerText: { fontSize: 13, color: C.info, flex: 1, lineHeight: 18 },
 
-  searchWrap: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: C.surface, marginHorizontal: 16, marginTop: 12, borderRadius: 12, borderWidth: 0.5, borderColor: C.border, paddingHorizontal: 12, paddingVertical: 10 },
+  searchWrap: {
+    flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: C.surface,
+    marginHorizontal: 16, marginTop: 12, borderRadius: 12, borderWidth: 0.5,
+    borderColor: C.border, paddingHorizontal: 12, paddingVertical: 10,
+  },
   searchInput: { flex: 1, fontSize: 14, color: C.t1, padding: 0 },
 
-  chipsRow: { paddingHorizontal: 16, paddingVertical: 12, gap: 8 },
-  chip: { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20, borderWidth: 0.5, borderColor: C.border, backgroundColor: C.surface },
-  chipText: { fontSize: 13, color: C.t2, fontWeight: '500' },
-
-  summaryRow: { flexDirection: 'row', gap: 10, paddingHorizontal: 16, marginBottom: 4 },
-  summaryCard: { flex: 1, backgroundColor: C.surface, borderRadius: 10, padding: 10, alignItems: 'center', borderWidth: 0.5, borderColor: C.border },
-  summaryCount: { fontSize: 22, fontWeight: '800' },
-  summaryLabel: { fontSize: 11, color: C.t2, marginTop: 2 },
-
-  // Tarjeta recurso — mismo estilo visual que CrearRecurso.js
-  card: {
-    backgroundColor: C.surface, borderRadius: 12, padding: 14, marginBottom: 10,
-    borderWidth: 0.5, borderColor: C.border,
+  // Wrapper con altura explícita: evita que el ScrollView horizontal
+  // colapse a 0 y se solape con lo de abajo (el bug de la captura).
+  chipsWrap: { height: 48 },
+  chipsRow: { paddingHorizontal: 16, alignItems: 'center', gap: 8 },
+  chip: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20,
+    borderWidth: 0.5, borderColor: C.border, backgroundColor: C.surface,
   },
-  cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
+  chipActive: { backgroundColor: C.primary, borderColor: C.primary },
+  chipText: { fontSize: 13, color: C.t2, fontWeight: '600' },
+
+  summaryRow: { flexDirection: 'row', gap: 10, paddingHorizontal: 16, marginBottom: 14, marginTop: 4 },
+  summaryCard: {
+    flex: 1, backgroundColor: C.surface, borderRadius: 12, padding: 12, alignItems: 'center',
+    borderWidth: 0.5, borderColor: C.border,
+    shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 4, shadowOffset: { width: 0, height: 2 },
+    elevation: 1,
+  },
+  summaryIconWrap: { width: 30, height: 30, borderRadius: 8, justifyContent: 'center', alignItems: 'center', marginBottom: 6 },
+  summaryCount: { fontSize: 20, fontWeight: '800' },
+  summaryLabel: { fontSize: 11, color: C.t2, marginTop: 2, textAlign: 'center' },
+
+  // Tarjeta recurso — layout con icono a la izquierda
+  card: {
+    flexDirection: 'row', gap: 12, backgroundColor: C.surface, borderRadius: 14, padding: 14, marginBottom: 10,
+    borderWidth: 0.5, borderColor: C.border,
+    shadowColor: '#000', shadowOpacity: 0.03, shadowRadius: 6, shadowOffset: { width: 0, height: 2 },
+    elevation: 1,
+  },
+  cardIcon: { width: 40, height: 40, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
+  cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  editBtn: { padding: 6, borderRadius: 8, backgroundColor: C.primaryLight, marginLeft: 8 },
+  cardName: { fontSize: 15, fontWeight: '700', color: C.t1, flex: 1 },
+  cardDesc: { fontSize: 13, color: C.t2, marginTop: 3, marginBottom: 8, lineHeight: 18 },
+  cardFooter: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 },
   tipoBadge: { paddingHorizontal: 10, paddingVertical: 3, borderRadius: 20 },
   tipoBadgeText: { fontSize: 12, fontWeight: '600' },
-  editBtn: { padding: 7, borderRadius: 8, backgroundColor: C.primaryLight },
-  cardName: { fontSize: 15, fontWeight: '700', color: C.t1, marginBottom: 4 },
-  cardDesc: { fontSize: 13, color: C.t2, marginBottom: 8 },
-  estadoBadge: { alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
-  estadoBadgeText: { fontSize: 12, fontWeight: '600' },
+  estadoRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  dot: { width: 6, height: 6, borderRadius: 3 },
+  estadoText: { fontSize: 12, fontWeight: '600' },
 
-  centerBox: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 8, padding: 32 },
+  centerBox: { alignItems: 'center', justifyContent: 'center', gap: 8, padding: 48 },
   loadText: { fontSize: 13, color: C.t2 },
   emptyTitle: { fontSize: 16, fontWeight: '700', color: C.t1 },
   emptyText:  { fontSize: 13, color: C.t2, textAlign: 'center' },
