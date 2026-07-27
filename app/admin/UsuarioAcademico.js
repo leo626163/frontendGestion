@@ -115,6 +115,8 @@ const UsuarioAcademico = () => {
 
     try {
       localToken = await getTokenAsync();
+       console.log('🔑 Token:', localToken ? 'Existe' : 'NO ENCONTRADO');
+      console.log('🌐 URL a la que se llama:', `${API_BASE_URL}/users`);
 
       if (!localToken) {
         Alert.alert(
@@ -131,6 +133,7 @@ const UsuarioAcademico = () => {
         headers: { 'Authorization': `Bearer ${localToken}` }
       });
 
+      console.log('📦 Datos recibidos de la API:', response.data);
       const usersData = Array.isArray(response.data) ? response.data : (response.data.data || []);
       const processedUsers = usersData.map(user => ({
         ...user,
@@ -141,7 +144,11 @@ const UsuarioAcademico = () => {
       setFilteredUsers(processedUsers);
 
     } catch (error) {
-      console.error("UsuariosA: Error fetching users from API:", error);
+       console.error("❌ Error completo:", error);
+        console.error("❌ Respuesta del error:", error.response);
+        console.error("❌ Estado del error:", error.response?.status);
+        console.error("❌ Datos del error:", error.response?.data);
+    
       let errorMessage = 'No se pudieron cargar los usuarios.';
       if (error.response?.status === 401) {
         errorMessage = 'No autorizado. Tu sesión podría haber expirado.';
