@@ -960,8 +960,16 @@ useEffect(() => {
     description: 'Gestión de eventos ya aprobados',
     badgeColor: COLORS.black
   },
-  
- 
+  {
+    id: '5',
+    title: 'Eventos Completados',
+    iconName: 'checkmark-done-circle-outline', // o 'trophy-outline'
+    route: '/admin/EventosCompletados',
+    color: COLORS.info, // Azul
+    description: 'Gestión de eventos finalizados',
+    badge: 'Nuevo',
+    badgeColor: COLORS.accent,
+  },
   {
     id: '6',
     title: 'Eventos Rechazados',
