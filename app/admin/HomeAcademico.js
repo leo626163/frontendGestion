@@ -751,6 +751,13 @@ const fetchCommitteeEvents = useCallback(async () => {
         description: 'Total pendientes'
       },
       { 
+      title: 'Eventos Completados', // <-- NUEVO
+      value: data.estadoCounts?.completado?.toString() || '0', 
+      icon: 'trophy-outline', 
+      color: COLORS.info, // Azul
+      description: 'Total completados'
+    },
+      { 
         title: 'Eventos Vencidos', 
         value: data.estadoCounts?.vencido?.toString() || '0', 
         icon: 'calendar-outline', 
@@ -1194,7 +1201,36 @@ const handleActionPress = (action) => {
         Pendientes ({currentMonthEvents.filter(e => e.estado === 'pendiente').length})
       </Text>
     </TouchableOpacity>
+      <TouchableOpacity
+  style={[
+    styles.committeeTab,
+    committeeFilter === 'completado' && styles.committeeTabActive
+  ]}
+  onPress={() => setCommitteeFilter('completado')}
+>
+  <Text style={[
+    styles.committeeTabText,
+    committeeFilter === 'completado' && styles.committeeTabTextActive
+  ]}>
+    Completados ({currentMonthEvents.filter(e => e.estado === 'completado').length})
+  </Text>
+</TouchableOpacity>
 
+{/* Pestaña Avanzados (NUEVA) */}
+<TouchableOpacity
+  style={[
+    styles.committeeTab,
+    committeeFilter === 'avanzado' && styles.committeeTabActive
+  ]}
+  onPress={() => setCommitteeFilter('avanzado')}
+>
+  <Text style={[
+    styles.committeeTabText,
+    committeeFilter === 'avanzado' && styles.committeeTabTextActive
+  ]}>
+    Avanzados ({currentMonthEvents.filter(e => e.estado === 'avanzado').length})
+  </Text>
+</TouchableOpacity>
     <TouchableOpacity
       style={[
         styles.committeeTab,
@@ -1254,6 +1290,7 @@ const handleActionPress = (action) => {
                 backgroundColor: 
                   item.estado === 'aprobado' ? COLORS.success + '20' :
                   item.estado === 'pendiente' ? COLORS.warning + '20' :
+                  item.estado === 'completado' ? COLORS.info + '20' :
                   COLORS.accent + '20'
               }
             ]}>
@@ -1263,6 +1300,7 @@ const handleActionPress = (action) => {
                   color: 
                     item.estado === 'aprobado' ? COLORS.success :
                     item.estado === 'pendiente' ? COLORS.warning :
+                    item.estado === 'completado' ? COLORS.info :
                     COLORS.accent
                 }
               ]}>
