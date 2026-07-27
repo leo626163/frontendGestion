@@ -357,7 +357,7 @@ const CrearUsuarioA = () => {
           setCarrerasDocente([]);
           setCurrentStep(1);
           setSuccessMessage(null);
-          router.replace('/admin/Usuarios'); // Ajustado a una ruta más lógica que Login
+          router.replace('/Login'); // Ajustado a una ruta más lógica que Login
         }, 2000);
         return;
       }
