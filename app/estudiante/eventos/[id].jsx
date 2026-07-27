@@ -10,8 +10,9 @@ import {
   ActivityIndicator,
   Platform,
   Linking,
+  StatusBar,
 } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as SecureStore from 'expo-secure-store';
 import axios from 'axios';
@@ -30,19 +31,10 @@ const COLORS = {
   grayText: '#64748b',
   darkText: '#1e293b',
   border: '#E5E7EB',
+  white: '#ffffff',
 };
 
-// Configuración de API
-let determinedApiBaseUrl;
-/*if (Platform.OS === 'android') {
-  determinedApiBaseUrl = 'http://192.168.0.167:3001/api';
-} else if (Platform.OS === 'ios') {
-  determinedApiBaseUrl = 'http://192.168.0.167:3001/api';
-} else {
-  determinedApiBaseUrl = 'http://localhost:3001/api';
-}*/
-//const API_BASE_URL =  'https://evento.cidtec-uc.com';
-const API_BASE_URL =  'https://backendgestion-production-e2aa.up.railway.app';
+const API_BASE_URL = 'https://backendgestion-production-e2aa.up.railway.app';
 const TOKEN_KEY = 'studentAuthToken';
 
 const getTokenAsync = async () => {
@@ -79,6 +71,28 @@ const formatDate = (dateString) => {
   }
 };
 
+// Deriva el estado real comparando la fecha del evento contra hoy,
+// igual que en la lista de "Mis Eventos". Si ya pasó, se considera
+// Completado sin importar lo que diga el backend (salvo Cancelado).
+const resolveStatus = (rawStatus, rawDateString) => {
+  const s = (rawStatus || '').toLowerCase();
+  if (['cancelado', 'rechazado'].includes(s)) return 'cancelado';
+
+  if (rawDateString) {
+    const fechaEvento = new Date(rawDateString);
+    if (!isNaN(fechaEvento.getTime())) {
+      const hoy = new Date();
+      hoy.setHours(0, 0, 0, 0);
+      fechaEvento.setHours(0, 0, 0, 0);
+      if (fechaEvento < hoy) return 'completado';
+    }
+  }
+
+  if (['aprobado', 'publicado', 'confirmado'].includes(s)) return 'confirmado';
+  if (['programado'].includes(s)) return 'programado';
+  return s || 'pendiente';
+};
+
 const EventDetailStudentScreen = () => {
   const { id } = useLocalSearchParams();
   const router = useRouter();
@@ -107,18 +121,19 @@ const EventDetailStudentScreen = () => {
 
         // Procesar datos del evento (evitar objetos anidados)
         const eventData = eventRes.data;
+        const rawDateString = eventData.fecha_inicio || eventData.fechaevento || null;
         const processedEvent = {
           id: eventData.idevento || eventData.id,
           title: eventData.nombre || eventData.nombreevento || 'Evento sin título',
           description: eventData.descripcion || 'Sin descripción',
-          date: formatDate(eventData.fecha_inicio || eventData.fechaevento),
+          date: formatDate(rawDateString),
           time: eventData.hora_inicio || eventData.horaevento || 'Hora no especificada',
           location: eventData.ubicacion || eventData.lugarevento || 'Ubicación no especificada',
           organizer: eventData.organizador || eventData.responsable || 'Organizador no especificado',
           capacity: eventData.capacidad_maxima || eventData.capacidad || null,
           attendees: eventData.inscritos || eventData.participantes || 0,
           category: eventData.tipo_evento || eventData.categoria || 'Evento',
-          status: eventData.estado || 'pendiente',
+          status: resolveStatus(eventData.estado, rawDateString),
           modalidad: eventData.modalidad || 'presencial',
           // ✅ Evitar renderizar objetos directamente
           objetivos: Array.isArray(eventData.objetivos) 
@@ -246,140 +261,177 @@ const EventDetailStudentScreen = () => {
     }
   };
 
+  const Header = () => (
+    <View style={styles.header}>
+      <StatusBar barStyle="light-content" backgroundColor={COLORS.primary} />
+      <View style={styles.headerTopRow}>
+        <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
+          <Ionicons name="arrow-back" size={20} color={COLORS.white} />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Detalle del Evento</Text>
+        <View style={styles.backBtn} />
+      </View>
+    </View>
+  );
+
   if (loading) {
     return (
-      <View style={styles.centered}>
-        <ActivityIndicator size="large" color={COLORS.primary} />
-        <Text style={styles.loadingText}>Cargando evento...</Text>
+      <View style={styles.container}>
+        <Stack.Screen options={{ headerShown: false }} />
+        <Header />
+        <View style={styles.centered}>
+          <ActivityIndicator size="large" color={COLORS.primary} />
+          <Text style={styles.loadingText}>Cargando evento...</Text>
+        </View>
       </View>
     );
   }
 
   if (error) {
     return (
-      <View style={styles.centered}>
-        <Ionicons name="alert-circle-outline" size={50} color={COLORS.accent} />
-        <Text style={styles.errorText}>{error}</Text>
-        <TouchableOpacity style={styles.button} onPress={() => router.back()}>
-          <Text style={styles.buttonText}>Volver</Text>
-        </TouchableOpacity>
+      <View style={styles.container}>
+        <Stack.Screen options={{ headerShown: false }} />
+        <Header />
+        <View style={styles.centered}>
+          <Ionicons name="alert-circle-outline" size={50} color={COLORS.accent} />
+          <Text style={styles.errorText}>{error}</Text>
+          <TouchableOpacity style={styles.button} onPress={() => router.back()}>
+            <Text style={styles.buttonText}>Volver</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     );
   }
 
   if (!event) {
     return (
-      <View style={styles.centered}>
-        <Text style={styles.errorText}>Evento no encontrado</Text>
-        <TouchableOpacity style={styles.button} onPress={() => router.back()}>
-          <Text style={styles.buttonText}>Volver</Text>
-        </TouchableOpacity>
+      <View style={styles.container}>
+        <Stack.Screen options={{ headerShown: false }} />
+        <Header />
+        <View style={styles.centered}>
+          <Text style={styles.errorText}>Evento no encontrado</Text>
+          <TouchableOpacity style={styles.button} onPress={() => router.back()}>
+            <Text style={styles.buttonText}>Volver</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     );
   }
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <View style={styles.card}>
-        {/* Categoría */}
-        <View style={[styles.badge, { backgroundColor: getCategoryColor(event.category) + '15' }]}>
-          <Text style={[styles.badgeText, { color: getCategoryColor(event.category) }]}>
-            {event.category}
-          </Text>
-        </View>
+    <View style={styles.container}>
+      <Stack.Screen options={{ headerShown: false }} />
+      <Header />
+      <ScrollView contentContainerStyle={styles.content}>
+        <View style={styles.card}>
+          {/* Categoría */}
+          <View style={[styles.badge, { backgroundColor: getCategoryColor(event.category) + '15' }]}>
+            <Text style={[styles.badgeText, { color: getCategoryColor(event.category) }]}>
+              {event.category}
+            </Text>
+          </View>
 
-        {/* Título */}
-        <Text style={styles.title}>{event.title}</Text>
+          {/* Título */}
+          <Text style={styles.title}>{event.title}</Text>
 
-        {/* Descripción */}
-        <Text style={styles.description}>{event.description}</Text>
+          {/* Descripción */}
+          <Text style={styles.description}>{event.description}</Text>
 
-        {/* Detalles */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Detalles del Evento</Text>
-          
-          <DetailItem icon="calendar-outline" label="Fecha" value={event.date} />
-          <DetailItem icon="time-outline" label="Hora" value={event.time} />
-          <DetailItem 
-            icon={event.modalidad === 'virtual' ? 'videocam-outline' : 'location-outline'} 
-            label={event.modalidad === 'virtual' ? 'Modalidad' : 'Ubicación'} 
-            value={event.modalidad === 'virtual' ? 'Virtual' : event.location}
-            onPress={event.modalidad !== 'virtual' ? openMap : undefined}
-          />
-          <DetailItem icon="person-outline" label="Organizador" value={event.organizer} />
-          
-          {event.capacity && (
+          {/* Detalles */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Detalles del Evento</Text>
+            
+            <DetailItem icon="calendar-outline" label="Fecha" value={event.date} />
+            <DetailItem icon="time-outline" label="Hora" value={event.time} />
             <DetailItem 
-              icon="people-outline" 
-              label="Asistentes" 
-              value={`${event.attendees} / ${event.capacity}`}
+              icon={event.modalidad === 'virtual' ? 'videocam-outline' : 'location-outline'} 
+              label={event.modalidad === 'virtual' ? 'Modalidad' : 'Ubicación'} 
+              value={event.modalidad === 'virtual' ? 'Virtual' : event.location}
+              onPress={event.modalidad !== 'virtual' ? openMap : undefined}
             />
-          )}
-        </View>
-
-        {/* Objetivos */}
-        {event.objetivos.length > 0 && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Objetivos</Text>
-            {event.objetivos.map((obj, i) => (
-              <Text key={i} style={styles.listItem}>
-                • {typeof obj === 'string' ? obj : (obj.texto || obj.texto_personalizado || 'Objetivo sin descripción')}
-              </Text>
-            ))}
+            <DetailItem icon="person-outline" label="Organizador" value={event.organizer} />
+            
+            {event.capacity && (
+              <DetailItem 
+                icon="people-outline" 
+                label="Asistentes" 
+                value={`${event.attendees} / ${event.capacity}`}
+              />
+            )}
           </View>
-        )}
 
-        {/* Resultados */}
-        {event.resultados.length > 0 && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Resultados Esperados</Text>
-            {event.resultados.map((res, i) => (
-              <Text key={i} style={styles.listItem}>
-                • {typeof res === 'string' ? res : (res.descripcion || res.texto || 'Resultado sin descripción')}
-              </Text>
-            ))}
-          </View>
-        )}
-
-        {/* Estado */}
-        <View style={[styles.statusBadge, { backgroundColor: getStatusColor(event.status) + '15' }]}>
-          <Ionicons name={getStatusIcon(event.status)} size={16} color={getStatusColor(event.status)} />
-          <Text style={[styles.statusText, { color: getStatusColor(event.status) }]}>
-            {getStatusText(event.status)}
-          </Text>
-        </View>
-
-        {/* Botones de acción */}
-        <View style={styles.actions}>
-          {checkingEnrollment ? (
-            <ActivityIndicator color={COLORS.primary} />
-          ) : isEnrolled ? (
-            <TouchableOpacity style={[styles.button, styles.cancelButton]} onPress={handleCancel}>
-              <Ionicons name="close-circle-outline" size={20} color={COLORS.white} />
-              <Text style={styles.buttonText}>Cancelar Inscripción</Text>
-            </TouchableOpacity>
-          ) : (
-            <TouchableOpacity 
-              style={[styles.button, styles.enrollButton]} 
-              onPress={handleEnroll}
-              disabled={event.capacity && event.attendees >= event.capacity}
-            >
-              <Ionicons name="checkmark-circle-outline" size={20} color={COLORS.white} />
-              <Text style={styles.buttonText}>
-                {event.capacity && event.attendees >= event.capacity 
-                  ? 'Evento Lleno' 
-                  : 'Inscribirme al Evento'}
-              </Text>
-            </TouchableOpacity>
+          {/* Objetivos */}
+          {event.objetivos.length > 0 && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Objetivos</Text>
+              {event.objetivos.map((obj, i) => (
+                <Text key={i} style={styles.listItem}>
+                  • {typeof obj === 'string' ? obj : (obj.texto || obj.texto_personalizado || 'Objetivo sin descripción')}
+                </Text>
+              ))}
+            </View>
           )}
-          
-          <TouchableOpacity style={[styles.button, styles.backButton]} onPress={() => router.back()}>
-            <Ionicons name="arrow-back" size={20} color={COLORS.primary} />
-            <Text style={[styles.buttonText, { color: COLORS.primary }]}>Volver</Text>
-          </TouchableOpacity>
+
+          {/* Resultados */}
+          {event.resultados.length > 0 && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Resultados Esperados</Text>
+              {event.resultados.map((res, i) => (
+                <Text key={i} style={styles.listItem}>
+                  • {typeof res === 'string' ? res : (res.descripcion || res.texto || 'Resultado sin descripción')}
+                </Text>
+              ))}
+            </View>
+          )}
+
+          {/* Estado */}
+          <View style={[styles.statusBadge, { backgroundColor: getStatusColor(event.status) + '15' }]}>
+            <Ionicons name={getStatusIcon(event.status)} size={16} color={getStatusColor(event.status)} />
+            <Text style={[styles.statusText, { color: getStatusColor(event.status) }]}>
+              {getStatusText(event.status)}
+            </Text>
+          </View>
+
+          {/* Botones de acción */}
+          <View style={styles.actions}>
+            {checkingEnrollment ? (
+              <ActivityIndicator color={COLORS.primary} />
+            ) : event.status === 'completado' || event.status === 'cancelado' ? (
+              // Evento ya pasado o cancelado: no tiene sentido ofrecer inscribirse/cancelar
+              <View style={[styles.button, styles.disabledButton]}>
+                <Ionicons name="information-circle-outline" size={20} color={COLORS.grayText} />
+                <Text style={[styles.buttonText, { color: COLORS.grayText }]}>
+                  {event.status === 'cancelado' ? 'Evento cancelado' : 'Este evento ya finalizó'}
+                </Text>
+              </View>
+            ) : isEnrolled ? (
+              <TouchableOpacity style={[styles.button, styles.cancelButton]} onPress={handleCancel}>
+                <Ionicons name="close-circle-outline" size={20} color={COLORS.white} />
+                <Text style={styles.buttonText}>Cancelar Inscripción</Text>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity 
+                style={[styles.button, styles.enrollButton]} 
+                onPress={handleEnroll}
+                disabled={event.capacity && event.attendees >= event.capacity}
+              >
+                <Ionicons name="checkmark-circle-outline" size={20} color={COLORS.white} />
+                <Text style={styles.buttonText}>
+                  {event.capacity && event.attendees >= event.capacity 
+                    ? 'Evento Lleno' 
+                    : 'Inscribirme al Evento'}
+                </Text>
+              </TouchableOpacity>
+            )}
+            
+            <TouchableOpacity style={[styles.button, styles.backButton]} onPress={() => router.back()}>
+              <Ionicons name="arrow-back" size={20} color={COLORS.primary} />
+              <Text style={[styles.buttonText, { color: COLORS.primary }]}>Volver</Text>
+            </TouchableOpacity>
+          </View>
         </View>
-      </View>
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 };
 
@@ -406,31 +458,58 @@ const getCategoryColor = (cat) => {
   return colors[cat?.toLowerCase()] || '#6B7280';
 };
 
+// Estos tres helpers ahora reciben el status YA resuelto por resolveStatus()
+// ('confirmado' | 'programado' | 'completado' | 'cancelado' | 'pendiente')
 const getStatusText = (status) => {
-  const map = { aprobado: 'Confirmado', publicado: 'Confirmado', programado: 'Próximo' };
-  return map[status?.toLowerCase()] || 'Pendiente';
+  const map = {
+    confirmado: 'Confirmado',
+    programado: 'Próximo',
+    completado: 'Completado',
+    cancelado: 'Cancelado',
+    pendiente: 'Pendiente',
+  };
+  return map[status] || 'Pendiente';
 };
 
 const getStatusColor = (status) => {
-  const s = status?.toLowerCase();
-  if (['aprobado', 'publicado', 'confirmado'].includes(s)) return COLORS.success;
-  if (['programado'].includes(s)) return COLORS.info;
-  return COLORS.secondary;
+  if (status === 'confirmado') return COLORS.success;
+  if (status === 'programado') return COLORS.info;
+  if (status === 'completado') return COLORS.secondary;
+  if (status === 'cancelado') return COLORS.accent;
+  return COLORS.warning;
 };
 
 const getStatusIcon = (status) => {
-  const s = status?.toLowerCase();
-  if (['aprobado', 'publicado', 'confirmado'].includes(s)) return 'checkmark-circle-outline';
-  if (['programado'].includes(s)) return 'time-outline';
+  if (status === 'confirmado') return 'checkmark-circle-outline';
+  if (status === 'programado') return 'time-outline';
+  if (status === 'completado') return 'checkmark-done-circle-outline';
+  if (status === 'cancelado') return 'close-circle-outline';
   return 'help-circle-outline';
 };
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
-  content: { padding: 16, paddingBottom: 40 },
+  content: { padding: 16, paddingTop: 20, paddingBottom: 40 },
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
   loadingText: { marginTop: 15, fontSize: 16, color: COLORS.grayText },
   errorText: { marginTop: 15, fontSize: 16, color: COLORS.accent, textAlign: 'center' },
+
+  header: {
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: 16,
+    paddingTop: (StatusBar.currentHeight || 44) + 10,
+    paddingBottom: 16,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+  },
+  headerTopRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  backBtn: {
+    width: 36, height: 36, borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center', alignItems: 'center',
+  },
+  headerTitle: { fontSize: 17, fontWeight: '700', color: COLORS.white },
+
   card: { 
     backgroundColor: COLORS.surface, 
     borderRadius: 16, 
@@ -512,6 +591,7 @@ const styles = StyleSheet.create({
   },
   enrollButton: { backgroundColor: COLORS.success },
   cancelButton: { backgroundColor: COLORS.accent },
+  disabledButton: { backgroundColor: COLORS.grayLight },
   backButton: { 
     backgroundColor: COLORS.surface, 
     borderWidth: 1, 
