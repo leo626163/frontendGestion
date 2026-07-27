@@ -75,18 +75,32 @@ const mapInscripcion = (item) => {
 
   const id = e.idevento || e.id || item.idevento || item.evento_id;
   const estado = (e.estado || 'aprobado').toLowerCase();
-  const status = STATUS_MAP[estado] || 'Confirmado';
+  let status = STATUS_MAP[estado] || 'Confirmado';
 
   const rawDate = e.fecha_inicio || e.fechaevento || e.date || null;
   let date = 'Fecha por definir';
+  let eventDate = null;
   if (rawDate) {
     try {
-      date = new Date(rawDate).toLocaleDateString('es-ES', {
+      eventDate = new Date(rawDate);
+      date = eventDate.toLocaleDateString('es-ES', {
         weekday: 'short', day: 'numeric', month: 'short',
       });
       date = date.charAt(0).toUpperCase() + date.slice(1);
     } catch {
       date = rawDate;
+    }
+  }
+
+  // Si el evento ya pasó, se muestra como Completado sin importar
+  // lo que diga el campo "estado" del backend (salvo que esté Cancelado).
+  if (eventDate && !isNaN(eventDate.getTime()) && status !== 'Cancelado') {
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+    const fechaEvento = new Date(eventDate);
+    fechaEvento.setHours(0, 0, 0, 0);
+    if (fechaEvento < hoy) {
+      status = 'Completado';
     }
   }
 
@@ -193,7 +207,8 @@ const MisEventosScreen = () => {
     fetchMisInscripciones();
   };
 
-  const proximos = items.filter(i => i.status === 'Próximo' || i.status === 'Confirmado').length;
+  const proximos = items.filter(i => i.status === 'Próximo' || i.status === 'Confirmado' || i.status === 'En curso').length;
+  const completados = items.filter(i => i.status === 'Completado').length;
 
   return (
     <View style={styles.container}>
@@ -221,6 +236,11 @@ const MisEventosScreen = () => {
             <View style={styles.headerStatItem}>
               <Text style={styles.headerStatValue}>{proximos}</Text>
               <Text style={styles.headerStatLabel}>Próximos</Text>
+            </View>
+            <View style={styles.headerStatDivider} />
+            <View style={styles.headerStatItem}>
+              <Text style={styles.headerStatValue}>{completados}</Text>
+              <Text style={styles.headerStatLabel}>Completados</Text>
             </View>
           </View>
         )}
