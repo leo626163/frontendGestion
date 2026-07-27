@@ -531,10 +531,29 @@ inscribirBtnText: { color: COLORS.white, fontSize: 11, fontWeight: '600' },
     backgroundColor: COLORS.primaryLight, justifyContent: 'center', alignItems: 'center',
   },
   detailText: { fontSize: 13, color: COLORS.textSecondary, flex: 1 },
-  eventFooter: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  statusRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  statusDot: { width: 8, height: 8, borderRadius: 4 },
-  statusText: { fontSize: 12, fontWeight: '600' },
+    eventFooter: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'space-between',
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.divider,
+  },
+  statusRow: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    gap: 6 
+  },
+  statusDot: { 
+    width: 8, 
+    height: 8, 
+    borderRadius: 4 
+  },
+  statusText: { 
+    fontSize: 12, 
+    fontWeight: '600' 
+  },
   modalidadBadge: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
     paddingHorizontal: 8, paddingVertical: 4,
