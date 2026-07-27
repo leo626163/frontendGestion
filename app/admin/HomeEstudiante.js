@@ -107,7 +107,9 @@ const mapEvento = (e) => {
   };
 };
 
-const EventCard = ({ event, onPress,onInscribir, yaInscrito }) => (
+const EventCard = ({ event, onPress,onInscribir, yaInscrito }) => {
+  if (!event) return null;
+  return (
   <TouchableOpacity style={styles.eventCard} onPress={onPress} activeOpacity={0.85}>
     {/* Header row */}
     <View style={styles.eventHeader}>
@@ -163,7 +165,7 @@ const EventCard = ({ event, onPress,onInscribir, yaInscrito }) => (
     </View>
   </TouchableOpacity>
 );
-
+}
 const ActionCard = ({ title, description, icon, color, onPress }) => (
   <TouchableOpacity style={[styles.actionCard, { borderColor: color + '20' }]} onPress={onPress} activeOpacity={0.85}>
     <View style={[styles.actionIcon, { backgroundColor: color + '12' }]}>
