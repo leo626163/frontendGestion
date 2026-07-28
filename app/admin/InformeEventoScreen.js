@@ -205,11 +205,19 @@ const InformeEventoScreen = () => {
   const totalIngresosEsperado = event?.presupuesto?.total_ingresos || 0;
   const balanceEsperado = event?.presupuesto?.balance || 0;
 
-  const handleGuardar = async (estadoFinal) => {
+    const handleGuardar = async (estadoFinal) => {
+    console.log('🔵 [handleGuardar] 1. Iniciando guardado. Estado:', estadoFinal);
+    console.log('🔵 [handleGuardar] 2. Event ID recibido:', eventId);
+    
     setSaving(true);
     try {
       const token = await getTokenAsync();
-      if (!token) throw new Error('Token inválido');
+      console.log('🔵 [handleGuardar] 3. Token obtenido:', token ? 'SÍ' : 'NO');
+      
+      if (!token) {
+        console.warn('⚠️ [handleGuardar] No hay token, lanzando error');
+        throw new Error('Token inválido');
+      }
 
       const payload = {
         segmento_alcanzado_estudiantes: Number(segAlcanzado.estudiantes) || 0,
@@ -235,14 +243,28 @@ const InformeEventoScreen = () => {
         estado: estadoFinal,
       };
 
-      await axios.post(`${API_BASE_URL}/eventos/${eventId}/informe`, payload, {
+      const url = `${API_BASE_URL}/eventos/${eventId}/informe`;
+      console.log('🔵 [handleGuardar] 4. Enviando petición POST a:', url);
+      console.log('🔵 [handleGuardar] 5. Payload a enviar:', payload);
+
+      const response = await axios.post(url, payload, {
         headers: { Authorization: `Bearer ${token}` },
       });
-
+      
+      console.log('🟢 [handleGuardar] 6. Respuesta exitosa del servidor:', response.data);
       Alert.alert('Éxito', estadoFinal === 'finalizado' ? 'Informe finalizado correctamente' : 'Borrador guardado correctamente');
+      
+      // Opcional: recargar los datos después de guardar
+      // await fetchAllData(); 
+      
     } catch (err) {
-      Alert.alert('Error', 'No se pudo guardar el informe: ' + (err.response?.data?.message || err.message));
+      console.error('🔴 [handleGuardar] 7. ERROR CAPTURADO:', err);
+      console.error('🔴 [handleGuardar] Detalle del error:', err.response?.data || err.message);
+      
+      const errorMsg = err.response?.data?.message || err.message || 'Error desconocido';
+      Alert.alert('Error', 'No se pudo guardar el informe: ' + errorMsg);
     } finally {
+      console.log('🔵 [handleGuardar] 8. Finalizando proceso, ocultando loader');
       setSaving(false);
     }
   };
