@@ -1063,6 +1063,17 @@ const EventDetailScreen = () => {
               <Text style={styles.nextStepButtonText}>Imprimir Evento</Text>
             </TouchableOpacity>
           )}
+          {(event.idfase >= 4 || event.status === 'aprobado') && (
+            <TouchableOpacity
+              style={[styles.nextStepButton, { backgroundColor: COLORS.secondary }]} // Color diferente para distinguirlo
+              onPress={() => router.push(`/admin/InformeEvento?eventId=${event.id}`)}
+            >
+              <Ionicons name="document-text-outline" size={20} color={COLORS.white} />
+              <Text style={styles.nextStepButtonText}>
+                {event.idfase >= 5 ? 'Completar Informe de Cierre' : 'Ver Informe del Evento'}
+              </Text>
+            </TouchableOpacity>
+          )}
 
           {/* IR A PROGRAMACIÓN (académicos, evento aprobado en fase 1) */}
           {user?.role !== 'admin' && event.status === 'aprobado' && event.idfase === 1 && (
