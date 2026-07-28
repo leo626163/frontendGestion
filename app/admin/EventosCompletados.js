@@ -101,8 +101,26 @@ const isEventPast = (dateStr) => {
   return eventDate < today;
 };
 
+// ✅ FUNCIÓN DINÁMICA DEL BADGE
+const getMonthBadge = (dateStr) => {
+  const eventDate = parseEventDate(dateStr);
+  const now = new Date();
+  const currentMonth = now.getMonth();
+  const currentYear = now.getFullYear();
+  const eventMonth = eventDate.getMonth();
+  const eventYear = eventDate.getFullYear();
+  
+  if (eventMonth === currentMonth && eventYear === currentYear) {
+    return { text: 'Del mes actual', color: COLORS.success };
+  } else if (eventMonth === (currentMonth + 1) % 12 && eventYear === currentYear) {
+    return { text: 'Del mes próximo', color: COLORS.blue };
+  } else {
+    const monthNames = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+    return { text: monthNames[eventMonth], color: COLORS.primary };
+  }
+};
+
 const groupEventsByStatusAndFaculty = (events) => {
-  // FILTRAR SOLO EVENTOS DE FASE 2
   const eventosFase2 = events.filter(e => e.idfase === 2 || String(e.idfase) === '2');
   
   const activos = eventosFase2.filter(e => !isEventPast(e.date));
@@ -121,7 +139,7 @@ const groupEventsByStatusAndFaculty = (events) => {
     sections.push({
       title: '📅 Eventos Activos (Fase 2)',
       type: 'activos',
-      isPastSection: false, // Mantiene estilo claro
+      isPastSection: false,
       data: Object.keys(groupedActivos).sort().flatMap(faculty => 
         groupedActivos[faculty].map(event => ({ ...event, _facultyGroup: faculty }))
       ),
@@ -144,7 +162,7 @@ const groupEventsByStatusAndFaculty = (events) => {
     sections.push({
       title: '🏆 Eventos Completados (Fase 2)',
       type: 'pasados',
-      isPastSection: false, // CLAVE: Mantiene el estilo claro (sin oscurecer)
+      isPastSection: false,
       data: Object.keys(groupedPasados).sort().flatMap(faculty => 
         groupedPasados[faculty].map(event => ({ ...event, _facultyGroup: faculty }))
       ),
@@ -226,37 +244,6 @@ const EventosCompletados = () => {
       params: { eventId: event.id }
     });
   };
-// Agrega esta función antes de renderEventItem
-const getMonthBadge = (dateStr) => {
-  const eventDate = parseEventDate(dateStr);
-  const now = new Date();
-  const currentMonth = now.getMonth();
-  const currentYear = now.getFullYear();
-  const eventMonth = eventDate.getMonth();
-  const eventYear = eventDate.getFullYear();
-  
-  if (eventMonth === currentMonth && eventYear === currentYear) {
-    return { text: 'Del mes actual', color: COLORS.success };
-  } else if (eventMonth === (currentMonth + 1) % 12 && eventYear === currentYear) {
-    return { text: 'Del mes próximo', color: COLORS.blue };
-  } else {
-    const monthNames = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
-    return { text: monthNames[eventMonth], color: COLORS.primary };
-  }
-};
-
-// Luego en renderEventItem, reemplaza el badge estático por:
-<View style={styles.badgeContainer}>
-  {(() => {
-    const badge = getMonthBadge(item.date);
-    return (
-      <View style={[styles.monthBadge, { backgroundColor: badge.color }]}>
-        <Ionicons name="calendar" size={12} color={COLORS.white} />
-        <Text style={styles.monthBadgeText}>{badge.text}</Text>
-      </View>
-    );
-  })()}
-</View>
 
   const renderEventItem = ({ item }) => {
     if (!item || typeof item !== 'object' || typeof item.id === 'undefined') {
@@ -264,6 +251,8 @@ const getMonthBadge = (dateStr) => {
     }
 
     const facultyColor = getFacultyColor(item._facultyGroup || item.faculty || 'Sin facultad');
+    // ✅ Badge dinámico usando la función
+    const badge = getMonthBadge(item.date);
     
     return (
       <TouchableOpacity
@@ -290,10 +279,11 @@ const getMonthBadge = (dateStr) => {
               </View>
             </View>
             
+            {/* ✅ Badge dinámico integrado correctamente */}
             <View style={styles.badgeContainer}>
-              <View style={[styles.monthBadge, { backgroundColor: COLORS.blue }]}>
+              <View style={[styles.monthBadge, { backgroundColor: badge.color }]}>
                 <Ionicons name="calendar" size={12} color={COLORS.white} />
-                <Text style={styles.monthBadgeText}>Del mes próximo</Text>
+                <Text style={styles.monthBadgeText}>{badge.text}</Text>
               </View>
             </View>
           </View>
@@ -389,7 +379,6 @@ const getMonthBadge = (dateStr) => {
     );
   }
 
-  // ✅ CORREGIDO: Eliminadas las declaraciones duplicadas
   const eventosFase2 = events.filter(e => e.idfase === 2 || String(e.idfase) === '2');
   const sections = groupEventsByStatusAndFaculty(events);
   const finalizedCount = eventosFase2.filter(e => isEventPast(e.date)).length;
@@ -510,8 +499,6 @@ const styles = StyleSheet.create({
     color: COLORS.grayText,
     fontWeight: '500',
   },
-  
-  // Header
   header: {
     backgroundColor: COLORS.primary,
     flexDirection: 'row',
@@ -556,8 +543,6 @@ const styles = StyleSheet.create({
   rotating: {
     transform: [{ rotate: '180deg' }],
   },
-
-  // Stats Superiores
   topStatsContainer: {
     flexDirection: 'row',
     paddingHorizontal: 16,
@@ -595,8 +580,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     opacity: 0.9,
   },
-
-  // Stats Inferiores
   bottomStatsContainer: {
     flexDirection: 'row',
     paddingHorizontal: 16,
@@ -637,8 +620,6 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     opacity: 0.9,
   },
-
-  // Section Header
   sectionHeader: {
     backgroundColor: COLORS.background,
     paddingVertical: 12,
@@ -686,8 +667,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: COLORS.primary,
   },
-
-  // Event Card
   listContent: {
     paddingBottom: 20,
     paddingHorizontal: 16,
@@ -761,8 +740,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: COLORS.white,
   },
-  
-  // Info
   infoGrid: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -781,8 +758,6 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     flex: 1,
   },
-  
-  // Phase
   phaseContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -819,8 +794,6 @@ const styles = StyleSheet.create({
     color: COLORS.grayMedium,
     marginTop: 2,
   },
-  
-  // Footer Button
   viewDetailsButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -836,8 +809,6 @@ const styles = StyleSheet.create({
     color: COLORS.primary,
     marginRight: 4,
   },
-
-  // Empty State
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
