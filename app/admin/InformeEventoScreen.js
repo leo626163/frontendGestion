@@ -206,18 +206,11 @@ const InformeEventoScreen = () => {
   const balanceEsperado = event?.presupuesto?.balance || 0;
 
     const handleGuardar = async (estadoFinal) => {
-    console.log('🔵 [handleGuardar] 1. Iniciando guardado. Estado:', estadoFinal);
-    console.log('🔵 [handleGuardar] 2. Event ID recibido:', eventId);
-    
+    console.log('🔵 [handleGuardar] Iniciando guardado. Estado:', estadoFinal);
     setSaving(true);
     try {
       const token = await getTokenAsync();
-      console.log('🔵 [handleGuardar] 3. Token obtenido:', token ? 'SÍ' : 'NO');
-      
-      if (!token) {
-        console.warn('⚠️ [handleGuardar] No hay token, lanzando error');
-        throw new Error('Token inválido');
-      }
+      if (!token) throw new Error('Token inválido');
 
       const payload = {
         segmento_alcanzado_estudiantes: Number(segAlcanzado.estudiantes) || 0,
@@ -244,27 +237,29 @@ const InformeEventoScreen = () => {
       };
 
       const url = `${API_BASE_URL}/eventos/${eventId}/informe`;
-      console.log('🔵 [handleGuardar] 4. Enviando petición POST a:', url);
-      console.log('🔵 [handleGuardar] 5. Payload a enviar:', payload);
+      console.log('🔵 [handleGuardar] Enviando petición a:', url);
 
       const response = await axios.post(url, payload, {
         headers: { Authorization: `Bearer ${token}` },
       });
       
-      console.log('🟢 [handleGuardar] 6. Respuesta exitosa del servidor:', response.data);
-      Alert.alert('Éxito', estadoFinal === 'finalizado' ? 'Informe finalizado correctamente' : 'Borrador guardado correctamente');
+      console.log('🟢 [handleGuardar] ÉXITO DEL SERVIDOR:', response.data);
       
-      // Opcional: recargar los datos después de guardar
-      // await fetchAllData(); 
+      // 🔄 RECARGAMOS LOS DATOS PARA CONFIRMAR VISUALMENTE EL GUARDADO
+      console.log('🔄 [handleGuardar] Recargando datos desde el servidor...');
+      await fetchAllData();
+      
+      console.log('⚠️ [handleGuardar] Mostrando Alerta de éxito...');
+      Alert.alert(
+        '✅ Éxito', 
+        estadoFinal === 'finalizado' ? 'El informe ha sido finalizado y guardado correctamente.' : 'El borrador se ha guardado correctamente.',
+        [{ text: 'Aceptar', style: 'default' }]
+      );
       
     } catch (err) {
-      console.error('🔴 [handleGuardar] 7. ERROR CAPTURADO:', err);
-      console.error('🔴 [handleGuardar] Detalle del error:', err.response?.data || err.message);
-      
-      const errorMsg = err.response?.data?.message || err.message || 'Error desconocido';
-      Alert.alert('Error', 'No se pudo guardar el informe: ' + errorMsg);
+      console.error('🔴 [handleGuardar] ERROR:', err.response?.data || err.message);
+      Alert.alert('Error', 'No se pudo guardar el informe: ' + (err.response?.data?.message || err.message));
     } finally {
-      console.log('🔵 [handleGuardar] 8. Finalizando proceso, ocultando loader');
       setSaving(false);
     }
   };
@@ -628,44 +623,7 @@ const InformeEventoScreen = () => {
           </View>
         )}
 
-        {/* Segmento Alcanzado */}
-        <View style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>1. Segmento Objetivo Alcanzado</Text>
-          {['estudiantes', 'docentes', 'publico_externo', 'influencers'].map((key) => (
-            <View key={key} style={styles.detailRow}>
-              <Ionicons name="people-outline" size={20} color={COLORS.primary} style={styles.detailIcon} />
-              <Text style={[styles.detailText, { textTransform: 'capitalize' }]}>{key.replace('_', ' ')}</Text>
-              <TextInput style={[styles.numberInput, { width: 80 }]} keyboardType="numeric" editable={!readOnly} value={segAlcanzado[key]} onChangeText={(v) => setSegAlcanzado(prev => ({ ...prev, [key]: v }))} placeholder="0" />
-            </View>
-          ))}
-          <View style={styles.detailRow}>
-            <Ionicons name="person-add-outline" size={20} color={COLORS.primary} style={styles.detailIcon} />
-            <TextInput style={[styles.textInput, { flex: 2, marginBottom: 0 }]} editable={!readOnly} value={segAlcanzado.otro_cual} onChangeText={(v) => setSegAlcanzado(prev => ({ ...prev, otro_cual: v }))} placeholder="Otro: ¿cuál?" />
-            <TextInput style={[styles.numberInput, { width: 80 }]} keyboardType="numeric" editable={!readOnly} value={segAlcanzado.otro_cantidad} onChangeText={(v) => setSegAlcanzado(prev => ({ ...prev, otro_cantidad: v }))} placeholder="0" />
-          </View>
-        </View>
-
-        {/* Objetivos Alcanzados */}
-        <View style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>2. Objetivos Alcanzados</Text>
-          {[
-            ['modelo_pedagogico', 'Modelo Pedagógico', 'school-outline'],
-            ['posicionamiento', 'Posicionamiento', 'star-outline'],
-            ['internacionalizacion', 'Internacionalización', 'globe-outline'],
-            ['rsu', 'RSU', 'heart-outline'],
-            ['fidelizacion', 'Fidelización', 'hand-left-outline'],
-          ].map(([key, label, icon]) => (
-            <TouchableOpacity key={key} style={styles.listItem} disabled={readOnly} onPress={() => setObjAlcanzado(prev => ({ ...prev, [key]: !prev[key] }))}>
-              <Ionicons name={objAlcanzado[key] ? 'checkbox' : 'square-outline'} size={22} color={COLORS.primary} style={styles.listIcon} />
-              <Text style={styles.listText}>{label}</Text>
-            </TouchableOpacity>
-          ))}
-          <View style={styles.detailRow}>
-            <Ionicons name="ellipsis-horizontal-outline" size={20} color={COLORS.primary} style={styles.detailIcon} />
-            <TextInput style={[styles.textInput, { flex: 1, marginBottom: 0 }]} editable={!readOnly} value={objAlcanzado.otro_cual} onChangeText={(v) => setObjAlcanzado(prev => ({ ...prev, otro_cual: v }))} placeholder="Otro: ¿cuál?" />
-          </View>
-        </View>
-
+       
         {/* Participación / Satisfacción - COMPARACIÓN */}
         <View style={styles.sectionCard}>
           <Text style={styles.sectionTitle}>3. Participación e Índice de Satisfacción</Text>
