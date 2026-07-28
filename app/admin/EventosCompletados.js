@@ -1,4 +1,4 @@
-// EventosAprobadosPorFacultad.js - Versión Corregida
+// EventosCompletados.js
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   StyleSheet,
@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   StatusBar,
   ActivityIndicator,
-  RefreshControl,
   Platform,
   Alert,
   SectionList,
@@ -103,8 +102,11 @@ const isEventPast = (dateStr) => {
 };
 
 const groupEventsByStatusAndFaculty = (events) => {
-  const activos = events.filter(e => !isEventPast(e.date));
-  const pasados = events.filter(e => isEventPast(e.date));
+  // FILTRAR SOLO EVENTOS DE FASE 2
+  const eventosFase2 = events.filter(e => e.idfase === 2 || String(e.idfase) === '2');
+  
+  const activos = eventosFase2.filter(e => !isEventPast(e.date));
+  const pasados = eventosFase2.filter(e => isEventPast(e.date));
   
   const sections = [];
   
@@ -117,11 +119,19 @@ const groupEventsByStatusAndFaculty = (events) => {
     });
     
     sections.push({
-  title: ' Eventos Completados', // ✅ Cambiar ícono
-  type: 'pasados',
-  isPastSection: false,
-  })
-}
+      title: '📅 Eventos Activos (Fase 2)',
+      type: 'activos',
+      isPastSection: false, // Mantiene estilo claro
+      data: Object.keys(groupedActivos).sort().flatMap(faculty => 
+        groupedActivos[faculty].map(event => ({ ...event, _facultyGroup: faculty }))
+      ),
+      facultyGroups: Object.keys(groupedActivos).sort().map(faculty => ({
+        faculty,
+        count: groupedActivos[faculty].length,
+        events: groupedActivos[faculty]
+      }))
+    });
+  }
   
   if (pasados.length > 0) {
     const groupedPasados = {};
@@ -132,9 +142,9 @@ const groupEventsByStatusAndFaculty = (events) => {
     });
     
     sections.push({
-      title: '🕰️ Eventos Finalizados',
+      title: '🏆 Eventos Completados (Fase 2)',
       type: 'pasados',
-      isPastSection: true,
+      isPastSection: false, // CLAVE: Mantiene el estilo claro (sin oscurecer)
       data: Object.keys(groupedPasados).sort().flatMap(faculty => 
         groupedPasados[faculty].map(event => ({ ...event, _facultyGroup: faculty }))
       ),
@@ -218,126 +228,126 @@ const EventosCompletados = () => {
   };
 
   const renderEventItem = ({ item }) => {
-  if (!item || typeof item !== 'object' || typeof item.id === 'undefined') {
-    return null;
-  }
+    if (!item || typeof item !== 'object' || typeof item.id === 'undefined') {
+      return null;
+    }
 
-  const facultyColor = getFacultyColor(item._facultyGroup || item.faculty || 'Sin facultad');
-  
-  return (
-    <TouchableOpacity
-      style={styles.eventCard} 
-      onPress={() => handleEventPress(item)} 
-      activeOpacity={0.8}
-    >
-      <View style={[
-        styles.facultyBar,
-        { backgroundColor: facultyColor } 
-      ]} />
-      
-      <View style={styles.cardContent}>
-        <View style={styles.eventHeader}>
-          <View style={styles.titleRow}>
-            <Text 
-              style={styles.eventTitle} // ✅ Sin isPast && styles.eventTitlePast
-              numberOfLines={2}
-            >
-              {item.title}
-            </Text>
-            <View style={styles.idBadge}>
-              <Text style={styles.idText}>#{item.id}</Text>
+    const facultyColor = getFacultyColor(item._facultyGroup || item.faculty || 'Sin facultad');
+    
+    return (
+      <TouchableOpacity
+        style={styles.eventCard} 
+        onPress={() => handleEventPress(item)} 
+        activeOpacity={0.8}
+      >
+        <View style={[
+          styles.facultyBar,
+          { backgroundColor: facultyColor } 
+        ]} />
+        
+        <View style={styles.cardContent}>
+          <View style={styles.eventHeader}>
+            <View style={styles.titleRow}>
+              <Text 
+                style={styles.eventTitle}
+                numberOfLines={2}
+              >
+                {item.title}
+              </Text>
+              <View style={styles.idBadge}>
+                <Text style={styles.idText}>#{item.id}</Text>
+              </View>
+            </View>
+            
+            <View style={styles.badgeContainer}>
+              <View style={[styles.monthBadge, { backgroundColor: COLORS.blue }]}>
+                <Ionicons name="calendar" size={12} color={COLORS.white} />
+                <Text style={styles.monthBadgeText}>Del mes próximo</Text>
+              </View>
             </View>
           </View>
-          
-          <View style={styles.badgeContainer}>
-            <View style={[styles.monthBadge, { backgroundColor: COLORS.blue }]}>
-              <Ionicons name="calendar" size={12} color={COLORS.white} />
-              <Text style={styles.monthBadgeText}>Del mes próximo</Text>
+
+          <View style={styles.infoGrid}>
+            <View style={styles.infoRow}>
+              <Ionicons name="calendar-outline" size={14} color={COLORS.grayText} />
+              <Text style={styles.infoText}>{item.date}</Text>
+            </View>
+            <View style={styles.infoRow}>
+              <Ionicons name="time-outline" size={14} color={COLORS.grayText} />
+              <Text style={styles.infoText}>{item.time}</Text>
             </View>
           </View>
-        </View>
 
-        <View style={styles.infoGrid}>
-          <View style={styles.infoRow}>
-            <Ionicons name="calendar-outline" size={14} color={COLORS.grayText} />
-            <Text style={styles.infoText}>{item.date}</Text>
+          <View style={styles.infoGrid}>
+            <View style={styles.infoRow}>
+              <Ionicons name="location-outline" size={14} color={COLORS.grayText} />
+              <Text style={styles.infoText} numberOfLines={1}>{item.location}</Text>
+            </View>
+            <View style={styles.infoRow}>
+              <Ionicons name="person-outline" size={14} color={COLORS.grayText} />
+              <Text style={styles.infoText} numberOfLines={1}>{item.organizer}</Text>
+            </View>
           </View>
-          <View style={styles.infoRow}>
-            <Ionicons name="time-outline" size={14} color={COLORS.grayText} />
-            <Text style={styles.infoText}>{item.time}</Text>
-          </View>
-        </View>
 
-        <View style={styles.infoGrid}>
-          <View style={styles.infoRow}>
-            <Ionicons name="location-outline" size={14} color={COLORS.grayText} />
-            <Text style={styles.infoText} numberOfLines={1}>{item.location}</Text>
+          <View style={styles.phaseContainer}>
+            <View style={styles.phaseBadge}>
+              <Ionicons name="flag" size={12} color={COLORS.primary} />
+              <Text style={styles.phaseText}>Fase {item.idfase || 1}</Text>
+            </View>
+            <View style={styles.submissionInfo}>
+              <Text style={styles.submittedBy}>{item.submittedBy}</Text>
+              <Text style={styles.submittedDate}>
+                {formatSubmittedDate(item.submittedDate)}
+              </Text>
+            </View>
           </View>
-          <View style={styles.infoRow}>
-            <Ionicons name="person-outline" size={14} color={COLORS.grayText} />
-            <Text style={styles.infoText} numberOfLines={1}>{item.organizer}</Text>
-          </View>
-        </View>
 
-        <View style={styles.phaseContainer}>
-          <View style={styles.phaseBadge}>
-            <Ionicons name="flag" size={12} color={COLORS.primary} />
-            <Text style={styles.phaseText}>Fase {item.idfase || 1}</Text>
-          </View>
-          <View style={styles.submissionInfo}>
-            <Text style={styles.submittedBy}>{item.submittedBy}</Text>
-            <Text style={styles.submittedDate}>
-              {formatSubmittedDate(item.submittedDate)}
+          <TouchableOpacity 
+            style={styles.viewDetailsButton}
+            onPress={() => handleEventPress(item)}
+          >
+            <Text style={styles.viewDetailsText}>
+              Ver detalles
             </Text>
-          </View>
+            <Ionicons name="chevron-forward" size={18} color={COLORS.primary} />
+          </TouchableOpacity>
         </View>
-
-        <TouchableOpacity 
-          style={styles.viewDetailsButton}
-          onPress={() => handleEventPress(item)}
-        >
-          <Text style={styles.viewDetailsText}>
-            Ver detalles
-          </Text>
-          <Ionicons name="chevron-forward" size={18} color={COLORS.primary} />
-        </TouchableOpacity>
-      </View>
-    </TouchableOpacity>
-  );
-};
+      </TouchableOpacity>
+    );
+  };
 
   const renderSectionHeader = ({ section }) => {
-  if (section.type === 'activos' || section.type === 'pasados') {
+    if (section.type === 'activos' || section.type === 'pasados') {
+      return (
+        <View style={styles.sectionHeader}>
+          <View style={styles.sectionHeaderContent}>
+            <View style={[
+              styles.facultyDot, 
+              { backgroundColor: COLORS.primary }
+            ]} />
+            <Text style={styles.sectionTitle}>
+              {section.title}
+            </Text>
+            <View style={styles.countBadge}>
+              <Text style={styles.countText}>{section.data.length}</Text>
+            </View>
+          </View>
+        </View>
+      );
+    }
+    
     return (
-      <View style={styles.sectionHeader}> {/* ✅ Sin section.isPastSection && styles.sectionHeaderPast */}
+      <View style={styles.sectionHeader}>
         <View style={styles.sectionHeaderContent}>
-          <View style={[
-            styles.facultyDot, 
-            { backgroundColor: COLORS.primary } // ✅ Siempre COLORS.primary
-          ]} />
-          <Text style={styles.sectionTitle}> {/* ✅ Sin section.isPastSection && styles.sectionTitlePast */}
-            {section.title}
-          </Text>
+          <View style={[styles.facultyDot, { backgroundColor: COLORS.primary }]} />
+          <Text style={styles.sectionTitle}>{section.title}</Text>
           <View style={styles.countBadge}>
-            <Text style={styles.countText}>{section.data.length}</Text>
+            <Text style={styles.countText}>{section.count}</Text>
           </View>
         </View>
       </View>
     );
-  }
-  
-  return (
-    <View style={styles.sectionHeader}>
-      <View style={styles.sectionHeaderContent}>
-        <View style={[styles.facultyDot, { backgroundColor: COLORS.primary }]} />
-        <Text style={styles.sectionTitle}>{section.title}</Text>
-        <View style={styles.countBadge}>
-          <Text style={styles.countText}>{section.count}</Text>
-        </View>
-      </View>
-    </View>
-  );
-};
+  };
 
   if (loading) {
     return (
@@ -348,9 +358,12 @@ const EventosCompletados = () => {
     );
   }
 
+  // ✅ CORREGIDO: Eliminadas las declaraciones duplicadas
+  const eventosFase2 = events.filter(e => e.idfase === 2 || String(e.idfase) === '2');
   const sections = groupEventsByStatusAndFaculty(events);
-  const finalizedCount = events.filter(e => isEventPast(e.date)).length;
-  const uniqueFaculties = new Set(events.map(e => e.faculty || 'Sin facultad')).size;
+  const finalizedCount = eventosFase2.filter(e => isEventPast(e.date)).length;
+  const uniqueFaculties = new Set(eventosFase2.map(e => e.faculty || 'Sin facultad')).size;
+  const totalFase2 = eventosFase2.length;
 
   return (
     <View style={styles.container}>
@@ -362,7 +375,7 @@ const EventosCompletados = () => {
           <Ionicons name="arrow-back" size={24} color={COLORS.white} />
         </TouchableOpacity>
         <View style={styles.headerTextContainer}>
-          <Text style={styles.headerTitle}>Eventos por Facultad</Text>
+          <Text style={styles.headerTitle}>Eventos Fase 2 por Facultad</Text>
           <Text style={styles.headerSubtitle}>
             {uniqueFaculties} {uniqueFaculties === 1 ? 'facultad' : 'facultades'}
           </Text>
@@ -383,12 +396,12 @@ const EventosCompletados = () => {
 
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Stats Cards Superiores */}
-        {events.length > 0 && (
+        {totalFase2 > 0 && (
           <View style={styles.topStatsContainer}>
             <View style={[styles.topStatCard, { backgroundColor: COLORS.primary }]}>
               <Ionicons name="calendar" size={24} color={COLORS.white} />
-              <Text style={styles.topStatNumber}>{events.length}</Text>
-              <Text style={styles.topStatLabel}>Eventos totales</Text>
+              <Text style={styles.topStatNumber}>{totalFase2}</Text>
+              <Text style={styles.topStatLabel}>Eventos totales (Fase 2)</Text>
             </View>
             
             <View style={[styles.topStatCard, { backgroundColor: COLORS.accent }]}>
@@ -412,23 +425,23 @@ const EventosCompletados = () => {
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
               <View style={styles.emptyIconContainer}>
-                <Ionicons name="school-outline" size={80} color={COLORS.grayMedium} />
+                <Ionicons name="filter-outline" size={80} color={COLORS.grayMedium} />
               </View>
-              <Text style={styles.emptyTitle}>No hay eventos</Text>
+              <Text style={styles.emptyTitle}>No hay eventos de Fase 2</Text>
               <Text style={styles.emptyText}>
-                No se encontraron eventos aprobados organizados por facultad
+                No se encontraron eventos de Fase 2 organizados por facultad
               </Text>
             </View>
           }
         />
 
         {/* Stats Cards Inferiores */}
-        {events.length > 0 && (
+        {totalFase2 > 0 && (
           <View style={styles.bottomStatsContainer}>
             <View style={[styles.bottomStatCard, { backgroundColor: COLORS.primary }]}>
-              <Ionicons name="calendar" size={20} color={COLORS.white} />
-              <Text style={styles.bottomStatNumber}>{events.length}</Text>
-              <Text style={styles.bottomStatLabel}>Total</Text>
+              <Ionicons name="layers" size={20} color={COLORS.white} />
+              <Text style={styles.bottomStatNumber}>{totalFase2}</Text>
+              <Text style={styles.bottomStatLabel}>Total Fase 2</Text>
             </View>
             
             <View style={[styles.bottomStatCard, { backgroundColor: COLORS.accent }]}>
@@ -437,10 +450,10 @@ const EventosCompletados = () => {
               <Text style={styles.bottomStatLabel}>Facultades</Text>
             </View>
             
-            <View style={[styles.bottomStatCard, { backgroundColor: COLORS.grayMedium }]}>
+            <View style={[styles.bottomStatCard, { backgroundColor: COLORS.info }]}>
               <Ionicons name="checkmark-circle" size={20} color={COLORS.white} />
               <Text style={styles.bottomStatNumber}>{finalizedCount}</Text>
-              <Text style={styles.bottomStatLabel}>Finalizados</Text>
+              <Text style={styles.bottomStatLabel}>Completados</Text>
             </View>
           </View>
         )}
@@ -601,9 +614,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     marginBottom: 8,
   },
-  sectionHeaderPast: {
-    backgroundColor: '#f0f0f0',
-  },
   sectionHeaderContent: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -633,9 +643,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: COLORS.darkText,
     flex: 1,
-  },
-  sectionTitlePast: {
-    color: COLORS.grayText,
   },
   countBadge: {
     backgroundColor: COLORS.background,
@@ -672,10 +679,6 @@ const styles = StyleSheet.create({
       },
     }),
   },
-  eventCardPast: {
-    opacity: 0.75,
-    backgroundColor: '#fafafa',
-  },
   facultyBar: {
     width: 6,
   },
@@ -698,9 +701,6 @@ const styles = StyleSheet.create({
     color: COLORS.darkText,
     flex: 1,
     marginRight: 8,
-  },
-  eventTitlePast: {
-    color: COLORS.grayText,
   },
   idBadge: {
     backgroundColor: COLORS.background,
@@ -749,9 +749,6 @@ const styles = StyleSheet.create({
     color: COLORS.grayText,
     fontWeight: '500',
     flex: 1,
-  },
-  infoTextPast: {
-    color: COLORS.grayMedium,
   },
   
   // Phase
