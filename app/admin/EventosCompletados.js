@@ -240,7 +240,7 @@ const EventosCompletados = () => {
 
   const handleEventPress = (event) => {
     router.push({
-      pathname: '/admin/EventDetailUpdateScreen',
+      pathname: '/admin/InformeEventoScreen',
       params: { eventId: event.id }
     });
   };
