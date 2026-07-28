@@ -63,11 +63,10 @@ const InformeEventoScreen = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
-  const [readOnly, setReadOnly] = useState(false); // true si el usuario no es el responsable
+  const [readOnly, setReadOnly] = useState(false);
 
   const [esperado, setEsperado] = useState(null);
 
-  // --- Estado editable (lo que llena el responsable) ---
   const [segAlcanzado, setSegAlcanzado] = useState({
     estudiantes: '', docentes: '', publico_externo: '', influencers: '', otro_cual: '', otro_cantidad: '',
   });
@@ -101,9 +100,6 @@ const InformeEventoScreen = () => {
       ]);
 
       setEsperado(infoRes.data.esperado);
-
-      // Si el backend te devuelve si el usuario puede editar, úsalo directo.
-      // Aquí lo inferimos: admin siempre puede ver, pero solo el responsable edita.
       setReadOnly(meRes.data.role !== 'admin' && meRes.data.role !== 'academico');
 
       const informe = infoRes.data.informe;
@@ -145,7 +141,6 @@ const InformeEventoScreen = () => {
     else { setError('No se proporcionó un ID de evento.'); setLoading(false); }
   }, [fetchInforme, eventId]);
 
-  // --- Helpers de filas dinámicas (egresos/ingresos reales) ---
   const updateRow = (setter, rows, index, field, value) => {
     const updated = [...rows];
     updated[index] = { ...updated[index], [field]: value };
@@ -221,7 +216,6 @@ const InformeEventoScreen = () => {
       .balance { font-weight: bold; background: #ecf0f1; padding: 8px; margin-top: 8px; }
     </style></head><body>
       <h1>Informe del Evento</h1>
-
       <div class="section-title">I. Datos Generales</div>
       <table>
         <tr><td class="label">Nombre del Evento</td><td>${esperado?.nombreEvento || ''}</td></tr>
@@ -230,7 +224,6 @@ const InformeEventoScreen = () => {
         <tr><td class="label">Hora del Evento</td><td>${esperado?.horaEvento || ''}</td></tr>
         <tr><td class="label">Responsable del Evento</td><td>${esperado?.responsable || ''}</td></tr>
       </table>
-
       <div class="section-title">II. Resultados del Evento</div>
       <div class="two-col">
         <div>
@@ -255,33 +248,22 @@ const InformeEventoScreen = () => {
           </table>
         </div>
       </div>
-
       <table>
         <tr><th></th><th>Esperado</th><th>Real</th></tr>
         <tr><td>Participación Efectiva</td><td>${esperado?.participacionEsperada || '-'}</td><td>${participacionReal || '-'}</td></tr>
         <tr><td>Índice de Satisfacción</td><td>${esperado?.satisfaccionEsperada || '-'}</td><td>${satisfaccionReal || '-'}</td></tr>
         <tr><td>Otro</td><td>${esperado?.otrosResultadosEsperados || '-'}</td><td>${otrosResultadosReal || '-'}</td></tr>
       </table>
-
       <div class="section-title">III. Balance Económico</div>
       <strong>Egresos</strong>
-      <table>
-        <tr><th>Descripción</th><th>Cantidad</th><th>Precio</th><th>Total</th></tr>
-        ${rowsHtml(egresosReales)}
-      </table>
+      <table><tr><th>Descripción</th><th>Cantidad</th><th>Precio</th><th>Total</th></tr>${rowsHtml(egresosReales)}</table>
       <strong>Ingresos</strong>
-      <table>
-        <tr><th>Descripción</th><th>Cantidad</th><th>Precio</th><th>Total</th></tr>
-        ${rowsHtml(ingresosReales)}
-      </table>
+      <table><tr><th>Descripción</th><th>Cantidad</th><th>Precio</th><th>Total</th></tr>${rowsHtml(ingresosReales)}</table>
       <div class="balance">Balance Económico: Bs ${balanceReal.toFixed(2)}</div>
-
       <div class="section-title">IV. Información para la Nota de Prensa</div>
       <table><tr><td>${(infoPrensa || '').replace(/\n/g, '<br/>')}</td></tr></table>
-
       <div class="section-title">V. Análisis de Desviaciones Críticas/Significativas</div>
       <table><tr><td>${(analisisDesviaciones || '').replace(/\n/g, '<br/>')}</td></tr></table>
-
       <div class="section-title">VI. Lecciones Aprendidas</div>
       <table><tr><td>${(leccionesAprendidas || '').replace(/\n/g, '<br/>')}</td></tr></table>
     </body></html>`;
@@ -321,32 +303,50 @@ const InformeEventoScreen = () => {
       </View>
 
       <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
-
-        {/* I. Datos Generales - solo lectura, ya existen en el evento */}
-        <View style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>I. Datos Generales</Text>
-          <View style={styles.readOnlyRow}><Text style={styles.readOnlyLabel}>Nombre del Evento</Text><Text style={styles.readOnlyValue}>{esperado?.nombreEvento}</Text></View>
-          <View style={styles.readOnlyRow}><Text style={styles.readOnlyLabel}>Lugar</Text><Text style={styles.readOnlyValue}>{esperado?.lugarEvento}</Text></View>
-          <View style={styles.readOnlyRow}><Text style={styles.readOnlyLabel}>Fecha</Text><Text style={styles.readOnlyValue}>{formatDate(esperado?.fechaEvento)}</Text></View>
-          <View style={styles.readOnlyRow}><Text style={styles.readOnlyLabel}>Hora</Text><Text style={styles.readOnlyValue}>{esperado?.horaEvento}</Text></View>
-          <View style={styles.readOnlyRow}><Text style={styles.readOnlyLabel}>Responsable</Text><Text style={styles.readOnlyValue}>{esperado?.responsable}</Text></View>
-        </View>
-
+        
         {readOnly && (
           <View style={[styles.sectionCard, { backgroundColor: '#FFF3E0', flexDirection: 'row', alignItems: 'center' }]}>
             <Ionicons name="lock-closed-outline" size={20} color={COLORS.warning} />
-            <Text style={{ marginLeft: 10, color: COLORS.darkText, flex: 1 }}>Solo el responsable del evento puede completar este informe. Puedes verlo, pero no editarlo.</Text>
+            <Text style={{ marginLeft: 10, color: COLORS.darkText, flex: 1, fontSize: 14 }}>
+              Solo el responsable del evento puede completar este informe. Puedes verlo, pero no editarlo.
+            </Text>
           </View>
         )}
+
+        {/* I. Datos Generales */}
+        <View style={styles.sectionCard}>
+          <Text style={styles.sectionTitle}>I. Datos Generales</Text>
+          <View style={styles.detailRow}>
+            <Ionicons name="information-circle-outline" size={20} color={COLORS.primary} style={styles.detailIcon} />
+            <Text style={styles.detailText}>{esperado?.nombreEvento || 'No especificado'}</Text>
+          </View>
+          <View style={styles.detailRow}>
+            <Ionicons name="location-outline" size={20} color={COLORS.primary} style={styles.detailIcon} />
+            <Text style={styles.detailText}>{esperado?.lugarEvento || 'No especificado'}</Text>
+          </View>
+          <View style={styles.detailRow}>
+            <Ionicons name="calendar-outline" size={20} color={COLORS.primary} style={styles.detailIcon} />
+            <Text style={styles.detailText}>{formatDate(esperado?.fechaEvento)}</Text>
+          </View>
+          <View style={styles.detailRow}>
+            <Ionicons name="time-outline" size={20} color={COLORS.primary} style={styles.detailIcon} />
+            <Text style={styles.detailText}>{esperado?.horaEvento || 'No especificada'}</Text>
+          </View>
+          <View style={styles.detailRow}>
+            <Ionicons name="person-outline" size={20} color={COLORS.primary} style={styles.detailIcon} />
+            <Text style={styles.detailText}>{esperado?.responsable || 'No especificado'}</Text>
+          </View>
+        </View>
 
         {/* II. Segmento y Objetivos Alcanzados */}
         <View style={styles.sectionCard}>
           <Text style={styles.sectionTitle}>II. Segmento Objetivo Alcanzado</Text>
           {['estudiantes', 'docentes', 'publico_externo', 'influencers'].map((key) => (
-            <View key={key} style={styles.inputRow}>
-              <Text style={styles.inputLabel}>{key.replace('_', ' ')}</Text>
+            <View key={key} style={styles.detailRow}>
+              <Ionicons name="people-outline" size={20} color={COLORS.primary} style={styles.detailIcon} />
+              <Text style={[styles.detailText, { textTransform: 'capitalize' }]}>{key.replace('_', ' ')}</Text>
               <TextInput
-                style={styles.numberInput}
+                style={[styles.numberInput, { width: 80 }]}
                 keyboardType="numeric"
                 editable={!readOnly}
                 value={segAlcanzado[key]}
@@ -355,16 +355,17 @@ const InformeEventoScreen = () => {
               />
             </View>
           ))}
-          <View style={styles.inputRow}>
+          <View style={styles.detailRow}>
+            <Ionicons name="person-add-outline" size={20} color={COLORS.primary} style={styles.detailIcon} />
             <TextInput
-              style={[styles.textInput, { flex: 2 }]}
+              style={[styles.textInput, { flex: 2, marginBottom: 0 }]}
               editable={!readOnly}
               value={segAlcanzado.otro_cual}
               onChangeText={(v) => setSegAlcanzado(prev => ({ ...prev, otro_cual: v }))}
               placeholder="Otro: ¿cuál?"
             />
             <TextInput
-              style={styles.numberInput}
+              style={[styles.numberInput, { width: 80 }]}
               keyboardType="numeric"
               editable={!readOnly}
               value={segAlcanzado.otro_cantidad}
@@ -377,109 +378,274 @@ const InformeEventoScreen = () => {
         <View style={styles.sectionCard}>
           <Text style={styles.sectionTitle}>Objetivos Alcanzados</Text>
           {[
-            ['modelo_pedagogico', 'Modelo Pedagógico'],
-            ['posicionamiento', 'Posicionamiento'],
-            ['internacionalizacion', 'Internacionalización'],
-            ['rsu', 'RSU'],
-            ['fidelizacion', 'Fidelización'],
-          ].map(([key, label]) => (
+            ['modelo_pedagogico', 'Modelo Pedagógico', 'school-outline'],
+            ['posicionamiento', 'Posicionamiento', 'star-outline'],
+            ['internacionalizacion', 'Internacionalización', 'globe-outline'],
+            ['rsu', 'RSU', 'heart-outline'],
+            ['fidelizacion', 'Fidelización', 'hand-left-outline'],
+          ].map(([key, label, icon]) => (
             <TouchableOpacity
               key={key}
-              style={styles.checkRow}
+              style={styles.listItem}
               disabled={readOnly}
               onPress={() => setObjAlcanzado(prev => ({ ...prev, [key]: !prev[key] }))}
             >
-              <Ionicons name={objAlcanzado[key] ? 'checkbox' : 'square-outline'} size={22} color={COLORS.primary} />
-              <Text style={styles.checkLabel}>{label}</Text>
+              <Ionicons 
+                name={objAlcanzado[key] ? 'checkbox' : 'square-outline'} 
+                size={22} 
+                color={COLORS.primary} 
+                style={styles.listIcon} 
+              />
+              <Text style={styles.listText}>{label}</Text>
             </TouchableOpacity>
           ))}
-          <TextInput
-            style={styles.textInput}
-            editable={!readOnly}
-            value={objAlcanzado.otro_cual}
-            onChangeText={(v) => setObjAlcanzado(prev => ({ ...prev, otro_cual: v }))}
-            placeholder="Otro: ¿cuál?"
-          />
+          <View style={styles.detailRow}>
+             <Ionicons name="ellipsis-horizontal-outline" size={20} color={COLORS.primary} style={styles.detailIcon} />
+             <TextInput
+              style={[styles.textInput, { flex: 1, marginBottom: 0 }]}
+              editable={!readOnly}
+              value={objAlcanzado.otro_cual}
+              onChangeText={(v) => setObjAlcanzado(prev => ({ ...prev, otro_cual: v }))}
+              placeholder="Otro: ¿cuál?"
+            />
+          </View>
         </View>
 
         {/* Participación / Satisfacción */}
         <View style={styles.sectionCard}>
           <Text style={styles.sectionTitle}>Participación e Índice de Satisfacción</Text>
-          <View style={styles.compareRow}>
-            <Text style={styles.compareLabel}>Participación</Text>
-            <Text style={styles.compareExpected}>Esperado: {esperado?.participacionEsperada || '-'}</Text>
+          
+          <View style={styles.detailRow}>
+            <Ionicons name="people-outline" size={20} color={COLORS.primary} style={styles.detailIcon} />
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 13, color: COLORS.grayText }}>Esperado: {esperado?.participacionEsperada || '-'}</Text>
+              <TextInput 
+                style={[styles.textInput, { marginTop: 4, marginBottom: 0 }]} 
+                editable={!readOnly} 
+                value={participacionReal} 
+                onChangeText={setParticipacionReal} 
+                placeholder="Participación Real" 
+              />
+            </View>
           </View>
-          <TextInput style={styles.textInput} editable={!readOnly} value={participacionReal} onChangeText={setParticipacionReal} placeholder="Real" />
 
-          <View style={styles.compareRow}>
-            <Text style={styles.compareLabel}>Índice de Satisfacción</Text>
-            <Text style={styles.compareExpected}>Esperado: {esperado?.satisfaccionEsperada || '-'}</Text>
+          <View style={styles.detailRow}>
+            <Ionicons name="happy-outline" size={20} color={COLORS.primary} style={styles.detailIcon} />
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 13, color: COLORS.grayText }}>Esperado: {esperado?.satisfaccionEsperada || '-'}</Text>
+              <TextInput 
+                style={[styles.textInput, { marginTop: 4, marginBottom: 0 }]} 
+                editable={!readOnly} 
+                value={satisfaccionReal} 
+                onChangeText={setSatisfaccionReal} 
+                placeholder="Índice de Satisfacción Real" 
+              />
+            </View>
           </View>
-          <TextInput style={styles.textInput} editable={!readOnly} value={satisfaccionReal} onChangeText={setSatisfaccionReal} placeholder="Real" />
 
-          <View style={styles.compareRow}>
-            <Text style={styles.compareLabel}>Otro</Text>
-            <Text style={styles.compareExpected}>Esperado: {esperado?.otrosResultadosEsperados || '-'}</Text>
+          <View style={styles.detailRow}>
+            <Ionicons name="document-text-outline" size={20} color={COLORS.primary} style={styles.detailIcon} />
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 13, color: COLORS.grayText }}>Esperado: {esperado?.otrosResultadosEsperados || '-'}</Text>
+              <TextInput 
+                style={[styles.textInput, { marginTop: 4, marginBottom: 0 }]} 
+                editable={!readOnly} 
+                value={otrosResultadosReal} 
+                onChangeText={setOtrosResultadosReal} 
+                placeholder="Otros Resultados Reales" 
+              />
+            </View>
           </View>
-          <TextInput style={styles.textInput} editable={!readOnly} value={otrosResultadosReal} onChangeText={setOtrosResultadosReal} placeholder="Real" />
         </View>
 
         {/* III. Balance Económico Real */}
         <View style={styles.sectionCard}>
           <Text style={styles.sectionTitle}>III. Balance Económico (Real)</Text>
 
-          <Text style={styles.subLabel}>Egresos</Text>
-          {egresosReales.map((row, index) => (
-            <View key={index} style={styles.tableRow}>
-              <TextInput style={[styles.textInput, { flex: 2 }]} editable={!readOnly} placeholder="Descripción" value={row.descripcion} onChangeText={(v) => updateRow(setEgresosReales, egresosReales, index, 'descripcion', v)} />
-              <TextInput style={[styles.numberInput, { flex: 1 }]} keyboardType="numeric" editable={!readOnly} placeholder="Cant." value={String(row.cantidad)} onChangeText={(v) => updateRow(setEgresosReales, egresosReales, index, 'cantidad', v)} />
-              <TextInput style={[styles.numberInput, { flex: 1 }]} keyboardType="numeric" editable={!readOnly} placeholder="Precio" value={String(row.precio_unitario)} onChangeText={(v) => updateRow(setEgresosReales, egresosReales, index, 'precio_unitario', v)} />
-              <Text style={styles.rowTotal}>Bs {(row.total || 0).toFixed(2)}</Text>
-              {!readOnly && <TouchableOpacity onPress={() => removeRow(setEgresosReales, egresosReales, index)}><Ionicons name="trash-outline" size={20} color={COLORS.logout} /></TouchableOpacity>}
+          <View style={styles.budgetSubsection}>
+            <View style={styles.budgetHeader}>
+              <Ionicons name="arrow-down-circle" size={20} color={COLORS.logout} />
+              <Text style={styles.budgetSubtitle}>Egresos</Text>
             </View>
-          ))}
-          {!readOnly && (
-            <TouchableOpacity style={styles.addRowButton} onPress={() => addRow(setEgresosReales, egresosReales)}>
-              <Ionicons name="add-circle-outline" size={18} color={COLORS.primary} /><Text style={styles.addRowText}>Agregar egreso</Text>
-            </TouchableOpacity>
-          )}
 
-          <Text style={[styles.subLabel, { marginTop: 16 }]}>Ingresos</Text>
-          {ingresosReales.map((row, index) => (
-            <View key={index} style={styles.tableRow}>
-              <TextInput style={[styles.textInput, { flex: 2 }]} editable={!readOnly} placeholder="Descripción" value={row.descripcion} onChangeText={(v) => updateRow(setIngresosReales, ingresosReales, index, 'descripcion', v)} />
-              <TextInput style={[styles.numberInput, { flex: 1 }]} keyboardType="numeric" editable={!readOnly} placeholder="Cant." value={String(row.cantidad)} onChangeText={(v) => updateRow(setIngresosReales, ingresosReales, index, 'cantidad', v)} />
-              <TextInput style={[styles.numberInput, { flex: 1 }]} keyboardType="numeric" editable={!readOnly} placeholder="Precio" value={String(row.precio_unitario)} onChangeText={(v) => updateRow(setIngresosReales, ingresosReales, index, 'precio_unitario', v)} />
-              <Text style={styles.rowTotal}>Bs {(row.total || 0).toFixed(2)}</Text>
-              {!readOnly && <TouchableOpacity onPress={() => removeRow(setIngresosReales, ingresosReales, index)}><Ionicons name="trash-outline" size={20} color={COLORS.logout} /></TouchableOpacity>}
+            <View style={styles.budgetTableHeader}>
+              <Text style={[styles.budgetCell, styles.budgetCellDesc]}>Descripción</Text>
+              <Text style={[styles.budgetCell, styles.budgetCellNum]}>Cant.</Text>
+              <Text style={[styles.budgetCell, styles.budgetCellNum]}>Precio</Text>
+              <Text style={[styles.budgetCell, styles.budgetCellNum]}>Total</Text>
+              {!readOnly && <View style={{ width: 24 }} />} 
             </View>
-          ))}
-          {!readOnly && (
-            <TouchableOpacity style={styles.addRowButton} onPress={() => addRow(setIngresosReales, ingresosReales)}>
-              <Ionicons name="add-circle-outline" size={18} color={COLORS.primary} /><Text style={styles.addRowText}>Agregar ingreso</Text>
-            </TouchableOpacity>
-          )}
 
-          <View style={styles.balanceBox}>
-            <Text style={styles.balanceLabel}>Balance Económico</Text>
-            <Text style={[styles.balanceValue, { color: balanceReal >= 0 ? COLORS.success : COLORS.logout }]}>Bs {balanceReal.toFixed(2)}</Text>
+            {egresosReales.map((row, index) => (
+              <View key={index} style={styles.budgetTableRow}>
+                <TextInput 
+                  style={[styles.budgetCell, styles.budgetCellDesc, styles.inputCell, styles.inputCellDesc]} 
+                  editable={!readOnly} 
+                  placeholder="Descripción" 
+                  value={row.descripcion} 
+                  onChangeText={(v) => updateRow(setEgresosReales, egresosReales, index, 'descripcion', v)} 
+                />
+                <TextInput 
+                  style={[styles.budgetCell, styles.budgetCellNum, styles.inputCell]} 
+                  keyboardType="numeric" 
+                  editable={!readOnly} 
+                  placeholder="0" 
+                  value={String(row.cantidad)} 
+                  onChangeText={(v) => updateRow(setEgresosReales, egresosReales, index, 'cantidad', v)} 
+                />
+                <TextInput 
+                  style={[styles.budgetCell, styles.budgetCellNum, styles.inputCell]} 
+                  keyboardType="numeric" 
+                  editable={!readOnly} 
+                  placeholder="0.00" 
+                  value={String(row.precio_unitario)} 
+                  onChangeText={(v) => updateRow(setEgresosReales, egresosReales, index, 'precio_unitario', v)} 
+                />
+                <Text style={[styles.budgetCell, styles.budgetCellNum, styles.budgetCellTotal]}>
+                  {(row.total || 0).toFixed(2)}
+                </Text>
+                {!readOnly && (
+                  <TouchableOpacity onPress={() => removeRow(setEgresosReales, egresosReales, index)} style={{ width: 24, alignItems: 'center' }}>
+                    <Ionicons name="trash-outline" size={18} color={COLORS.logout} />
+                  </TouchableOpacity>
+                )}
+              </View>
+            ))}
+            {!readOnly && (
+              <TouchableOpacity style={styles.addRowButton} onPress={() => addRow(setEgresosReales, egresosReales)}>
+                <Ionicons name="add-circle-outline" size={18} color={COLORS.primary} />
+                <Text style={styles.addRowText}>Agregar egreso</Text>
+              </TouchableOpacity>
+            )}
+            <View style={styles.budgetTotalRow}>
+              <Text style={[styles.budgetTotalLabel, { flex: 3 }]}>TOTAL EGRESOS:</Text>
+              <Text style={styles.budgetTotalValue}>Bs {(totalEgresosReal || 0).toFixed(2)}</Text>
+              {!readOnly && <View style={{ width: 24 }} />}
+            </View>
+          </View>
+
+          <View style={styles.budgetSubsection}>
+            <View style={styles.budgetHeader}>
+              <Ionicons name="arrow-up-circle" size={20} color={COLORS.success} />
+              <Text style={styles.budgetSubtitle}>Ingresos</Text>
+            </View>
+
+            <View style={styles.budgetTableHeader}>
+              <Text style={[styles.budgetCell, styles.budgetCellDesc]}>Descripción</Text>
+              <Text style={[styles.budgetCell, styles.budgetCellNum]}>Cant.</Text>
+              <Text style={[styles.budgetCell, styles.budgetCellNum]}>Precio</Text>
+              <Text style={[styles.budgetCell, styles.budgetCellNum]}>Total</Text>
+              {!readOnly && <View style={{ width: 24 }} />}
+            </View>
+
+            {ingresosReales.map((row, index) => (
+              <View key={index} style={styles.budgetTableRow}>
+                <TextInput 
+                  style={[styles.budgetCell, styles.budgetCellDesc, styles.inputCell, styles.inputCellDesc]} 
+                  editable={!readOnly} 
+                  placeholder="Descripción" 
+                  value={row.descripcion} 
+                  onChangeText={(v) => updateRow(setIngresosReales, ingresosReales, index, 'descripcion', v)} 
+                />
+                <TextInput 
+                  style={[styles.budgetCell, styles.budgetCellNum, styles.inputCell]} 
+                  keyboardType="numeric" 
+                  editable={!readOnly} 
+                  placeholder="0" 
+                  value={String(row.cantidad)} 
+                  onChangeText={(v) => updateRow(setIngresosReales, ingresosReales, index, 'cantidad', v)} 
+                />
+                <TextInput 
+                  style={[styles.budgetCell, styles.budgetCellNum, styles.inputCell]} 
+                  keyboardType="numeric" 
+                  editable={!readOnly} 
+                  placeholder="0.00" 
+                  value={String(row.precio_unitario)} 
+                  onChangeText={(v) => updateRow(setIngresosReales, ingresosReales, index, 'precio_unitario', v)} 
+                />
+                <Text style={[styles.budgetCell, styles.budgetCellNum, styles.budgetCellTotal]}>
+                  {(row.total || 0).toFixed(2)}
+                </Text>
+                {!readOnly && (
+                  <TouchableOpacity onPress={() => removeRow(setIngresosReales, ingresosReales, index)} style={{ width: 24, alignItems: 'center' }}>
+                    <Ionicons name="trash-outline" size={18} color={COLORS.logout} />
+                  </TouchableOpacity>
+                )}
+              </View>
+            ))}
+            {!readOnly && (
+              <TouchableOpacity style={styles.addRowButton} onPress={() => addRow(setIngresosReales, ingresosReales)}>
+                <Ionicons name="add-circle-outline" size={18} color={COLORS.primary} />
+                <Text style={styles.addRowText}>Agregar ingreso</Text>
+              </TouchableOpacity>
+            )}
+            <View style={styles.budgetTotalRow}>
+              <Text style={[styles.budgetTotalLabel, { flex: 3 }]}>TOTAL INGRESOS:</Text>
+              <Text style={[styles.budgetTotalValue, { color: COLORS.success }]}>
+                Bs {(totalIngresosReal || 0).toFixed(2)}
+              </Text>
+              {!readOnly && <View style={{ width: 24 }} />}
+            </View>
+          </View>
+
+          <View style={styles.balanceFinal}>
+            <Text style={styles.balanceFinalLabel}>BALANCE ECONÓMICO:</Text>
+            <Text style={[
+              styles.balanceFinalValue,
+              { color: balanceReal >= 0 ? COLORS.success : COLORS.logout }
+            ]}>
+              Bs {balanceReal.toFixed(2)}
+            </Text>
           </View>
         </View>
 
         {/* IV, V, VI */}
         <View style={styles.sectionCard}>
           <Text style={styles.sectionTitle}>IV. Información para la Nota de Prensa</Text>
-          <TextInput style={styles.multilineInput} editable={!readOnly} multiline numberOfLines={4} value={infoPrensa} onChangeText={setInfoPrensa} placeholder="¿Qué se hizo, quiénes, por qué/para qué, cuándo, dónde?" />
+          <View style={styles.detailRow}>
+            <Ionicons name="newspaper-outline" size={20} color={COLORS.primary} style={styles.detailIcon} />
+            <TextInput 
+              style={[styles.textInput, { flex: 1, minHeight: 90, textAlignVertical: 'top', marginBottom: 0 }]} 
+              editable={!readOnly} 
+              multiline 
+              numberOfLines={4} 
+              value={infoPrensa} 
+              onChangeText={setInfoPrensa} 
+              placeholder="¿Qué se hizo, quiénes, por qué/para qué, cuándo, dónde?" 
+            />
+          </View>
         </View>
 
         <View style={styles.sectionCard}>
           <Text style={styles.sectionTitle}>V. Análisis de Desviaciones Críticas/Significativas</Text>
-          <TextInput style={styles.multilineInput} editable={!readOnly} multiline numberOfLines={4} value={analisisDesviaciones} onChangeText={setAnalisisDesviaciones} placeholder="Análisis de causas de las desviaciones detectadas" />
+          <View style={styles.detailRow}>
+            <Ionicons name="git-compare-outline" size={20} color={COLORS.primary} style={styles.detailIcon} />
+            <TextInput 
+              style={[styles.textInput, { flex: 1, minHeight: 90, textAlignVertical: 'top', marginBottom: 0 }]} 
+              editable={!readOnly} 
+              multiline 
+              numberOfLines={4} 
+              value={analisisDesviaciones} 
+              onChangeText={setAnalisisDesviaciones} 
+              placeholder="Análisis de causas de las desviaciones detectadas" 
+            />
+          </View>
         </View>
 
         <View style={styles.sectionCard}>
           <Text style={styles.sectionTitle}>VI. Lecciones Aprendidas</Text>
-          <TextInput style={styles.multilineInput} editable={!readOnly} multiline numberOfLines={4} value={leccionesAprendidas} onChangeText={setLeccionesAprendidas} placeholder="Lecciones aprendidas del evento" />
+          <View style={styles.detailRow}>
+            <Ionicons name="bulb-outline" size={20} color={COLORS.primary} style={styles.detailIcon} />
+            <TextInput 
+              style={[styles.textInput, { flex: 1, minHeight: 90, textAlignVertical: 'top', marginBottom: 0 }]} 
+              editable={!readOnly} 
+              multiline 
+              numberOfLines={4} 
+              value={leccionesAprendidas} 
+              onChangeText={setLeccionesAprendidas} 
+              placeholder="Lecciones aprendidas del evento" 
+            />
+          </View>
         </View>
 
         {!readOnly && (
@@ -513,29 +679,52 @@ const styles = StyleSheet.create({
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: COLORS.background },
   loadingText: { marginTop: 15, fontSize: 16, color: COLORS.grayText },
   errorText: { marginTop: 15, fontSize: 16, color: COLORS.accent, textAlign: 'center', marginHorizontal: 20 },
-  sectionCard: { backgroundColor: COLORS.surface, borderRadius: 16, padding: 20, marginBottom: 16, ...Platform.select({ ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 12 }, android: { elevation: 8 } }) },
-  sectionTitle: { fontSize: 17, fontWeight: 'bold', color: COLORS.darkText, marginBottom: 12 },
-  readOnlyRow: { marginBottom: 10 },
-  readOnlyLabel: { fontSize: 12, color: COLORS.grayText, textTransform: 'uppercase' },
-  readOnlyValue: { fontSize: 15, color: COLORS.darkText, fontWeight: '500' },
-  inputRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 10, gap: 10 },
-  inputLabel: { flex: 1, fontSize: 14, color: COLORS.darkText, textTransform: 'capitalize' },
-  numberInput: { width: 70, borderWidth: 1, borderColor: COLORS.border, borderRadius: 8, padding: 8, textAlign: 'right', backgroundColor: COLORS.background },
+  
+  sectionCard: { 
+    backgroundColor: COLORS.surface, 
+    borderRadius: 16, 
+    padding: 20, 
+    marginBottom: 16, 
+    ...Platform.select({ 
+      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 12 }, 
+      android: { elevation: 8 } 
+    }) 
+  },
+  sectionTitle: { fontSize: 18, fontWeight: 'bold', color: COLORS.darkText, marginBottom: 12 },
+  
+  detailRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
+  detailIcon: { marginRight: 10 },
+  detailText: { fontSize: 16, color: COLORS.darkText, flex: 1 },
+  
+  listItem: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 12 },
+  listIcon: { marginRight: 12, marginTop: 4 },
+  listText: { fontSize: 15, color: COLORS.darkText, flex: 1, lineHeight: 20 },
+  
+  numberInput: { borderWidth: 1, borderColor: COLORS.border, borderRadius: 8, padding: 8, textAlign: 'right', backgroundColor: COLORS.background },
   textInput: { flex: 1, borderWidth: 1, borderColor: COLORS.border, borderRadius: 8, padding: 10, backgroundColor: COLORS.background, marginBottom: 8 },
-  multilineInput: { borderWidth: 1, borderColor: COLORS.border, borderRadius: 8, padding: 10, backgroundColor: COLORS.background, minHeight: 90, textAlignVertical: 'top' },
-  checkRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 10, gap: 10 },
-  checkLabel: { fontSize: 14, color: COLORS.darkText },
-  compareRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 10, marginBottom: 4 },
-  compareLabel: { fontSize: 14, fontWeight: '600', color: COLORS.darkText },
-  compareExpected: { fontSize: 13, color: COLORS.grayText },
-  subLabel: { fontSize: 14, fontWeight: '600', color: COLORS.primary, marginBottom: 8 },
-  tableRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
-  rowTotal: { width: 70, textAlign: 'right', fontSize: 13, fontWeight: '600', color: COLORS.darkText },
-  addRowButton: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 },
-  addRowText: { color: COLORS.primary, fontWeight: '600' },
-  balanceBox: { flexDirection: 'row', justifyContent: 'space-between', backgroundColor: COLORS.grayLight, padding: 12, borderRadius: 10, marginTop: 16 },
-  balanceLabel: { fontSize: 15, fontWeight: 'bold', color: COLORS.darkText },
-  balanceValue: { fontSize: 16, fontWeight: 'bold' },
+  
+  budgetSubsection: { marginBottom: 20, paddingBottom: 15, borderBottomWidth: 1, borderBottomColor: COLORS.grayLight },
+  budgetHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 12, paddingBottom: 8, borderBottomWidth: 2, borderBottomColor: COLORS.primary },
+  budgetSubtitle: { fontSize: 16, fontWeight: 'bold', color: COLORS.darkText, marginLeft: 8 },
+  budgetTableHeader: { flexDirection: 'row', backgroundColor: COLORS.grayLight, paddingVertical: 10, paddingHorizontal: 8, borderRadius: 8, marginBottom: 8, gap: 8 },
+  budgetTableRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 8, paddingHorizontal: 8, borderBottomWidth: 1, borderBottomColor: COLORS.grayLight, gap: 8 },
+  budgetCell: { fontSize: 14, color: COLORS.darkText },
+  budgetCellDesc: { flex: 3, fontWeight: '500' },
+  budgetCellNum: { flex: 1, textAlign: 'right' },
+  budgetCellTotal: { fontWeight: '600', color: COLORS.primary },
+  budgetTotalRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, paddingTop: 10, borderTopWidth: 2, borderTopColor: COLORS.primary },
+  budgetTotalLabel: { fontSize: 14, fontWeight: 'bold', color: COLORS.darkText },
+  budgetTotalValue: { fontSize: 16, fontWeight: 'bold' },
+  balanceFinal: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: COLORS.grayLight, padding: 15, borderRadius: 12, marginTop: 10 },
+  balanceFinalLabel: { fontSize: 16, fontWeight: 'bold', color: COLORS.darkText },
+  balanceFinalValue: { fontSize: 18, fontWeight: 'bold' },
+  
+  inputCell: { borderWidth: 1, borderColor: COLORS.border, borderRadius: 6, padding: 6, backgroundColor: COLORS.background, fontSize: 14, color: COLORS.darkText },
+  inputCellDesc: { textAlign: 'left' },
+  
+  addRowButton: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 12, padding: 8 },
+  addRowText: { color: COLORS.primary, fontWeight: '600', fontSize: 14 },
+  
   actionButtonsContainer: { flexDirection: 'row', gap: 12, marginTop: 8, marginBottom: 12 },
   draftButton: { flex: 1, borderWidth: 1, borderColor: COLORS.primary, borderRadius: 12, paddingVertical: 14, alignItems: 'center' },
   draftButtonText: { color: COLORS.primary, fontWeight: 'bold' },
