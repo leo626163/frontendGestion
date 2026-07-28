@@ -40,7 +40,6 @@ const COLORS = {
   border: '#E5E7EB', divider: '#F3F4F6', white: '#FFFFFF', black: '#000000',
 };
 
-// ─── KPI Card ─────────────────────────────────────────────────────────────────
 const DashboardCard = ({ title, value, icon, color, description, subtitle }) => (
   <View style={[styles.kpiCard, { borderTopColor: color }]}>
     <View style={styles.kpiTopRow}>
@@ -55,7 +54,6 @@ const DashboardCard = ({ title, value, icon, color, description, subtitle }) => 
   </View>
 );
 
-// ─── Action Card ──────────────────────────────────────────────────────────────
 const ActionCardLarge = ({ action, onPress, index }) => {
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const fadeAnim  = useRef(new Animated.Value(0)).current;
@@ -91,7 +89,6 @@ const ActionCardLarge = ({ action, onPress, index }) => {
   );
 };
 
-// ─── Event Cards (móvil) ──────────────────────────────────────────────────────
 const EventCards = ({ data, onPrint }) => {
   if (!data?.length) {
     return (
@@ -147,7 +144,6 @@ const EventCards = ({ data, onPrint }) => {
   );
 };
 
-// ─── Bottom Dock ──────────────────────────────────────────────────────────────
 const MinimalBottomDock = ({ onLogout, onActionPress, isExpanded, onToggleExpanded }) => {
   const dockHeight = useRef(new Animated.Value(60)).current;
   const rotateAnim = useRef(new Animated.Value(0)).current;
@@ -195,7 +191,6 @@ const MinimalBottomDock = ({ onLogout, onActionPress, isExpanded, onToggleExpand
   );
 };
 
-// ─── Header ───────────────────────────────────────────────────────────────────
 const MinimalHeader = ({ nombreUsuario, unreadCount, onNotificationPress, lastUpdated, onRefresh, refreshing, onTelegramPress, isTelegramLinked }) => {
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Buenos días' : hour < 18 ? 'Buenas tardes' : 'Buenas noches';
@@ -244,7 +239,6 @@ const MinimalHeader = ({ nombreUsuario, unreadCount, onNotificationPress, lastUp
   );
 };
 
-// ─── Section wrapper ──────────────────────────────────────────────────────────
 const Section = ({ title, subtitle, children }) => (
   <View style={styles.section}>
     <View style={styles.sectionHead}>
@@ -255,7 +249,6 @@ const Section = ({ title, subtitle, children }) => (
   </View>
 );
 
-// ─── Main Screen ──────────────────────────────────────────────────────────────
 const Daf = () => {
   const params = useLocalSearchParams();
   const nombreUsuario = params.nombre || 'Administrador DAF';
@@ -272,7 +265,8 @@ const Daf = () => {
   const [stats, setStats]                           = useState(null);
   const [loadingReportes, setLoadingReportes]   = useState(false);
   const [hiddenPastCount, setHiddenPastCount]     = useState(0);
-
+  const [usuarios, setUsuarios] = useState([]);
+  const [loading, setLoading] = useState(true);
   // Estados de Telegram
   const [showTelegramModal, setShowTelegramModal] = useState(false);
   const [isTelegramLinked, setIsTelegramLinked] = useState(false);
@@ -287,7 +281,6 @@ const Daf = () => {
 
   const unreadCount = notifications.filter(n => !n.read).length;
 
-  // ── Funciones de Telegram ─────────────────────────────────────────────────
   const checkTelegramStatus = useCallback(async () => {
     try {
       const token = await getTokenAsync();
@@ -341,7 +334,6 @@ const Daf = () => {
     }
   }, []);
 
-  // ── Fetch data ─────────────────────────────────────────────────────────────
   const fetchData = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
     else { setLoadingDashboard(true); setLoadingEvents(true); setLoadingReportes(true); }
@@ -436,10 +428,26 @@ const Daf = () => {
   }, []);
 
   useEffect(() => { 
+    cargarUsuarios();
     fetchData();
     checkTelegramStatus();
   }, [fetchData, checkTelegramStatus]);
-
+ const cargarUsuarios = async () => {
+    try {
+      const token = await getTokenAsync();
+      const response = await axios.get(`${API_BASE_URL}/usuarios`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      // Filtrar solo usuarios con rol 'daf'
+      const usuariosDaf = response.data.filter(u => u.role === 'daf');
+      setUsuarios(usuariosDaf);
+    } catch (error) {
+      console.error('Error al cargar usuarios:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
   const markAsRead = async (id) => {
     try {
       const token = await getTokenAsync();
@@ -501,6 +509,25 @@ const Daf = () => {
     }
   };
 
+   const renderItem = ({ item }) => (
+    <View style={styles.usuarioCard}>
+      <View style={styles.usuarioInfo}>
+        <Text style={styles.nombre}>
+          {item.nombre} {item.apellidopat} {item.apellidomat}
+        </Text>
+        <Text style={styles.email}>{item.email}</Text>
+      </View>
+      <Ionicons name="person-circle-outline" size={40} color="#E95A0C" />
+    </View>
+  );
+
+  if (loading) {
+    return (
+      <View style={styles.centered}>
+        <ActivityIndicator size="large" color="#E95A0C" />
+      </View>
+    );
+  }
   const adminActions = [
     { id: '1', title: 'Gestión de Usuarios',  iconName: 'people-outline',           route: '/admin/UsuariosDaf',      color: COLORS.secondary, description: 'Administración de cuentas de usuario' },
     { id: '3', title: 'Reportes Avanzados',    iconName: 'document-text-outline',    route: '/admin/reportes',         color: COLORS.secondary, description: 'Generación de reportes detallados', badge: 'Nuevo', badgeColor: COLORS.accent },
@@ -508,7 +535,27 @@ const Daf = () => {
     { id: '5', title: 'Subida de Layouts',     iconName: 'images-outline',           route: '/admin/Layouts',          color: COLORS.info,      description: 'Administración de plantillas',       badge: 'Nuevo', badgeColor: COLORS.accent },
   ];
 
-  // ── Render ─────────────────────────────────────────────────────────────────
+  return (
+    <View style={styles.container}>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <Ionicons name="arrow-back" size={24} color="#1F2937" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Usuarios DAF</Text>
+      </View>
+      
+      <View style={styles.infoContainer}>
+        <Text style={styles.infoText}>{usuarios.length} usuarios encontrados</Text>
+      </View>
+
+      <FlatList
+        data={usuarios}
+        renderItem={renderItem}
+        keyExtractor={(item) => item.idusuario.toString()}
+        contentContainerStyle={styles.listContainer}
+      />
+    </View>
+  );
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
@@ -528,7 +575,6 @@ const Daf = () => {
           isTelegramLinked={isTelegramLinked}
         />
 
-        {/* ── KPIs ── */}
         <Section title="Resumen de Actividad" subtitle="Métricas clave del sistema">
           {loadingDashboard ? (
             <View style={styles.loadingBox}>
@@ -542,7 +588,6 @@ const Daf = () => {
           )}
         </Section>
 
-        {/* ── EVENTOS EN FASE 2 ── */}
         <Section
           title="Eventos en Fase 2"
           subtitle="Solo se muestran eventos desde hoy en adelante"
