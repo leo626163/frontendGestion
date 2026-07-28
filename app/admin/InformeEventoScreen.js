@@ -9,6 +9,7 @@ import {
   TouchableOpacity,
   Platform,
   TextInput,
+  Image,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -36,6 +37,8 @@ const COLORS = {
   surface: '#ffffff',
   success: '#27ae60',
   warning: '#f39c12',
+  info: '#3498db',
+  purple: '#9b59b6',
   logout: '#e74c3c',
   white: '#fff',
   grayLight: '#ecf0f1',
@@ -54,6 +57,11 @@ const formatDate = (dateString) => {
   }
 };
 
+const formatTime = (timeString) => {
+  if (!timeString) return 'No especificada';
+  return timeString;
+};
+
 const emptyEgresoRow = () => ({ descripcion: '', cantidad: '', precio_unitario: '', total: 0 });
 
 const InformeEventoScreen = () => {
@@ -65,8 +73,11 @@ const InformeEventoScreen = () => {
   const [error, setError] = useState(null);
   const [readOnly, setReadOnly] = useState(false);
 
+  // Datos del evento (como en EventDetailScreen)
+  const [event, setEvent] = useState(null);
+  
+  // Datos del informe
   const [esperado, setEsperado] = useState(null);
-
   const [segAlcanzado, setSegAlcanzado] = useState({
     estudiantes: '', docentes: '', publico_externo: '', influencers: '', otro_cual: '', otro_cantidad: '',
   });
@@ -83,7 +94,7 @@ const InformeEventoScreen = () => {
   const [analisisDesviaciones, setAnalisisDesviaciones] = useState('');
   const [leccionesAprendidas, setLeccionesAprendidas] = useState('');
 
-  const fetchInforme = useCallback(async () => {
+  const fetchAllData = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -94,15 +105,54 @@ const InformeEventoScreen = () => {
         return;
       }
 
-      const [infoRes, meRes] = await Promise.all([
+      // Cargar datos del evento Y del informe en paralelo
+      const [eventRes, informeRes, userRes] = await Promise.all([
+        axios.get(`${API_BASE_URL}/eventos/${eventId}`, { headers: { Authorization: `Bearer ${token}` } }),
         axios.get(`${API_BASE_URL}/eventos/${eventId}/informe`, { headers: { Authorization: `Bearer ${token}` } }),
         axios.get(`${API_BASE_URL}/auth/me`, { headers: { Authorization: `Bearer ${token}` } }),
       ]);
 
-      setEsperado(infoRes.data.esperado);
-      setReadOnly(meRes.data.role !== 'admin' && meRes.data.role !== 'academico');
+      // Transformar datos del evento (igual que en EventDetailScreen)
+      const eventData = eventRes.data;
+      const transformedEvent = {
+        id: eventData.idevento || null,
+        title: eventData.nombreevento || 'Sin título',
+        date: formatDate(eventData.fechaevento),
+        time: formatTime(eventData.horaevento),
+        location: eventData.lugarevento || 'Ubicación no especificada',
+        status: (eventData.estado || 'pendiente').toLowerCase(),
+        imageUrl: eventData.imagenUrl || null,
+        idfase: eventData.idfase || 1,
+        responsable: eventData.responsable_evento || eventData.responsable || null,
+        actividadesPrevias: eventData.actividadesPrevias || [],
+        actividadesDurante: eventData.actividadesDurante || [],
+        actividadesPost: eventData.actividadesPost || [],
+        serviciosContratados: eventData.serviciosContratados || [],
+        layout: eventData.layout || null,
+        creador: eventData.creador ? {
+          nombre: `${eventData.creador.nombre} ${eventData.creador.apellidopat} ${eventData.creador.apellidomat}`,
+          email: eventData.creador.email,
+          role: eventData.creador.role
+        } : null,
+        Clasificacion: eventData.Clasificacion || null,
+        tiposEvento: eventData.TiposDeEvento || [],
+        objetivosPDI: Array.isArray(eventData.ObjetivosPDI) ? eventData.ObjetivosPDI : [],
+        resultados: (eventData.Resultados && eventData.Resultados.length > 0)
+          ? eventData.Resultados[0]
+          : { participacion_esperada: null, satisfaccion_esperada: null, otros_resultados: null },
+        recursos: eventData.Recursos || [],
+        comite: eventData.Comite || [],
+        presupuesto: eventData.Presupuesto || null,
+        egresos: eventData.Egresos || [],
+        ingresos: eventData.Ingresos || [],
+      };
 
-      const informe = infoRes.data.informe;
+      setEvent(transformedEvent);
+      setEsperado(informeRes.data.esperado);
+      setReadOnly(userRes.data.role !== 'admin' && userRes.data.role !== 'academico');
+
+      // Cargar datos del informe si existen
+      const informe = informeRes.data.informe;
       if (informe) {
         setSegAlcanzado({
           estudiantes: String(informe.segmento_alcanzado_estudiantes ?? ''),
@@ -130,16 +180,16 @@ const InformeEventoScreen = () => {
         setLeccionesAprendidas(informe.lecciones_aprendidas || '');
       }
     } catch (err) {
-      setError('Error al cargar el informe: ' + (err.response?.data?.message || err.message));
+      setError('Error al cargar los datos: ' + (err.response?.data?.message || err.message));
     } finally {
       setLoading(false);
     }
   }, [eventId, router]);
 
   useEffect(() => {
-    if (eventId) fetchInforme();
+    if (eventId) fetchAllData();
     else { setError('No se proporcionó un ID de evento.'); setLoading(false); }
-  }, [fetchInforme, eventId]);
+  }, [fetchAllData, eventId]);
 
   const updateRow = (setter, rows, index, field, value) => {
     const updated = [...rows];
@@ -218,11 +268,11 @@ const InformeEventoScreen = () => {
       <h1>Informe del Evento</h1>
       <div class="section-title">I. Datos Generales</div>
       <table>
-        <tr><td class="label">Nombre del Evento</td><td>${esperado?.nombreEvento || ''}</td></tr>
-        <tr><td class="label">Lugar del Evento</td><td>${esperado?.lugarEvento || ''}</td></tr>
-        <tr><td class="label">Fecha de Realización</td><td>${formatDate(esperado?.fechaEvento)}</td></tr>
-        <tr><td class="label">Hora del Evento</td><td>${esperado?.horaEvento || ''}</td></tr>
-        <tr><td class="label">Responsable del Evento</td><td>${esperado?.responsable || ''}</td></tr>
+        <tr><td class="label">Nombre del Evento</td><td>${event?.title || ''}</td></tr>
+        <tr><td class="label">Lugar del Evento</td><td>${event?.location || ''}</td></tr>
+        <tr><td class="label">Fecha de Realización</td><td>${event?.date || ''}</td></tr>
+        <tr><td class="label">Hora del Evento</td><td>${event?.time || ''}</td></tr>
+        <tr><td class="label">Responsable del Evento</td><td>${event?.responsable || ''}</td></tr>
       </table>
       <div class="section-title">II. Resultados del Evento</div>
       <div class="two-col">
@@ -250,9 +300,9 @@ const InformeEventoScreen = () => {
       </div>
       <table>
         <tr><th></th><th>Esperado</th><th>Real</th></tr>
-        <tr><td>Participación Efectiva</td><td>${esperado?.participacionEsperada || '-'}</td><td>${participacionReal || '-'}</td></tr>
-        <tr><td>Índice de Satisfacción</td><td>${esperado?.satisfaccionEsperada || '-'}</td><td>${satisfaccionReal || '-'}</td></tr>
-        <tr><td>Otro</td><td>${esperado?.otrosResultadosEsperados || '-'}</td><td>${otrosResultadosReal || '-'}</td></tr>
+        <tr><td>Participación Efectiva</td><td>${event?.resultados?.participacion_esperada || '-'}</td><td>${participacionReal || '-'}</td></tr>
+        <tr><td>Índice de Satisfacción</td><td>${event?.resultados?.satisfaccion_esperada || '-'}</td><td>${satisfaccionReal || '-'}</td></tr>
+        <tr><td>Otro</td><td>${event?.resultados?.otros_resultados || '-'}</td><td>${otrosResultadosReal || '-'}</td></tr>
       </table>
       <div class="section-title">III. Balance Económico</div>
       <strong>Egresos</strong>
@@ -288,391 +338,244 @@ const InformeEventoScreen = () => {
   };
 
   if (loading) {
-    return <View style={styles.centered}><ActivityIndicator size="large" color={COLORS.primary} /><Text style={styles.loadingText}>Cargando informe...</Text></View>;
+    return <View style={styles.centered}><ActivityIndicator size="large" color={COLORS.primary} /><Text style={styles.loadingText}>Cargando datos del evento e informe...</Text></View>;
   }
   if (error) {
     return <View style={styles.centered}><Ionicons name="alert-circle-outline" size={50} color={COLORS.accent} /><Text style={styles.errorText}>{error}</Text></View>;
   }
 
   return (
-    <View style={styles.screenContainer}>
+    <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
+      {/* ========== SECCIÓN 1: DATOS DEL EVENTO (como en EventDetailScreen) ========== */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()}><Ionicons name="arrow-back" size={24} color={COLORS.white} /></TouchableOpacity>
-        <Text style={styles.headerTitle}>Informe del Evento</Text>
+        <Text style={styles.headerTitle}>{event?.title || 'Informe del Evento'}</Text>
         <TouchableOpacity onPress={generarPDF}><Ionicons name="print-outline" size={24} color={COLORS.white} /></TouchableOpacity>
       </View>
 
-      <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
-        
-        {readOnly && (
-          <View style={[styles.sectionCard, { backgroundColor: '#FFF3E0', flexDirection: 'row', alignItems: 'center' }]}>
-            <Ionicons name="lock-closed-outline" size={20} color={COLORS.warning} />
-            <Text style={{ marginLeft: 10, color: COLORS.darkText, flex: 1, fontSize: 14 }}>
-              Solo el responsable del evento puede completar este informe. Puedes verlo, pero no editarlo.
-            </Text>
-          </View>
-        )}
+      {event?.imageUrl && <Image source={{ uri: event.imageUrl }} style={styles.eventImage} />}
 
-        {/* I. Datos Generales */}
-        <View style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>I. Datos Generales</Text>
-          <View style={styles.detailRow}>
-            <Ionicons name="information-circle-outline" size={20} color={COLORS.primary} style={styles.detailIcon} />
-            <Text style={styles.detailText}>{esperado?.nombreEvento || 'No especificado'}</Text>
-          </View>
-          <View style={styles.detailRow}>
-            <Ionicons name="location-outline" size={20} color={COLORS.primary} style={styles.detailIcon} />
-            <Text style={styles.detailText}>{esperado?.lugarEvento || 'No especificado'}</Text>
-          </View>
-          <View style={styles.detailRow}>
-            <Ionicons name="calendar-outline" size={20} color={COLORS.primary} style={styles.detailIcon} />
-            <Text style={styles.detailText}>{formatDate(esperado?.fechaEvento)}</Text>
-          </View>
-          <View style={styles.detailRow}>
-            <Ionicons name="time-outline" size={20} color={COLORS.primary} style={styles.detailIcon} />
-            <Text style={styles.detailText}>{esperado?.horaEvento || 'No especificada'}</Text>
-          </View>
-          <View style={styles.detailRow}>
-            <Ionicons name="person-outline" size={20} color={COLORS.primary} style={styles.detailIcon} />
-            <Text style={styles.detailText}>{esperado?.responsable || 'No especificado'}</Text>
-          </View>
+      <View style={styles.sectionCard}>
+        <Text style={styles.sectionTitle}>{event?.title}</Text>
+        <View style={[styles.phaseBadge, { backgroundColor: COLORS.primary }]}>
+          <Ionicons name="flag-outline" size={16} color={COLORS.white} />
+          <Text style={styles.phaseBadgeText}>Fase {event?.idfase || 1}</Text>
         </View>
-
-        {/* II. Segmento y Objetivos Alcanzados */}
-        <View style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>II. Segmento Objetivo Alcanzado</Text>
-          {['estudiantes', 'docentes', 'publico_externo', 'influencers'].map((key) => (
-            <View key={key} style={styles.detailRow}>
-              <Ionicons name="people-outline" size={20} color={COLORS.primary} style={styles.detailIcon} />
-              <Text style={[styles.detailText, { textTransform: 'capitalize' }]}>{key.replace('_', ' ')}</Text>
-              <TextInput
-                style={[styles.numberInput, { width: 80 }]}
-                keyboardType="numeric"
-                editable={!readOnly}
-                value={segAlcanzado[key]}
-                onChangeText={(v) => setSegAlcanzado(prev => ({ ...prev, [key]: v }))}
-                placeholder="0"
-              />
-            </View>
-          ))}
-          <View style={styles.detailRow}>
-            <Ionicons name="person-add-outline" size={20} color={COLORS.primary} style={styles.detailIcon} />
-            <TextInput
-              style={[styles.textInput, { flex: 2, marginBottom: 0 }]}
-              editable={!readOnly}
-              value={segAlcanzado.otro_cual}
-              onChangeText={(v) => setSegAlcanzado(prev => ({ ...prev, otro_cual: v }))}
-              placeholder="Otro: ¿cuál?"
-            />
-            <TextInput
-              style={[styles.numberInput, { width: 80 }]}
-              keyboardType="numeric"
-              editable={!readOnly}
-              value={segAlcanzado.otro_cantidad}
-              onChangeText={(v) => setSegAlcanzado(prev => ({ ...prev, otro_cantidad: v }))}
-              placeholder="0"
-            />
-          </View>
+        <View style={styles.detailRow}>
+          <Ionicons name={event?.status === 'aprobado' ? 'checkmark-circle-outline' : 'time-outline'} size={20} color={event?.status === 'aprobado' ? COLORS.success : COLORS.warning} style={styles.detailIcon} />
+          <Text style={[styles.detailText, { color: event?.status === 'aprobado' ? COLORS.success : COLORS.warning }]}>Estado: {event?.status}</Text>
         </View>
+      </View>
 
+      <View style={styles.sectionCard}>
+        <Text style={styles.sectionTitle}>Datos Generales del Evento</Text>
+        <View style={styles.detailRow}><Ionicons name="calendar-outline" size={20} color={COLORS.primary} style={styles.detailIcon} /><Text style={styles.detailText}>Fecha: {event?.date}</Text></View>
+        <View style={styles.detailRow}><Ionicons name="time-outline" size={20} color={COLORS.primary} style={styles.detailIcon} /><Text style={styles.detailText}>Hora: {event?.time}</Text></View>
+        <View style={styles.detailRow}><Ionicons name="location-outline" size={20} color={COLORS.primary} style={styles.detailIcon} /><Text style={styles.detailText}>Ubicación: {event?.location}</Text></View>
+        {event?.responsable && <View style={styles.detailRow}><Ionicons name="person-outline" size={20} color={COLORS.primary} style={styles.detailIcon} /><Text style={styles.detailText}>Responsable: {event.responsable}</Text></View>}
+      </View>
+
+      {event?.clasificacion && (
         <View style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>Objetivos Alcanzados</Text>
-          {[
-            ['modelo_pedagogico', 'Modelo Pedagógico', 'school-outline'],
-            ['posicionamiento', 'Posicionamiento', 'star-outline'],
-            ['internacionalizacion', 'Internacionalización', 'globe-outline'],
-            ['rsu', 'RSU', 'heart-outline'],
-            ['fidelizacion', 'Fidelización', 'hand-left-outline'],
-          ].map(([key, label, icon]) => (
-            <TouchableOpacity
-              key={key}
-              style={styles.listItem}
-              disabled={readOnly}
-              onPress={() => setObjAlcanzado(prev => ({ ...prev, [key]: !prev[key] }))}
-            >
-              <Ionicons 
-                name={objAlcanzado[key] ? 'checkbox' : 'square-outline'} 
-                size={22} 
-                color={COLORS.primary} 
-                style={styles.listIcon} 
-              />
-              <Text style={styles.listText}>{label}</Text>
-            </TouchableOpacity>
-          ))}
-          <View style={styles.detailRow}>
-             <Ionicons name="ellipsis-horizontal-outline" size={20} color={COLORS.primary} style={styles.detailIcon} />
-             <TextInput
-              style={[styles.textInput, { flex: 1, marginBottom: 0 }]}
-              editable={!readOnly}
-              value={objAlcanzado.otro_cual}
-              onChangeText={(v) => setObjAlcanzado(prev => ({ ...prev, otro_cual: v }))}
-              placeholder="Otro: ¿cuál?"
-            />
-          </View>
+          <Text style={styles.sectionTitle}>Clasificación Estratégica</Text>
+          <Text style={styles.detailText}>• {event.Clasificacion.nombreClasificacion} - {event.Clasificacion.nombresubcategoria}</Text>
         </View>
+      )}
 
-        {/* Participación / Satisfacción */}
+      {event?.resultados && (
         <View style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>Participación e Índice de Satisfacción</Text>
-          
-          <View style={styles.detailRow}>
+          <Text style={styles.sectionTitle}>Resultados Esperados</Text>
+          {event.resultados.participacion_esperada && <View style={styles.listItem}><Ionicons name="people-circle-outline" size={16} color={COLORS.grayText} style={styles.listIcon} /><Text style={styles.listText}>Participación: {event.resultados.participacion_esperada}</Text></View>}
+          {event.resultados.satisfaccion_esperada && <View style={styles.listItem}><Ionicons name="happy-outline" size={16} color={COLORS.grayText} style={styles.listIcon} /><Text style={styles.listText}>Satisfacción: {event.resultados.satisfaccion_esperada}</Text></View>}
+          {event.resultados.otros_resultados && <View style={styles.listItem}><Ionicons name="document-text-outline" size={16} color={COLORS.grayText} style={styles.listIcon} /><Text style={styles.listText}>Otros: {event.resultados.otros_resultados}</Text></View>}
+        </View>
+      )}
+
+      {event?.presupuesto && (
+        <View style={styles.sectionCard}>
+          <Text style={styles.sectionTitle}>Presupuesto del Evento</Text>
+          <View style={styles.budgetRow}><Text style={styles.budgetLabel}>Total Egresos:</Text><Text style={styles.budgetValue}>Bs {(event.presupuesto.total_egresos || 0).toFixed(2)}</Text></View>
+          <View style={styles.budgetRow}><Text style={styles.budgetLabel}>Total Ingresos:</Text><Text style={styles.budgetValue}>Bs {(event.presupuesto.total_ingresos || 0).toFixed(2)}</Text></View>
+          <View style={[styles.budgetRow, styles.balanceRow]}><Text style={styles.budgetLabel}>Balance:</Text><Text style={[styles.budgetValue, { color: (event.presupuesto.balance || 0) >= 0 ? COLORS.success : COLORS.logout }]}>Bs {(event.presupuesto.balance || 0).toFixed(2)}</Text></View>
+        </View>
+      )}
+
+      {/* ========== SECCIÓN 2: FORMULARIO DEL INFORME ========== */}
+      {readOnly && (
+        <View style={[styles.sectionCard, { backgroundColor: '#FFF3E0', flexDirection: 'row', alignItems: 'center' }]}>
+          <Ionicons name="lock-closed-outline" size={20} color={COLORS.warning} />
+          <Text style={{ marginLeft: 10, color: COLORS.darkText, flex: 1, fontSize: 14 }}>Solo el responsable del evento puede completar este informe.</Text>
+        </View>
+      )}
+
+      <View style={styles.sectionCard}>
+        <Text style={styles.sectionTitle}>II. Segmento Objetivo Alcanzado</Text>
+        {['estudiantes', 'docentes', 'publico_externo', 'influencers'].map((key) => (
+          <View key={key} style={styles.detailRow}>
             <Ionicons name="people-outline" size={20} color={COLORS.primary} style={styles.detailIcon} />
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 13, color: COLORS.grayText }}>Esperado: {esperado?.participacionEsperada || '-'}</Text>
-              <TextInput 
-                style={[styles.textInput, { marginTop: 4, marginBottom: 0 }]} 
-                editable={!readOnly} 
-                value={participacionReal} 
-                onChangeText={setParticipacionReal} 
-                placeholder="Participación Real" 
-              />
-            </View>
+            <Text style={[styles.detailText, { textTransform: 'capitalize' }]}>{key.replace('_', ' ')}</Text>
+            <TextInput style={[styles.numberInput, { width: 80 }]} keyboardType="numeric" editable={!readOnly} value={segAlcanzado[key]} onChangeText={(v) => setSegAlcanzado(prev => ({ ...prev, [key]: v }))} placeholder="0" />
           </View>
+        ))}
+        <View style={styles.detailRow}>
+          <Ionicons name="person-add-outline" size={20} color={COLORS.primary} style={styles.detailIcon} />
+          <TextInput style={[styles.textInput, { flex: 2, marginBottom: 0 }]} editable={!readOnly} value={segAlcanzado.otro_cual} onChangeText={(v) => setSegAlcanzado(prev => ({ ...prev, otro_cual: v }))} placeholder="Otro: ¿cuál?" />
+          <TextInput style={[styles.numberInput, { width: 80 }]} keyboardType="numeric" editable={!readOnly} value={segAlcanzado.otro_cantidad} onChangeText={(v) => setSegAlcanzado(prev => ({ ...prev, otro_cantidad: v }))} placeholder="0" />
+        </View>
+      </View>
 
-          <View style={styles.detailRow}>
-            <Ionicons name="happy-outline" size={20} color={COLORS.primary} style={styles.detailIcon} />
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 13, color: COLORS.grayText }}>Esperado: {esperado?.satisfaccionEsperada || '-'}</Text>
-              <TextInput 
-                style={[styles.textInput, { marginTop: 4, marginBottom: 0 }]} 
-                editable={!readOnly} 
-                value={satisfaccionReal} 
-                onChangeText={setSatisfaccionReal} 
-                placeholder="Índice de Satisfacción Real" 
-              />
-            </View>
+      <View style={styles.sectionCard}>
+        <Text style={styles.sectionTitle}>Objetivos Alcanzados</Text>
+        {[
+          ['modelo_pedagogico', 'Modelo Pedagógico'],
+          ['posicionamiento', 'Posicionamiento'],
+          ['internacionalizacion', 'Internacionalización'],
+          ['rsu', 'RSU'],
+          ['fidelizacion', 'Fidelización'],
+        ].map(([key, label]) => (
+          <TouchableOpacity key={key} style={styles.listItem} disabled={readOnly} onPress={() => setObjAlcanzado(prev => ({ ...prev, [key]: !prev[key] }))}>
+            <Ionicons name={objAlcanzado[key] ? 'checkbox' : 'square-outline'} size={22} color={COLORS.primary} style={styles.listIcon} />
+            <Text style={styles.listText}>{label}</Text>
+          </TouchableOpacity>
+        ))}
+        <View style={styles.detailRow}>
+          <Ionicons name="ellipsis-horizontal-outline" size={20} color={COLORS.primary} style={styles.detailIcon} />
+          <TextInput style={[styles.textInput, { flex: 1, marginBottom: 0 }]} editable={!readOnly} value={objAlcanzado.otro_cual} onChangeText={(v) => setObjAlcanzado(prev => ({ ...prev, otro_cual: v }))} placeholder="Otro: ¿cuál?" />
+        </View>
+      </View>
+
+      <View style={styles.sectionCard}>
+        <Text style={styles.sectionTitle}>Participación e Índice de Satisfacción</Text>
+        <View style={styles.detailRow}>
+          <Ionicons name="people-outline" size={20} color={COLORS.primary} style={styles.detailIcon} />
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: 13, color: COLORS.grayText }}>Esperado: {event?.resultados?.participacion_esperada || '-'}</Text>
+            <TextInput style={[styles.textInput, { marginTop: 4, marginBottom: 0 }]} editable={!readOnly} value={participacionReal} onChangeText={setParticipacionReal} placeholder="Participación Real" />
           </View>
+        </View>
+        <View style={styles.detailRow}>
+          <Ionicons name="happy-outline" size={20} color={COLORS.primary} style={styles.detailIcon} />
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: 13, color: COLORS.grayText }}>Esperado: {event?.resultados?.satisfaccion_esperada || '-'}</Text>
+            <TextInput style={[styles.textInput, { marginTop: 4, marginBottom: 0 }]} editable={!readOnly} value={satisfaccionReal} onChangeText={setSatisfaccionReal} placeholder="Índice de Satisfacción Real" />
+          </View>
+        </View>
+        <View style={styles.detailRow}>
+          <Ionicons name="document-text-outline" size={20} color={COLORS.primary} style={styles.detailIcon} />
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: 13, color: COLORS.grayText }}>Esperado: {event?.resultados?.otros_resultados || '-'}</Text>
+            <TextInput style={[styles.textInput, { marginTop: 4, marginBottom: 0 }]} editable={!readOnly} value={otrosResultadosReal} onChangeText={setOtrosResultadosReal} placeholder="Otros Resultados Reales" />
+          </View>
+        </View>
+      </View>
 
-          <View style={styles.detailRow}>
-            <Ionicons name="document-text-outline" size={20} color={COLORS.primary} style={styles.detailIcon} />
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 13, color: COLORS.grayText }}>Esperado: {esperado?.otrosResultadosEsperados || '-'}</Text>
-              <TextInput 
-                style={[styles.textInput, { marginTop: 4, marginBottom: 0 }]} 
-                editable={!readOnly} 
-                value={otrosResultadosReal} 
-                onChangeText={setOtrosResultadosReal} 
-                placeholder="Otros Resultados Reales" 
-              />
+      <View style={styles.sectionCard}>
+        <Text style={styles.sectionTitle}>III. Balance Económico (Real)</Text>
+        <View style={styles.budgetSubsection}>
+          <View style={styles.budgetHeader}><Ionicons name="arrow-down-circle" size={20} color={COLORS.logout} /><Text style={styles.budgetSubtitle}>Egresos</Text></View>
+          <View style={styles.budgetTableHeader}>
+            <Text style={[styles.budgetCell, styles.budgetCellDesc]}>Descripción</Text>
+            <Text style={[styles.budgetCell, styles.budgetCellNum]}>Cant.</Text>
+            <Text style={[styles.budgetCell, styles.budgetCellNum]}>Precio</Text>
+            <Text style={[styles.budgetCell, styles.budgetCellNum]}>Total</Text>
+            {!readOnly && <View style={{ width: 24 }} />}
+          </View>
+          {egresosReales.map((row, index) => (
+            <View key={index} style={styles.budgetTableRow}>
+              <TextInput style={[styles.budgetCell, styles.budgetCellDesc, styles.inputCell, styles.inputCellDesc]} editable={!readOnly} placeholder="Descripción" value={row.descripcion} onChangeText={(v) => updateRow(setEgresosReales, egresosReales, index, 'descripcion', v)} />
+              <TextInput style={[styles.budgetCell, styles.budgetCellNum, styles.inputCell]} keyboardType="numeric" editable={!readOnly} placeholder="0" value={String(row.cantidad)} onChangeText={(v) => updateRow(setEgresosReales, egresosReales, index, 'cantidad', v)} />
+              <TextInput style={[styles.budgetCell, styles.budgetCellNum, styles.inputCell]} keyboardType="numeric" editable={!readOnly} placeholder="0.00" value={String(row.precio_unitario)} onChangeText={(v) => updateRow(setEgresosReales, egresosReales, index, 'precio_unitario', v)} />
+              <Text style={[styles.budgetCell, styles.budgetCellNum, styles.budgetCellTotal]}>{(row.total || 0).toFixed(2)}</Text>
+              {!readOnly && <TouchableOpacity onPress={() => removeRow(setEgresosReales, egresosReales, index)} style={{ width: 24, alignItems: 'center' }}><Ionicons name="trash-outline" size={18} color={COLORS.logout} /></TouchableOpacity>}
             </View>
+          ))}
+          {!readOnly && <TouchableOpacity style={styles.addRowButton} onPress={() => addRow(setEgresosReales, egresosReales)}><Ionicons name="add-circle-outline" size={18} color={COLORS.primary} /><Text style={styles.addRowText}>Agregar egreso</Text></TouchableOpacity>}
+          <View style={styles.budgetTotalRow}>
+            <Text style={[styles.budgetTotalLabel, { flex: 3 }]}>TOTAL EGRESOS:</Text>
+            <Text style={styles.budgetTotalValue}>Bs {(totalEgresosReal || 0).toFixed(2)}</Text>
+            {!readOnly && <View style={{ width: 24 }} />}
           </View>
         </View>
 
-        {/* III. Balance Económico Real */}
-        <View style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>III. Balance Económico (Real)</Text>
-
-          <View style={styles.budgetSubsection}>
-            <View style={styles.budgetHeader}>
-              <Ionicons name="arrow-down-circle" size={20} color={COLORS.logout} />
-              <Text style={styles.budgetSubtitle}>Egresos</Text>
-            </View>
-
-            <View style={styles.budgetTableHeader}>
-              <Text style={[styles.budgetCell, styles.budgetCellDesc]}>Descripción</Text>
-              <Text style={[styles.budgetCell, styles.budgetCellNum]}>Cant.</Text>
-              <Text style={[styles.budgetCell, styles.budgetCellNum]}>Precio</Text>
-              <Text style={[styles.budgetCell, styles.budgetCellNum]}>Total</Text>
-              {!readOnly && <View style={{ width: 24 }} />} 
-            </View>
-
-            {egresosReales.map((row, index) => (
-              <View key={index} style={styles.budgetTableRow}>
-                <TextInput 
-                  style={[styles.budgetCell, styles.budgetCellDesc, styles.inputCell, styles.inputCellDesc]} 
-                  editable={!readOnly} 
-                  placeholder="Descripción" 
-                  value={row.descripcion} 
-                  onChangeText={(v) => updateRow(setEgresosReales, egresosReales, index, 'descripcion', v)} 
-                />
-                <TextInput 
-                  style={[styles.budgetCell, styles.budgetCellNum, styles.inputCell]} 
-                  keyboardType="numeric" 
-                  editable={!readOnly} 
-                  placeholder="0" 
-                  value={String(row.cantidad)} 
-                  onChangeText={(v) => updateRow(setEgresosReales, egresosReales, index, 'cantidad', v)} 
-                />
-                <TextInput 
-                  style={[styles.budgetCell, styles.budgetCellNum, styles.inputCell]} 
-                  keyboardType="numeric" 
-                  editable={!readOnly} 
-                  placeholder="0.00" 
-                  value={String(row.precio_unitario)} 
-                  onChangeText={(v) => updateRow(setEgresosReales, egresosReales, index, 'precio_unitario', v)} 
-                />
-                <Text style={[styles.budgetCell, styles.budgetCellNum, styles.budgetCellTotal]}>
-                  {(row.total || 0).toFixed(2)}
-                </Text>
-                {!readOnly && (
-                  <TouchableOpacity onPress={() => removeRow(setEgresosReales, egresosReales, index)} style={{ width: 24, alignItems: 'center' }}>
-                    <Ionicons name="trash-outline" size={18} color={COLORS.logout} />
-                  </TouchableOpacity>
-                )}
-              </View>
-            ))}
-            {!readOnly && (
-              <TouchableOpacity style={styles.addRowButton} onPress={() => addRow(setEgresosReales, egresosReales)}>
-                <Ionicons name="add-circle-outline" size={18} color={COLORS.primary} />
-                <Text style={styles.addRowText}>Agregar egreso</Text>
-              </TouchableOpacity>
-            )}
-            <View style={styles.budgetTotalRow}>
-              <Text style={[styles.budgetTotalLabel, { flex: 3 }]}>TOTAL EGRESOS:</Text>
-              <Text style={styles.budgetTotalValue}>Bs {(totalEgresosReal || 0).toFixed(2)}</Text>
-              {!readOnly && <View style={{ width: 24 }} />}
-            </View>
+        <View style={styles.budgetSubsection}>
+          <View style={styles.budgetHeader}><Ionicons name="arrow-up-circle" size={20} color={COLORS.success} /><Text style={styles.budgetSubtitle}>Ingresos</Text></View>
+          <View style={styles.budgetTableHeader}>
+            <Text style={[styles.budgetCell, styles.budgetCellDesc]}>Descripción</Text>
+            <Text style={[styles.budgetCell, styles.budgetCellNum]}>Cant.</Text>
+            <Text style={[styles.budgetCell, styles.budgetCellNum]}>Precio</Text>
+            <Text style={[styles.budgetCell, styles.budgetCellNum]}>Total</Text>
+            {!readOnly && <View style={{ width: 24 }} />}
           </View>
-
-          <View style={styles.budgetSubsection}>
-            <View style={styles.budgetHeader}>
-              <Ionicons name="arrow-up-circle" size={20} color={COLORS.success} />
-              <Text style={styles.budgetSubtitle}>Ingresos</Text>
+          {ingresosReales.map((row, index) => (
+            <View key={index} style={styles.budgetTableRow}>
+              <TextInput style={[styles.budgetCell, styles.budgetCellDesc, styles.inputCell, styles.inputCellDesc]} editable={!readOnly} placeholder="Descripción" value={row.descripcion} onChangeText={(v) => updateRow(setIngresosReales, ingresosReales, index, 'descripcion', v)} />
+              <TextInput style={[styles.budgetCell, styles.budgetCellNum, styles.inputCell]} keyboardType="numeric" editable={!readOnly} placeholder="0" value={String(row.cantidad)} onChangeText={(v) => updateRow(setIngresosReales, ingresosReales, index, 'cantidad', v)} />
+              <TextInput style={[styles.budgetCell, styles.budgetCellNum, styles.inputCell]} keyboardType="numeric" editable={!readOnly} placeholder="0.00" value={String(row.precio_unitario)} onChangeText={(v) => updateRow(setIngresosReales, ingresosReales, index, 'precio_unitario', v)} />
+              <Text style={[styles.budgetCell, styles.budgetCellNum, styles.budgetCellTotal]}>{(row.total || 0).toFixed(2)}</Text>
+              {!readOnly && <TouchableOpacity onPress={() => removeRow(setIngresosReales, ingresosReales, index)} style={{ width: 24, alignItems: 'center' }}><Ionicons name="trash-outline" size={18} color={COLORS.logout} /></TouchableOpacity>}
             </View>
-
-            <View style={styles.budgetTableHeader}>
-              <Text style={[styles.budgetCell, styles.budgetCellDesc]}>Descripción</Text>
-              <Text style={[styles.budgetCell, styles.budgetCellNum]}>Cant.</Text>
-              <Text style={[styles.budgetCell, styles.budgetCellNum]}>Precio</Text>
-              <Text style={[styles.budgetCell, styles.budgetCellNum]}>Total</Text>
-              {!readOnly && <View style={{ width: 24 }} />}
-            </View>
-
-            {ingresosReales.map((row, index) => (
-              <View key={index} style={styles.budgetTableRow}>
-                <TextInput 
-                  style={[styles.budgetCell, styles.budgetCellDesc, styles.inputCell, styles.inputCellDesc]} 
-                  editable={!readOnly} 
-                  placeholder="Descripción" 
-                  value={row.descripcion} 
-                  onChangeText={(v) => updateRow(setIngresosReales, ingresosReales, index, 'descripcion', v)} 
-                />
-                <TextInput 
-                  style={[styles.budgetCell, styles.budgetCellNum, styles.inputCell]} 
-                  keyboardType="numeric" 
-                  editable={!readOnly} 
-                  placeholder="0" 
-                  value={String(row.cantidad)} 
-                  onChangeText={(v) => updateRow(setIngresosReales, ingresosReales, index, 'cantidad', v)} 
-                />
-                <TextInput 
-                  style={[styles.budgetCell, styles.budgetCellNum, styles.inputCell]} 
-                  keyboardType="numeric" 
-                  editable={!readOnly} 
-                  placeholder="0.00" 
-                  value={String(row.precio_unitario)} 
-                  onChangeText={(v) => updateRow(setIngresosReales, ingresosReales, index, 'precio_unitario', v)} 
-                />
-                <Text style={[styles.budgetCell, styles.budgetCellNum, styles.budgetCellTotal]}>
-                  {(row.total || 0).toFixed(2)}
-                </Text>
-                {!readOnly && (
-                  <TouchableOpacity onPress={() => removeRow(setIngresosReales, ingresosReales, index)} style={{ width: 24, alignItems: 'center' }}>
-                    <Ionicons name="trash-outline" size={18} color={COLORS.logout} />
-                  </TouchableOpacity>
-                )}
-              </View>
-            ))}
-            {!readOnly && (
-              <TouchableOpacity style={styles.addRowButton} onPress={() => addRow(setIngresosReales, ingresosReales)}>
-                <Ionicons name="add-circle-outline" size={18} color={COLORS.primary} />
-                <Text style={styles.addRowText}>Agregar ingreso</Text>
-              </TouchableOpacity>
-            )}
-            <View style={styles.budgetTotalRow}>
-              <Text style={[styles.budgetTotalLabel, { flex: 3 }]}>TOTAL INGRESOS:</Text>
-              <Text style={[styles.budgetTotalValue, { color: COLORS.success }]}>
-                Bs {(totalIngresosReal || 0).toFixed(2)}
-              </Text>
-              {!readOnly && <View style={{ width: 24 }} />}
-            </View>
-          </View>
-
-          <View style={styles.balanceFinal}>
-            <Text style={styles.balanceFinalLabel}>BALANCE ECONÓMICO:</Text>
-            <Text style={[
-              styles.balanceFinalValue,
-              { color: balanceReal >= 0 ? COLORS.success : COLORS.logout }
-            ]}>
-              Bs {balanceReal.toFixed(2)}
-            </Text>
+          ))}
+          {!readOnly && <TouchableOpacity style={styles.addRowButton} onPress={() => addRow(setIngresosReales, ingresosReales)}><Ionicons name="add-circle-outline" size={18} color={COLORS.primary} /><Text style={styles.addRowText}>Agregar ingreso</Text></TouchableOpacity>}
+          <View style={styles.budgetTotalRow}>
+            <Text style={[styles.budgetTotalLabel, { flex: 3 }]}>TOTAL INGRESOS:</Text>
+            <Text style={[styles.budgetTotalValue, { color: COLORS.success }]}>Bs {(totalIngresosReal || 0).toFixed(2)}</Text>
+            {!readOnly && <View style={{ width: 24 }} />}
           </View>
         </View>
 
-        {/* IV, V, VI */}
-        <View style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>IV. Información para la Nota de Prensa</Text>
-          <View style={styles.detailRow}>
-            <Ionicons name="newspaper-outline" size={20} color={COLORS.primary} style={styles.detailIcon} />
-            <TextInput 
-              style={[styles.textInput, { flex: 1, minHeight: 90, textAlignVertical: 'top', marginBottom: 0 }]} 
-              editable={!readOnly} 
-              multiline 
-              numberOfLines={4} 
-              value={infoPrensa} 
-              onChangeText={setInfoPrensa} 
-              placeholder="¿Qué se hizo, quiénes, por qué/para qué, cuándo, dónde?" 
-            />
-          </View>
+        <View style={styles.balanceFinal}>
+          <Text style={styles.balanceFinalLabel}>BALANCE ECONÓMICO:</Text>
+          <Text style={[styles.balanceFinalValue, { color: balanceReal >= 0 ? COLORS.success : COLORS.logout }]}>{balanceReal.toFixed(2)}</Text>
         </View>
+      </View>
 
-        <View style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>V. Análisis de Desviaciones Críticas/Significativas</Text>
-          <View style={styles.detailRow}>
-            <Ionicons name="git-compare-outline" size={20} color={COLORS.primary} style={styles.detailIcon} />
-            <TextInput 
-              style={[styles.textInput, { flex: 1, minHeight: 90, textAlignVertical: 'top', marginBottom: 0 }]} 
-              editable={!readOnly} 
-              multiline 
-              numberOfLines={4} 
-              value={analisisDesviaciones} 
-              onChangeText={setAnalisisDesviaciones} 
-              placeholder="Análisis de causas de las desviaciones detectadas" 
-            />
-          </View>
+      <View style={styles.sectionCard}>
+        <Text style={styles.sectionTitle}>IV. Información para la Nota de Prensa</Text>
+        <View style={styles.detailRow}>
+          <Ionicons name="newspaper-outline" size={20} color={COLORS.primary} style={styles.detailIcon} />
+          <TextInput style={[styles.textInput, { flex: 1, minHeight: 90, textAlignVertical: 'top', marginBottom: 0 }]} editable={!readOnly} multiline numberOfLines={4} value={infoPrensa} onChangeText={setInfoPrensa} placeholder="¿Qué se hizo, quiénes, por qué/para qué, cuándo, dónde?" />
         </View>
+      </View>
 
-        <View style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>VI. Lecciones Aprendidas</Text>
-          <View style={styles.detailRow}>
-            <Ionicons name="bulb-outline" size={20} color={COLORS.primary} style={styles.detailIcon} />
-            <TextInput 
-              style={[styles.textInput, { flex: 1, minHeight: 90, textAlignVertical: 'top', marginBottom: 0 }]} 
-              editable={!readOnly} 
-              multiline 
-              numberOfLines={4} 
-              value={leccionesAprendidas} 
-              onChangeText={setLeccionesAprendidas} 
-              placeholder="Lecciones aprendidas del evento" 
-            />
-          </View>
+      <View style={styles.sectionCard}>
+        <Text style={styles.sectionTitle}>V. Análisis de Desviaciones</Text>
+        <View style={styles.detailRow}>
+          <Ionicons name="git-compare-outline" size={20} color={COLORS.primary} style={styles.detailIcon} />
+          <TextInput style={[styles.textInput, { flex: 1, minHeight: 90, textAlignVertical: 'top', marginBottom: 0 }]} editable={!readOnly} multiline numberOfLines={4} value={analisisDesviaciones} onChangeText={setAnalisisDesviaciones} placeholder="Análisis de causas de las desviaciones detectadas" />
         </View>
+      </View>
 
-        {!readOnly && (
-          <View style={styles.actionButtonsContainer}>
-            <TouchableOpacity style={styles.draftButton} disabled={saving} onPress={() => handleGuardar('borrador')}>
-              {saving ? <ActivityIndicator color={COLORS.primary} /> : <Text style={styles.draftButtonText}>Guardar borrador</Text>}
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.finalButton} disabled={saving} onPress={() => handleGuardar('finalizado')}>
-              {saving ? <ActivityIndicator color={COLORS.white} /> : <Text style={styles.finalButtonText}>Finalizar informe</Text>}
-            </TouchableOpacity>
-          </View>
-        )}
+      <View style={styles.sectionCard}>
+        <Text style={styles.sectionTitle}>VI. Lecciones Aprendidas</Text>
+        <View style={styles.detailRow}>
+          <Ionicons name="bulb-outline" size={20} color={COLORS.primary} style={styles.detailIcon} />
+          <TextInput style={[styles.textInput, { flex: 1, minHeight: 90, textAlignVertical: 'top', marginBottom: 0 }]} editable={!readOnly} multiline numberOfLines={4} value={leccionesAprendidas} onChangeText={setLeccionesAprendidas} placeholder="Lecciones aprendidas del evento" />
+        </View>
+      </View>
 
-        <TouchableOpacity style={styles.pdfButton} onPress={generarPDF}>
-          <Ionicons name="print-outline" size={20} color={COLORS.white} />
-          <Text style={styles.pdfButtonText}>Generar PDF</Text>
-        </TouchableOpacity>
-      </ScrollView>
-    </View>
+      {!readOnly && (
+        <View style={styles.actionButtonsContainer}>
+          <TouchableOpacity style={styles.draftButton} disabled={saving} onPress={() => handleGuardar('borrador')}>
+            {saving ? <ActivityIndicator color={COLORS.primary} /> : <Text style={styles.draftButtonText}>Guardar borrador</Text>}
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.finalButton} disabled={saving} onPress={() => handleGuardar('finalizado')}>
+            {saving ? <ActivityIndicator color={COLORS.white} /> : <Text style={styles.finalButtonText}>Finalizar informe</Text>}
+          </TouchableOpacity>
+        </View>
+      )}
+
+      <TouchableOpacity style={styles.pdfButton} onPress={generarPDF}>
+        <Ionicons name="print-outline" size={20} color={COLORS.white} />
+        <Text style={styles.pdfButtonText}>Generar PDF</Text>
+      </TouchableOpacity>
+    </ScrollView>
   );
 };
 
 InformeEventoScreen.options = { headerShown: false };
 
 const styles = StyleSheet.create({
-  screenContainer: { flex: 1, backgroundColor: COLORS.background },
-  container: { flex: 1 },
+  container: { flex: 1, backgroundColor: COLORS.background },
   contentContainer: { padding: 16, paddingBottom: 40 },
   header: { backgroundColor: COLORS.primary, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: Platform.OS === 'ios' ? 50 : 20, paddingBottom: 15 },
   headerTitle: { color: COLORS.white, fontSize: 18, fontWeight: 'bold' },
@@ -680,17 +583,12 @@ const styles = StyleSheet.create({
   loadingText: { marginTop: 15, fontSize: 16, color: COLORS.grayText },
   errorText: { marginTop: 15, fontSize: 16, color: COLORS.accent, textAlign: 'center', marginHorizontal: 20 },
   
-  sectionCard: { 
-    backgroundColor: COLORS.surface, 
-    borderRadius: 16, 
-    padding: 20, 
-    marginBottom: 16, 
-    ...Platform.select({ 
-      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 12 }, 
-      android: { elevation: 8 } 
-    }) 
-  },
+  eventImage: { width: '100%', height: 200, resizeMode: 'cover', marginBottom: 16, borderRadius: 12 },
+  sectionCard: { backgroundColor: COLORS.surface, borderRadius: 16, padding: 20, marginBottom: 16, ...Platform.select({ ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 12 }, android: { elevation: 8 } }) },
   sectionTitle: { fontSize: 18, fontWeight: 'bold', color: COLORS.darkText, marginBottom: 12 },
+  
+  phaseBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.secondary, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, alignSelf: 'flex-start', marginBottom: 15, marginTop: 5 },
+  phaseBadgeText: { color: COLORS.white, fontSize: 14, fontWeight: '600', marginLeft: 6 },
   
   detailRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
   detailIcon: { marginRight: 10 },
@@ -699,6 +597,11 @@ const styles = StyleSheet.create({
   listItem: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 12 },
   listIcon: { marginRight: 12, marginTop: 4 },
   listText: { fontSize: 15, color: COLORS.darkText, flex: 1, lineHeight: 20 },
+  
+  budgetRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
+  budgetLabel: { fontSize: 14, color: COLORS.grayText },
+  budgetValue: { fontSize: 15, fontWeight: '600', color: COLORS.darkText },
+  balanceRow: { marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: COLORS.border },
   
   numberInput: { borderWidth: 1, borderColor: COLORS.border, borderRadius: 8, padding: 8, textAlign: 'right', backgroundColor: COLORS.background },
   textInput: { flex: 1, borderWidth: 1, borderColor: COLORS.border, borderRadius: 8, padding: 10, backgroundColor: COLORS.background, marginBottom: 8 },
