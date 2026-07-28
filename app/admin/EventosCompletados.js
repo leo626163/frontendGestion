@@ -226,6 +226,37 @@ const EventosCompletados = () => {
       params: { eventId: event.id }
     });
   };
+// Agrega esta función antes de renderEventItem
+const getMonthBadge = (dateStr) => {
+  const eventDate = parseEventDate(dateStr);
+  const now = new Date();
+  const currentMonth = now.getMonth();
+  const currentYear = now.getFullYear();
+  const eventMonth = eventDate.getMonth();
+  const eventYear = eventDate.getFullYear();
+  
+  if (eventMonth === currentMonth && eventYear === currentYear) {
+    return { text: 'Del mes actual', color: COLORS.success };
+  } else if (eventMonth === (currentMonth + 1) % 12 && eventYear === currentYear) {
+    return { text: 'Del mes próximo', color: COLORS.blue };
+  } else {
+    const monthNames = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+    return { text: monthNames[eventMonth], color: COLORS.primary };
+  }
+};
+
+// Luego en renderEventItem, reemplaza el badge estático por:
+<View style={styles.badgeContainer}>
+  {(() => {
+    const badge = getMonthBadge(item.date);
+    return (
+      <View style={[styles.monthBadge, { backgroundColor: badge.color }]}>
+        <Ionicons name="calendar" size={12} color={COLORS.white} />
+        <Text style={styles.monthBadgeText}>{badge.text}</Text>
+      </View>
+    );
+  })()}
+</View>
 
   const renderEventItem = ({ item }) => {
     if (!item || typeof item !== 'object' || typeof item.id === 'undefined') {
