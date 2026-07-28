@@ -208,47 +208,59 @@ const InformeEventoScreen = () => {
   const totalIngresosReal = ingresosReales.reduce((sum, i) => sum + (Number(i.total) || 0), 0);
   const balanceReal = totalIngresosReal - totalEgresosReal;
 
-  const handleGuardar = async (estadoFinal) => {
-    setSaving(true);
-    try {
-      const token = await getTokenAsync();
-      if (!token) throw new Error('Token inválido');
+ const handleGuardar = async (estadoFinal) => {
+  setSaving(true);
+  try {
+    const token = await getTokenAsync();
+    if (!token) throw new Error('Token inválido');
 
-      const payload = {
-        segmento_alcanzado_estudiantes: Number(segAlcanzado.estudiantes) || 0,
-        segmento_alcanzado_docentes: Number(segAlcanzado.docentes) || 0,
-        segmento_alcanzado_publico_externo: Number(segAlcanzado.publico_externo) || 0,
-        segmento_alcanzado_influencers: Number(segAlcanzado.influencers) || 0,
-        segmento_alcanzado_otro_cual: segAlcanzado.otro_cual,
-        segmento_alcanzado_otro_cantidad: Number(segAlcanzado.otro_cantidad) || 0,
-        objetivo_alcanzado_modelo_pedagogico: objAlcanzado.modelo_pedagogico,
-        objetivo_alcanzado_posicionamiento: objAlcanzado.posicionamiento,
-        objetivo_alcanzado_internacionalizacion: objAlcanzado.internacionalizacion,
-        objetivo_alcanzado_rsu: objAlcanzado.rsu,
-        objetivo_alcanzado_fidelizacion: objAlcanzado.fidelizacion,
-        objetivo_alcanzado_otro_cual: objAlcanzado.otro_cual,
-        participacion_real: participacionReal,
-        indice_satisfaccion_real: satisfaccionReal,
-        otros_resultados_real: otrosResultadosReal,
-        egresos_reales: egresosReales.filter(e => e.descripcion || e.total),
-        ingresos_reales: ingresosReales.filter(i => i.descripcion || i.total),
-        info_prensa: infoPrensa,
-        analisis_desviaciones: analisisDesviaciones,
-        lecciones_aprendidas: leccionesAprendidas,
-        estado: estadoFinal,
-      };
+    const payload = {
+      // Segmentos alcanzados
+      segmento_alcanzado_estudiantes: Number(segAlcanzado.estudiantes) || 0,
+      segmento_alcanzado_docentes: Number(segAlcanzado.docentes) || 0,
+      segmento_alcanzado_publico_externo: Number(segAlcanzado.publico_externo) || 0,
+      segmento_alcanzado_influencers: Number(segAlcanzado.influencers) || 0,
+      segmento_alcanzado_otro_cual: segAlcanzado.otro_cual,
+      segmento_alcanzado_otro_cantidad: Number(segAlcanzado.otro_cantidad) || 0,
+      
+      // Objetivos alcanzados
+      objetivo_alcanzado_modelo_pedagogico: objAlcanzado.modelo_pedagogico,
+      objetivo_alcanzado_posicionamiento: objAlcanzado.posicionamiento,
+      objetivo_alcanzado_internacionalizacion: objAlcanzado.internacionalizacion,
+      objetivo_alcanzado_rsu: objAlcanzado.rsu,
+      objetivo_alcanzado_fidelizacion: objAlcanzado.fidelizacion,
+      objetivo_alcanzado_otro_cual: objAlcanzado.otro_cual,
+      
+      // Resultados reales
+      participacion_real: participacionReal,
+      indice_satisfaccion_real: satisfaccionReal,
+      otros_resultados_real: otrosResultadosReal,
+      
+      // Balance económico (filtra filas vacías)
+      egresos_reales: egresosReales.filter(e => e.descripcion || e.total),
+      ingresos_reales: ingresosReales.filter(i => i.descripcion || i.total),
+      
+      // Textos libres
+      info_prensa: infoPrensa,
+      analisis_desviaciones: analisisDesviaciones,
+      lecciones_aprendidas: leccionesAprendidas,
+      
+      // Estado del informe
+      estado: estadoFinal, // 'borrador' o 'finalizado'
+    };
 
-      await axios.post(`${API_BASE_URL}/eventos/${eventId}/informe`, payload, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+    // Envía al backend
+    await axios.post(`${API_BASE_URL}/eventos/${eventId}/informe`, payload, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
 
-      Alert.alert('Éxito', estadoFinal === 'finalizado' ? 'Informe finalizado correctamente' : 'Borrador guardado correctamente');
-    } catch (err) {
-      Alert.alert('Error', 'No se pudo guardar el informe: ' + (err.response?.data?.message || err.message));
-    } finally {
-      setSaving(false);
-    }
-  };
+    Alert.alert('Éxito', estadoFinal === 'finalizado' ? 'Informe finalizado correctamente' : 'Borrador guardado correctamente');
+  } catch (err) {
+    Alert.alert('Error', 'No se pudo guardar el informe: ' + (err.response?.data?.message || err.message));
+  } finally {
+    setSaving(false);
+  }
+};
 
   const buildInformeHtml = () => {
     const rowsHtml = (rows) => rows.map(r => `<tr><td>${r.descripcion || ''}</td><td style="text-align:right">${r.cantidad || ''}</td><td style="text-align:right">Bs ${parseFloat(r.precio_unitario || 0).toFixed(2)}</td><td style="text-align:right">Bs ${parseFloat(r.total || 0).toFixed(2)}</td></tr>`).join('');
