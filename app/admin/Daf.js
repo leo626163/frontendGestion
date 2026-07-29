@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   StyleSheet, View, Text, ScrollView, TouchableOpacity,
   StatusBar, Alert, ActivityIndicator, Pressable, Animated,
-  useWindowDimensions, Platform, Modal,FlatList
+  useWindowDimensions, Platform, Modal,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -40,6 +40,7 @@ const COLORS = {
   border: '#E5E7EB', divider: '#F3F4F6', white: '#FFFFFF', black: '#000000',
 };
 
+// ─── KPI Card ─────────────────────────────────────────────────────────────────
 const DashboardCard = ({ title, value, icon, color, description, subtitle }) => (
   <View style={[styles.kpiCard, { borderTopColor: color }]}>
     <View style={styles.kpiTopRow}>
@@ -54,6 +55,7 @@ const DashboardCard = ({ title, value, icon, color, description, subtitle }) => 
   </View>
 );
 
+// ─── Action Card ──────────────────────────────────────────────────────────────
 const ActionCardLarge = ({ action, onPress, index }) => {
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const fadeAnim  = useRef(new Animated.Value(0)).current;
@@ -89,6 +91,7 @@ const ActionCardLarge = ({ action, onPress, index }) => {
   );
 };
 
+// ─── Event Cards (móvil) ──────────────────────────────────────────────────────
 const EventCards = ({ data, onPrint }) => {
   if (!data?.length) {
     return (
@@ -144,6 +147,7 @@ const EventCards = ({ data, onPrint }) => {
   );
 };
 
+// ─── Bottom Dock ──────────────────────────────────────────────────────────────
 const MinimalBottomDock = ({ onLogout, onActionPress, isExpanded, onToggleExpanded }) => {
   const dockHeight = useRef(new Animated.Value(60)).current;
   const rotateAnim = useRef(new Animated.Value(0)).current;
@@ -191,6 +195,7 @@ const MinimalBottomDock = ({ onLogout, onActionPress, isExpanded, onToggleExpand
   );
 };
 
+// ─── Header ───────────────────────────────────────────────────────────────────
 const MinimalHeader = ({ nombreUsuario, unreadCount, onNotificationPress, lastUpdated, onRefresh, refreshing, onTelegramPress, isTelegramLinked }) => {
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Buenos días' : hour < 18 ? 'Buenas tardes' : 'Buenas noches';
@@ -239,6 +244,7 @@ const MinimalHeader = ({ nombreUsuario, unreadCount, onNotificationPress, lastUp
   );
 };
 
+// ─── Section wrapper ──────────────────────────────────────────────────────────
 const Section = ({ title, subtitle, children }) => (
   <View style={styles.section}>
     <View style={styles.sectionHead}>
@@ -249,6 +255,7 @@ const Section = ({ title, subtitle, children }) => (
   </View>
 );
 
+// ─── Main Screen ──────────────────────────────────────────────────────────────
 const Daf = () => {
   const params = useLocalSearchParams();
   const nombreUsuario = params.nombre || 'Administrador DAF';
@@ -265,8 +272,7 @@ const Daf = () => {
   const [stats, setStats]                           = useState(null);
   const [loadingReportes, setLoadingReportes]   = useState(false);
   const [hiddenPastCount, setHiddenPastCount]     = useState(0);
-  const [usuarios, setUsuarios] = useState([]);
-  const [loading, setLoading] = useState(true);
+  
   // Estados de Telegram
   const [showTelegramModal, setShowTelegramModal] = useState(false);
   const [isTelegramLinked, setIsTelegramLinked] = useState(false);
@@ -432,7 +438,21 @@ const Daf = () => {
     cargarUsuarioActual();
     checkTelegramStatus();
   }, [fetchData, checkTelegramStatus]);
- 
+
+  const cargarUsuarioActual = async () => {
+    try {
+      const token = await getTokenAsync();
+      const response = await axios.get(`${API_BASE_URL}/profile`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      setUsuario(response.data);
+    } catch (error) {
+      console.error('Error al cargar usuario:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
   const markAsRead = async (id) => {
     try {
       const token = await getTokenAsync();
@@ -494,20 +514,12 @@ const Daf = () => {
     }
   };
 
-   const cargarUsuarioActual = async () => {
-    try {
-      const token = await getTokenAsync();
-      const response = await axios.get(`${API_BASE_URL}/profile`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      
-      setUsuario(response.data);
-    } catch (error) {
-      console.error('Error al cargar usuario:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const adminActions = [
+    { id: '1', title: 'Gestión de Usuarios',  iconName: 'people-outline',           route: '/admin/UsuariosDaf',      color: COLORS.secondary, description: 'Administración de cuentas de usuario' },
+    { id: '3', title: 'Reportes Avanzados',    iconName: 'document-text-outline',    route: '/admin/reportes',         color: COLORS.secondary, description: 'Generación de reportes detallados', badge: 'Nuevo', badgeColor: COLORS.accent },
+    { id: '4', title: 'Creación de Recursos',  iconName: 'construct-outline',        route: '/admin/Inventario',         color: COLORS.warning,   description: 'Gestión de recursos del sistema',   badge: 'Nuevo', badgeColor: COLORS.accent },
+    { id: '5', title: 'Subida de Layouts',     iconName: 'images-outline',           route: '/admin/Layouts',          color: COLORS.info,      description: 'Administración de plantillas',       badge: 'Nuevo', badgeColor: COLORS.accent },
+  ];
 
   if (loading) {
     return (
@@ -544,22 +556,6 @@ const Daf = () => {
       </View>
     </View>
   );
-
-  if (loading) {
-    return (
-      <View style={styles.centered}>
-        <ActivityIndicator size="large" color="#E95A0C" />
-      </View>
-    );
-  }
-  const adminActions = [
-    { id: '1', title: 'Gestión de Usuarios',  iconName: 'people-outline',           route: '/admin/UsuariosDaf',      color: COLORS.secondary, description: 'Administración de cuentas de usuario' },
-    { id: '3', title: 'Reportes Avanzados',    iconName: 'document-text-outline',    route: '/admin/reportes',         color: COLORS.secondary, description: 'Generación de reportes detallados', badge: 'Nuevo', badgeColor: COLORS.accent },
-    { id: '4', title: 'Creación de Recursos',  iconName: 'construct-outline',        route: '/admin/Inventario',         color: COLORS.warning,   description: 'Gestión de recursos del sistema',   badge: 'Nuevo', badgeColor: COLORS.accent },
-    { id: '5', title: 'Subida de Layouts',     iconName: 'images-outline',           route: '/admin/Layouts',          color: COLORS.info,      description: 'Administración de plantillas',       badge: 'Nuevo', badgeColor: COLORS.accent },
-  ];
-
-  
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
@@ -579,6 +575,7 @@ const Daf = () => {
           isTelegramLinked={isTelegramLinked}
         />
 
+        {/* ── KPIs ── */}
         <Section title="Resumen de Actividad" subtitle="Métricas clave del sistema">
           {loadingDashboard ? (
             <View style={styles.loadingBox}>
@@ -592,6 +589,7 @@ const Daf = () => {
           )}
         </Section>
 
+        {/* ── EVENTOS EN FASE 2 ── */}
         <Section
           title="Eventos en Fase 2"
           subtitle="Solo se muestran eventos desde hoy en adelante"
