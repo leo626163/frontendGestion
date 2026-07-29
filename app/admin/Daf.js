@@ -272,8 +272,7 @@ const Daf = () => {
   const [stats, setStats]                           = useState(null);
   const [loadingReportes, setLoadingReportes]   = useState(false);
   const [hiddenPastCount, setHiddenPastCount]     = useState(0);
-  const [usuario, setUsuario] = useState(null);
-  const [loading, setLoading] = useState(true);
+
   // Estados de Telegram
   const [showTelegramModal, setShowTelegramModal] = useState(false);
   const [isTelegramLinked, setIsTelegramLinked] = useState(false);
@@ -288,6 +287,7 @@ const Daf = () => {
 
   const unreadCount = notifications.filter(n => !n.read).length;
 
+  // ── Funciones de Telegram ─────────────────────────────────────────────────
   const checkTelegramStatus = useCallback(async () => {
     try {
       const token = await getTokenAsync();
@@ -341,6 +341,7 @@ const Daf = () => {
     }
   }, []);
 
+  // ── Fetch data ─────────────────────────────────────────────────────────────
   const fetchData = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
     else { setLoadingDashboard(true); setLoadingEvents(true); setLoadingReportes(true); }
@@ -436,24 +437,9 @@ const Daf = () => {
 
   useEffect(() => { 
     fetchData();
-    cargarUsuarioActual();
     checkTelegramStatus();
   }, [fetchData, checkTelegramStatus]);
 
-  const cargarUsuarioActual = async () => {
-    try {
-      const token = await getTokenAsync();
-      const response = await axios.get(`${API_BASE_URL}/profile`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      
-      setUsuario(response.data);
-    } catch (error) {
-      console.error('Error al cargar usuario:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
   const markAsRead = async (id) => {
     try {
       const token = await getTokenAsync();
@@ -522,41 +508,7 @@ const Daf = () => {
     { id: '5', title: 'Subida de Layouts',     iconName: 'images-outline',           route: '/admin/Layouts',          color: COLORS.info,      description: 'Administración de plantillas',       badge: 'Nuevo', badgeColor: COLORS.accent },
   ];
 
-  if (loading) {
-    return (
-      <View style={styles.centered}>
-        <ActivityIndicator size="large" color="#E95A0C" />
-      </View>
-    );
-  }
-
-  return (
-    <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
-      
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color="#1F2937" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Mi Perfil</Text>
-      </View>
-
-      <View style={styles.content}>
-        <View style={styles.card}>
-          <Ionicons name="person-circle" size={80} color="#E95A0C" />
-          
-          <Text style={styles.label}>Nombre de usuario</Text>
-          <Text style={styles.value}>{usuario.username}</Text>
-          
-          <Text style={styles.label}>Email</Text>
-          <Text style={styles.value}>{usuario.email}</Text>
-          
-          <Text style={styles.label}>Rol</Text>
-          <Text style={styles.value}>{usuario.role}</Text>
-        </View>
-      </View>
-    </View>
-  );
+  // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
