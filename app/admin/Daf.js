@@ -196,7 +196,7 @@ const MinimalBottomDock = ({ onLogout, onActionPress, isExpanded, onToggleExpand
 };
 
 // ─── Header ───────────────────────────────────────────────────────────────────
-const MinimalHeader = ({ nombreUsuario, unreadCount, onNotificationPress, lastUpdated, onRefresh, refreshing, onTelegramPress, isTelegramLinked }) => {
+const MinimalHeader = ({ nombreUsuario, emailUsuario, unreadCount, onNotificationPress, lastUpdated, onRefresh, refreshing, onTelegramPress, isTelegramLinked }) => {
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Buenos días' : hour < 18 ? 'Buenas tardes' : 'Buenas noches';
   return (
@@ -205,6 +205,7 @@ const MinimalHeader = ({ nombreUsuario, unreadCount, onNotificationPress, lastUp
         <View style={{ flex: 1 }}>
           <Text style={styles.headerGreeting}>{greeting},</Text>
           <Text style={styles.headerName}>{nombreUsuario}</Text>
+          <Text style={styles.headerEmail}>{emailUsuario}</Text>
         </View>
         <View style={styles.headerActions}>
           {/* Botón de Telegram */}
@@ -277,7 +278,10 @@ const Daf = () => {
   const [showTelegramModal, setShowTelegramModal] = useState(false);
   const [isTelegramLinked, setIsTelegramLinked] = useState(false);
   const [telegramUsername, setTelegramUsername] = useState('');
-
+ const [userInfo, setUserInfo] = useState({
+    nombre: 'Cargando...',
+    email: ''
+  });
   const [dashboardStats, setDashboardStats] = useState([
     { title: 'Usuarios Activos',      value: '–', icon: 'people-outline',        color: COLORS.primary,  description: 'Cuentas habilitadas' },
     { title: 'Eventos Totales',       value: '–', icon: 'calendar-outline',      color: COLORS.info,     description: 'Todos los eventos' },
@@ -287,7 +291,30 @@ const Daf = () => {
 
   const unreadCount = notifications.filter(n => !n.read).length;
 
-  // ── Funciones de Telegram ─────────────────────────────────────────────────
+const cargarInfoUsuario = useCallback(async () => {
+    try {
+      const token = await getTokenAsync();
+      if (!token) return;
+
+      const response = await axios.get(`${API_BASE_URL}/profile`, {
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+
+      const userData = response.data;
+      
+      // Construir nombre completo
+      const nombreCompleto = userData.nombre 
+        ? `${userData.nombre} ${userData.apellidopat || ''} ${userData.apellidomat || ''}`.trim()
+        : userData.username || 'Usuario';
+
+      setUserInfo({
+        nombre: nombreCompleto,
+        email: userData.email || ''
+      });
+    } catch (error) {
+      console.error('Error al cargar info del usuario:', error);
+    }
+  }, []);
   const checkTelegramStatus = useCallback(async () => {
     try {
       const token = await getTokenAsync();
@@ -437,6 +464,7 @@ const Daf = () => {
 
   useEffect(() => { 
     fetchData();
+    cargarInfoUsuario();
     checkTelegramStatus();
   }, [fetchData, checkTelegramStatus]);
 
@@ -518,7 +546,8 @@ const Daf = () => {
         contentContainerStyle={{ paddingBottom: isBannerExpanded ? 220 : 100 }}
       >
         <MinimalHeader
-          nombreUsuario={nombreUsuario}
+          nombreUsuario={userInfo.nombre}
+          emailUsuario={userInfo.email}
           unreadCount={unreadCount}
           onNotificationPress={() => setShowNotifications(true)}
           lastUpdated={lastUpdated}
@@ -921,6 +950,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 12,
+  },
+   headerEmail: { 
+    fontSize: 13, 
+    color: COLORS.textSecondary,
+    marginTop: 2,
+    fontStyle: 'italic'
   },
   telegramModalTitle: {
     fontSize: 22,
