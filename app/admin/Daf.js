@@ -428,26 +428,11 @@ const Daf = () => {
   }, []);
 
   useEffect(() => { 
-    cargarUsuarios();
     fetchData();
+    cargarUsuarioActual();
     checkTelegramStatus();
   }, [fetchData, checkTelegramStatus]);
- const cargarUsuarios = async () => {
-    try {
-      const token = await getTokenAsync();
-      const response = await axios.get(`${API_BASE_URL}/usuarios`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      
-      // Filtrar solo usuarios con rol 'daf'
-      const usuariosDaf = response.data.filter(u => u.role === 'daf');
-      setUsuarios(usuariosDaf);
-    } catch (error) {
-      console.error('Error al cargar usuarios:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+ 
   const markAsRead = async (id) => {
     try {
       const token = await getTokenAsync();
@@ -509,15 +494,54 @@ const Daf = () => {
     }
   };
 
-   const renderItem = ({ item }) => (
-    <View style={styles.usuarioCard}>
-      <View style={styles.usuarioInfo}>
-        <Text style={styles.nombre}>
-          {item.nombre} {item.apellidopat} {item.apellidomat}
-        </Text>
-        <Text style={styles.email}>{item.email}</Text>
+   const cargarUsuarioActual = async () => {
+    try {
+      const token = await getTokenAsync();
+      const response = await axios.get(`${API_BASE_URL}/profile`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      setUsuario(response.data);
+    } catch (error) {
+      console.error('Error al cargar usuario:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <View style={styles.centered}>
+        <ActivityIndicator size="large" color="#E95A0C" />
       </View>
-      <Ionicons name="person-circle-outline" size={40} color="#E95A0C" />
+    );
+  }
+
+  return (
+    <View style={styles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <Ionicons name="arrow-back" size={24} color="#1F2937" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Mi Perfil</Text>
+      </View>
+
+      <View style={styles.content}>
+        <View style={styles.card}>
+          <Ionicons name="person-circle" size={80} color="#E95A0C" />
+          
+          <Text style={styles.label}>Nombre de usuario</Text>
+          <Text style={styles.value}>{usuario.username}</Text>
+          
+          <Text style={styles.label}>Email</Text>
+          <Text style={styles.value}>{usuario.email}</Text>
+          
+          <Text style={styles.label}>Rol</Text>
+          <Text style={styles.value}>{usuario.role}</Text>
+        </View>
+      </View>
     </View>
   );
 
@@ -535,27 +559,7 @@ const Daf = () => {
     { id: '5', title: 'Subida de Layouts',     iconName: 'images-outline',           route: '/admin/Layouts',          color: COLORS.info,      description: 'Administración de plantillas',       badge: 'Nuevo', badgeColor: COLORS.accent },
   ];
 
-  return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color="#1F2937" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Usuarios DAF</Text>
-      </View>
-      
-      <View style={styles.infoContainer}>
-        <Text style={styles.infoText}>{usuarios.length} usuarios encontrados</Text>
-      </View>
-
-      <FlatList
-        data={usuarios}
-        renderItem={renderItem}
-        keyExtractor={(item) => item.idusuario.toString()}
-        contentContainerStyle={styles.listContainer}
-      />
-    </View>
-  );
+  
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
