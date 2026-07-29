@@ -291,30 +291,46 @@ const Daf = () => {
 
   const unreadCount = notifications.filter(n => !n.read).length;
 
-const cargarInfoUsuario = useCallback(async () => {
+    const cargarInfoUsuario = useCallback(async () => {
     try {
       const token = await getTokenAsync();
-      if (!token) return;
+      if (!token) {
+        console.log('⚠️ No hay token, usando datos por defecto');
+        setUserInfo({ nombre: params.nombre || 'Administrador DAF', email: '' });
+        return;
+      }
 
+      console.log('🔍 Solicitando perfil al backend...');
       const response = await axios.get(`${API_BASE_URL}/profile`, {
         headers: { 'Authorization': `Bearer ${token}` },
       });
 
+      console.log('📦 Datos CRUDOS del perfil:', response.data);
+
       const userData = response.data;
       
-      // Construir nombre completo
-      const nombreCompleto = userData.nombre 
-        ? `${userData.nombre} ${userData.apellidopat || ''} ${userData.apellidomat || ''}`.trim()
-        : userData.username || 'Usuario';
+      // Intentamos obtener el nombre de varias formas posibles según como lo guarde tu backend
+      const nombre = userData.nombre || userData.name || userData.username || 'Administrador DAF';
+      const apellido1 = userData.apellidopat || userData.apellido_paterno || '';
+      const apellido2 = userData.apellidomat || userData.apellido_materno || '';
+      
+      const nombreCompleto = `${nombre} ${apellido1} ${apellido2}`.trim();
 
       setUserInfo({
         nombre: nombreCompleto,
-        email: userData.email || ''
+        email: userData.email || 'Sin correo registrado'
       });
+      
+      console.log('✅ Usuario procesado:', nombreCompleto, '| Email:', userData.email);
     } catch (error) {
-      console.error('Error al cargar info del usuario:', error);
+      console.error('❌ Error al cargar info del usuario:', error.response?.data || error.message);
+      // Si falla, usamos los datos que vinieron por parámetros o un valor por defecto
+      setUserInfo({
+        nombre: params.nombre || 'Administrador DAF',
+        email: ''
+      });
     }
-  }, []);
+  }, [params.nombre]);
   const checkTelegramStatus = useCallback(async () => {
     try {
       const token = await getTokenAsync();
@@ -368,7 +384,6 @@ const cargarInfoUsuario = useCallback(async () => {
     }
   }, []);
 
-  // ── Fetch data ─────────────────────────────────────────────────────────────
   const fetchData = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
     else { setLoadingDashboard(true); setLoadingEvents(true); setLoadingReportes(true); }
@@ -879,7 +894,6 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
   scrollView: { flex: 1 },
 
-  // Header
   header: {
     width: '100%', paddingHorizontal: 20,
     paddingTop: (StatusBar.currentHeight || 40) + 16, paddingBottom: 16,
@@ -891,6 +905,12 @@ const styles = StyleSheet.create({
   headerIconBtn: { padding: 6, width: 36, height: 36, justifyContent: 'center', alignItems: 'center' },
   headerGreeting: { fontSize: 15, color: COLORS.textSecondary },
   headerName: { fontSize: 22, color: COLORS.textPrimary, fontWeight: '700' },
+  headerEmail: { 
+    fontSize: 13, 
+    color: COLORS.textSecondary,
+    marginTop: 2,
+    fontStyle: 'italic'
+  },
   headerTitle: { fontSize: 26, fontWeight: '800', color: COLORS.textPrimary },
   lastUpdated: { fontSize: 11, color: COLORS.textTertiary, marginTop: 4 },
   notifBtn: { position: 'relative', padding: 6 },
