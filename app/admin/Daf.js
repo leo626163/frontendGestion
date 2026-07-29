@@ -272,7 +272,8 @@ const Daf = () => {
   const [stats, setStats]                           = useState(null);
   const [loadingReportes, setLoadingReportes]   = useState(false);
   const [hiddenPastCount, setHiddenPastCount]     = useState(0);
-  
+  const [usuario, setUsuario] = useState(null);
+  const [loading, setLoading] = useState(true);
   // Estados de Telegram
   const [showTelegramModal, setShowTelegramModal] = useState(false);
   const [isTelegramLinked, setIsTelegramLinked] = useState(false);
