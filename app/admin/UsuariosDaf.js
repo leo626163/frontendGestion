@@ -275,7 +275,7 @@ const UsuariosDaf = () => {
           </TouchableOpacity>
 
           <TouchableOpacity
-            onPress={() => router.push(`/admin/EditUser/${item.id}`)}
+            onPress={() => router.push(`/admin/editUser/${item.id}`)}
             style={[styles.actionButton, styles.editButton]}
             activeOpacity={0.7}
           >
@@ -346,7 +346,7 @@ const UsuariosDaf = () => {
                   style={[styles.modalActionButton, styles.modalEditButton]}
                   onPress={() => {
                     setShowUserModal(false);
-                    router.push(`/admin/EditUser/${selectedUser.id}`);
+                    router.push(`/admin/editUser/${selectedUser.id}`);
                   }}
                 >
                   <Ionicons name="pencil" size={16} color="#fff" />
