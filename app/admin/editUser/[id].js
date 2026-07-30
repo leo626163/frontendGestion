@@ -220,7 +220,13 @@ const fetchCarreras = async () => {
         router.replace('/LoginAdmin');
         return;
       }
-
+       try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      console.log('👤 ROL DENTRO DEL TOKEN:', payload.role);
+      console.log('🆔 ID DENTRO DEL TOKEN:', payload.idusuario || payload.id);
+    } catch (e) {
+      console.error('Error al decodificar token', e);
+    }
       // SOLO enviamos los campos que el usuario DAF puede tener
       const updateData = {
         username: formData.username.trim(),
