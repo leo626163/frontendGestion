@@ -205,7 +205,7 @@ const fetchCarreras = async () => {
     return Object.keys(newErrors).length === 0;
   };
 
-    const handleSave = async () => {
+  const handleSave = async () => {
     if (!validateForm()) {
       Alert.alert('Error', 'Por favor completa los campos requeridos');
       return;
@@ -250,10 +250,24 @@ const fetchCarreras = async () => {
           'Content-Type': 'application/json'
         }
       });
+       console.log('✅ Respuesta del servidor:', response.data)
 
-      Alert.alert('Éxito', 'Usuario actualizado correctamente', [
-        { text: 'OK', onPress: () => router.back() }
-      ]);
+       Alert.alert(
+        '¡Éxito!',
+        'El usuario DAF ha sido actualizado correctamente.',
+        [
+          {
+            text: 'OK',
+            onPress: () => {
+              // Navegamos explícitamente a la lista y enviamos un parámetro único para forzar la recarga
+              router.push({
+                pathname: '/admin/UsuariosDaf', // ⚠️ Asegúrate que esta sea la ruta exacta de tu lista
+                params: { refresh: Date.now().toString() } 
+              });
+            }
+          }
+        ]
+      );
     } catch (error) {
       console.error('❌ Error detallado:', error);
       

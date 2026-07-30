@@ -171,7 +171,10 @@ const UsuariosDaf = () => {
 
   useFocusEffect(
     useCallback(() => {
-      if (params.refresh) fetchUsers();
+      if (params.refresh){
+        console.log('recargando');
+        fetchUsers();
+      }
     }, [params.refresh])
   );
 
