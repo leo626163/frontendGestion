@@ -205,7 +205,7 @@ const fetchCarreras = async () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSave = async () => {
+    const handleSave = async () => {
     if (!validateForm()) {
       Alert.alert('Error', 'Por favor completa los campos requeridos');
       return;
@@ -215,36 +215,55 @@ const fetchCarreras = async () => {
       setSaving(true);
       const token = await getTokenAsync();
       
-      const updateData = {
-        username: formData.username,
-        nombre: formData.nombre,
-        apellidopat: formData.apellidopat,
-        apellidomat: formData.apellidomat,
-        email: formData.email,
-        role: formData.role,
-        habilitado: formData.habilitado,
-        idcarrera: formData.idcarrera || null,
-        idfacultad: formData.idfacultad || null
-      };
-
-      if (formData.contrasenia && formData.contrasenia.trim() !== '') {
-        updateData.contrasenia = formData.contrasenia;
+      if (!token) {
+        Alert.alert('Error', 'No autenticado. Inicia sesión nuevamente.');
+        router.replace('/LoginAdmin');
+        return;
       }
 
-      await axios.put(`${API_BASE_URL}/users/${id}`, updateData, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    });
-    console.log('Usuario actualizado correctamente');
+      // SOLO enviamos los campos que el usuario DAF puede tener
+      const updateData = {
+        username: formData.username.trim(),
+        nombre: formData.nombre.trim(),
+        apellidopat: formData.apellidopat.trim(),
+        apellidomat: formData.apellidomat.trim(),
+        email: formData.email.trim().toLowerCase(),
+        habilitado: formData.habilitado, // Envía el booleano directamente
+      };
+
+      // Solo incluimos la contraseña si el usuario escribió algo nuevo
+      if (formData.contrasenia && formData.contrasenia.trim() !== '') {
+        updateData.contrasenia = formData.contrasenia.trim();
+      }
+
+      console.log('📤 Payload que se enviará:', updateData);
+
+      const response = await axios.put(`${API_BASE_URL}/users/${id}`, updateData, {
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
 
       Alert.alert('Éxito', 'Usuario actualizado correctamente', [
-        {
-          text: 'OK',
-          onPress: () => router.back()
-        }
+        { text: 'OK', onPress: () => router.back() }
       ]);
     } catch (error) {
-      console.error('Error updating user:', error);
-      Alert.alert('Error', error.response?.data?.message || 'No se pudo actualizar el usuario');
+      console.error('❌ Error detallado:', error);
+      
+      if (error.response) {
+        console.error('🔴 Respuesta del servidor:', error.response.data);
+        
+        let msg = 'No se pudo actualizar el usuario';
+        if (error.response.status === 403) {
+          msg = error.response.data?.message || 'No tienes permisos (403). Verifica que tu token sea de administrador.';
+        } else if (error.response.status === 400) {
+          msg = error.response.data?.message || 'Datos inválidos (400).';
+        }
+        Alert.alert(`Error ${error.response.status}`, msg);
+      } else {
+        Alert.alert('Error', 'No se pudo conectar al servidor');
+      }
     } finally {
       setSaving(false);
     }
