@@ -89,77 +89,100 @@ const UsuariosDaf = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedUser, setSelectedUser] = useState(null);
   const [showUserModal, setShowUserModal] = useState(false);
+  
+  // 👇 NUEVO: Estado para guardar la información del usuario que inició sesión
+  const [currentUserId, setCurrentUserId] = useState(null);
+  const [currentUserRole, setCurrentUserRole] = useState(null);
+
   const params = useLocalSearchParams();
 
- const fetchUsers = async (isRefresh = false) => {
-  if (isRefresh) setRefreshing(true);
-  else setLoading(true);
+  // 👇 NUEVO: Decodificar el token al cargar para saber quién está logueado
+  useEffect(() => {
+    const loadUserInfo = async () => {
+      const token = await getTokenAsync();
+      if (token) {
+        try {
+          const payload = JSON.parse(atob(token.split('.')[1]));
+          setCurrentUserId(payload.idusuario || payload.id);
+          setCurrentUserRole(payload.role);
+          console.log('👤 Usuario logueado ID:', payload.idusuario || payload.id, 'Rol:', payload.role);
+        } catch (e) {
+          console.error('Error al decodificar token', e);
+        }
+      }
+    };
+    loadUserInfo();
+  }, []);
 
-  let localToken = null;
+  const fetchUsers = async (isRefresh = false) => {
+    if (isRefresh) setRefreshing(true);
+    else setLoading(true);
 
-  try {
-    localToken = await getTokenAsync();
+    let localToken = null;
 
-    if (!localToken) {
-      Alert.alert(
-        'Autenticación Requerida',
-        'No se encontró el token de administrador. Por favor, inicia sesión de nuevo.',
-        [{ text: 'OK', onPress: () => router.replace('/LoginAdmin') }]
+    try {
+      localToken = await getTokenAsync();
+
+      if (!localToken) {
+        Alert.alert(
+          'Autenticación Requerida',
+          'No se encontró el token de administrador. Por favor, inicia sesión de nuevo.',
+          [{ text: 'OK', onPress: () => router.replace('/LoginAdmin') }]
+        );
+        setUsers([]);
+        setFilteredUsers([]);
+        return;
+      }
+
+      const response = await axios.get(`${API_BASE_URL}/users`, {
+        headers: { 'Authorization': `Bearer ${localToken}` }
+      });
+
+      console.log('=== DATOS CRUDOS DE LA API ===');
+      console.log('Total de usuarios recibidos:', response.data.length);
+
+      const usersData = Array.isArray(response.data) ? response.data : (response.data.data || []);
+      
+      const dafUsers = usersData.filter(user => 
+        user.role?.toLowerCase() === 'daf'
       );
+      
+      console.log('Usuarios DAF filtrados:', dafUsers.length);
+
+      const processedUsers = dafUsers.map(user => ({
+        ...user,
+        id: user.idusuario
+      }));
+
+      setUsers(processedUsers);
+      setFilteredUsers(processedUsers);
+
+    } catch (error) {
+      console.error("Error fetching users from API:", error);
+      let errorMessage = 'No se pudieron cargar los usuarios.';
+      if (error.response) {
+        if (error.response.status === 401) {
+          errorMessage = 'No autorizado. Tu sesión podría haber expirado.';
+          await deleteTokenAsync();
+          router.replace('/LoginAdmin');
+        } else if (error.response.status === 403) {
+          errorMessage = 'No tienes permisos para acceder a esta sección.';
+        } else {
+          errorMessage = `Error del servidor: ${error.response.status}. ${error.response.data?.message || ''}`;
+        }
+      } else if (error.request) {
+        errorMessage = 'No se pudo conectar al servidor.';
+      } else {
+        errorMessage = error.message;
+      }
+      Alert.alert('Error de Carga', errorMessage);
       setUsers([]);
       setFilteredUsers([]);
-      return;
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
     }
-
-    const response = await axios.get(`${API_BASE_URL}/users`, {
-      headers: { 'Authorization': `Bearer ${localToken}` }
-    });
-
-    console.log('=== DATOS CRUDOS DE LA API ===');
-    console.log('Total de usuarios recibidos:', response.data.length);
-
-    const usersData = Array.isArray(response.data) ? response.data : (response.data.data || []);
-    
-    const dafUsers = usersData.filter(user => 
-      user.role?.toLowerCase() === 'daf'
-    );
-    
-    console.log('Usuarios DAF filtrados:', dafUsers.length);
-
-    const processedUsers = dafUsers.map(user => ({
-      ...user,
-      id: user.idusuario
-    }));
-
-    setUsers(processedUsers);
-    setFilteredUsers(processedUsers);
-
-  } catch (error) {
-    console.error("Error fetching users from API:", error);
-    let errorMessage = 'No se pudieron cargar los usuarios.';
-    if (error.response) {
-      if (error.response.status === 401) {
-        errorMessage = 'No autorizado. Tu sesión podría haber expirado.';
-        await deleteTokenAsync();
-        router.replace('/LoginAdmin');
-      } else if (error.response.status === 403) {
-        errorMessage = 'No tienes permisos para acceder a esta sección.';
-      } else {
-        errorMessage = `Error del servidor: ${error.response.status}. ${error.response.data?.message || ''}`;
-      }
-    } else if (error.request) {
-      errorMessage = 'No se pudo conectar al servidor.';
-    } else {
-      errorMessage = error.message;
-    }
-    Alert.alert('Error de Carga', errorMessage);
-    setUsers([]);
-    setFilteredUsers([]);
-  } finally {
-    setLoading(false);
-    setRefreshing(false);
-  }
-};
+  };
 
   const onRefresh = useCallback(() => {
     fetchUsers(true);
@@ -171,8 +194,8 @@ const UsuariosDaf = () => {
 
   useFocusEffect(
     useCallback(() => {
-      if (params.refresh){
-        console.log('recargando');
+      if (params.refresh) {
+        console.log('🔄 Recargando lista de usuarios DAF...');
         fetchUsers();
       }
     }, [params.refresh])
@@ -236,10 +259,13 @@ const UsuariosDaf = () => {
     );
   };
 
-  const getRoleColor = () => COLORS.warning; // Siempre DAF
+  const getRoleColor = () => COLORS.warning;
   const getRoleIcon = () => 'people-outline';
 
   const renderUserItem = ({ item }) => {
+    // 👇 LÓGICA CLAVE: Solo mostrar botón de editar si es Admin O es su propio perfil
+    const canEdit = currentUserRole === 'admin' || currentUserId === item.id;
+
     return (
       <View style={[styles.userItemContainer, { opacity: loading ? 0.6 : 1 }]}>
         <View style={styles.userAvatarContainer}>
@@ -277,13 +303,16 @@ const UsuariosDaf = () => {
             <Ionicons name="eye-outline" size={20} color={COLORS.info} />
           </TouchableOpacity>
 
-          <TouchableOpacity
-            onPress={() => router.push(`/admin/editUser/${item.id}`)}
-            style={[styles.actionButton, styles.editButton]}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="pencil-outline" size={20} color={COLORS.warning} />
-          </TouchableOpacity>
+          {/* 👇 BOTÓN DE EDITAR CONDICIONAL */}
+          {canEdit && (
+            <TouchableOpacity
+              onPress={() => router.push(`/admin/editUser/${item.id}`)}
+              style={[styles.actionButton, styles.editButton]}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="pencil-outline" size={20} color={COLORS.warning} />
+            </TouchableOpacity>
+          )}
 
           <TouchableOpacity
             onPress={() => handleDeleteUser(item.id)}
@@ -297,82 +326,90 @@ const UsuariosDaf = () => {
     );
   };
 
-  const renderUserModal = () => (
-    <Modal
-      visible={showUserModal}
-      transparent={true}
-      animationType="fade"
-      onRequestClose={() => setShowUserModal(false)}
-    >
-      <Pressable
-        style={styles.modalOverlay}
-        onPress={() => setShowUserModal(false)}
+  const renderUserModal = () => {
+    // 👇 LÓGICA CLAVE TAMBIÉN PARA EL MODAL
+    const canEdit = currentUserRole === 'admin' || currentUserId === selectedUser?.id;
+
+    return (
+      <Modal
+        visible={showUserModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowUserModal(false)}
       >
-        <View style={styles.modalContent}>
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Detalles del Usuario DAF</Text>
-            <TouchableOpacity
-              onPress={() => setShowUserModal(false)}
-              style={styles.modalCloseButton}
-            >
-              <Ionicons name="close" size={24} color="#666" />
-            </TouchableOpacity>
-          </View>
-
-          {selectedUser && (
-            <View style={styles.modalBody}>
-              <View style={styles.modalUserAvatar}>
-                <View style={[styles.modalAvatar, { backgroundColor: COLORS.warning }]}>
-                  <Text style={styles.modalAvatarText}>
-                    {(selectedUser.username || selectedUser.email || 'U').charAt(0).toUpperCase()}
-                  </Text>
-                </View>
-              </View>
-
-              <View style={styles.modalUserInfo}>
-                <Text style={styles.modalUserName}>
-                  {selectedUser.username || 'Sin nombre'}
-                </Text>
-                <Text style={styles.modalUserEmail}>
-                  {selectedUser.email || 'Sin email'}
-                </Text>
-                <View style={styles.modalRoleContainer}>
-                  <Ionicons name="people-outline" size={16} color={COLORS.warning} />
-                  <Text style={[styles.modalUserRole, { color: COLORS.warning }]}>
-                    DAF
-                  </Text>
-                </View>
-              </View>
-
-              <View style={styles.modalActions}>
-                <TouchableOpacity
-                  style={[styles.modalActionButton, styles.modalEditButton]}
-                  onPress={() => {
-                    setShowUserModal(false);
-                    router.push(`/admin/editUser/${selectedUser.id}`);
-                  }}
-                >
-                  <Ionicons name="pencil" size={16} color="#fff" />
-                  <Text style={styles.modalActionButtonText}>Editar</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[styles.modalActionButton, styles.modalDeleteButton]}
-                  onPress={() => {
-                    setShowUserModal(false);
-                    handleDeleteUser(selectedUser.id);
-                  }}
-                >
-                  <Ionicons name="trash" size={16} color="#fff" />
-                  <Text style={styles.modalActionButtonText}>Eliminar</Text>
-                </TouchableOpacity>
-              </View>
+        <Pressable
+          style={styles.modalOverlay}
+          onPress={() => setShowUserModal(false)}
+        >
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Detalles del Usuario DAF</Text>
+              <TouchableOpacity
+                onPress={() => setShowUserModal(false)}
+                style={styles.modalCloseButton}
+              >
+                <Ionicons name="close" size={24} color="#666" />
+              </TouchableOpacity>
             </View>
-          )}
-        </View>
-      </Pressable>
-    </Modal>
-  );
+
+            {selectedUser && (
+              <View style={styles.modalBody}>
+                <View style={styles.modalUserAvatar}>
+                  <View style={[styles.modalAvatar, { backgroundColor: COLORS.warning }]}>
+                    <Text style={styles.modalAvatarText}>
+                      {(selectedUser.username || selectedUser.email || 'U').charAt(0).toUpperCase()}
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={styles.modalUserInfo}>
+                  <Text style={styles.modalUserName}>
+                    {selectedUser.username || 'Sin nombre'}
+                  </Text>
+                  <Text style={styles.modalUserEmail}>
+                    {selectedUser.email || 'Sin email'}
+                  </Text>
+                  <View style={styles.modalRoleContainer}>
+                    <Ionicons name="people-outline" size={16} color={COLORS.warning} />
+                    <Text style={[styles.modalUserRole, { color: COLORS.warning }]}>
+                      DAF
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={styles.modalActions}>
+                  {/* 👇 BOTÓN DE EDITAR CONDICIONAL EN EL MODAL */}
+                  {canEdit && (
+                    <TouchableOpacity
+                      style={[styles.modalActionButton, styles.modalEditButton]}
+                      onPress={() => {
+                        setShowUserModal(false);
+                        router.push(`/admin/editUser/${selectedUser.id}`);
+                      }}
+                    >
+                      <Ionicons name="pencil" size={16} color="#fff" />
+                      <Text style={styles.modalActionButtonText}>Editar</Text>
+                    </TouchableOpacity>
+                  )}
+
+                  <TouchableOpacity
+                    style={[styles.modalActionButton, styles.modalDeleteButton]}
+                    onPress={() => {
+                      setShowUserModal(false);
+                      handleDeleteUser(selectedUser.id);
+                    }}
+                  >
+                    <Ionicons name="trash" size={16} color="#fff" />
+                    <Text style={styles.modalActionButtonText}>Eliminar</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
+          </View>
+        </Pressable>
+      </Modal>
+    );
+  };
 
   if (loading && (!users || users.length === 0)) {
     return (
